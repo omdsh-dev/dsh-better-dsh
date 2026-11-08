@@ -2,7 +2,7 @@
 
 面向维护者、集成者和需要排查装配问题的用户。用户安装与配置请看 [README](../README.md)；本文保留 DSH 插件的实现细节、旧配置迁移、组合安装边界与验证方法。
 
-当前实现版本：`0.10.1`；npm 包名是 `dsh-better-dsh`。纯 ESM，无构建步骤；宿主浏览器半边是直接加载的闭包工厂。旧 `Apollo` 名称只保留在迁移、历史兼容和旧包 deprecate 说明里。
+当前实现版本：`0.11.0`；npm 包名是 `dsh-better-dsh`。纯 ESM，无构建步骤；宿主浏览器半边是直接加载的闭包工厂。旧 `Apollo` 名称只保留在迁移、历史兼容和旧包 deprecate 说明里。
 
 ## 目录
 
@@ -33,10 +33,10 @@
 
 | 依赖 | 版本 | 所有权 |
 |---|---|---|
-| `dsh-better-goal` | `0.4.1` | 目标域（`questionTimeoutSeconds` 已弃用、仅保留读取） |
-| `@oh-my-dsh/dsh-better-subagent` | `0.5.0` | 子代理 CLI/等待/child guard/分档/设置页；注册 `wait_subagent` PTC 豁免 |
-| `dsh-better-compact` | `0.3.1` | 压缩 companion + engine + 设置页/诊断 |
-| `dsh-better-ask-user` | `0.3.1` | 官方 `ask_user_question` 入参/返回 + 插件超时等待 + 历史预览行；注册 PTC 豁免；旧 goal 等待迁移 |
+| `dsh-better-goal` | `0.4.2` | 目标域（`questionTimeoutSeconds` 已弃用、仅保留读取） |
+| `@oh-my-dsh/dsh-better-subagent` | `0.5.1` | 子代理 CLI/等待/child guard/分档/设置页；注册 `wait_subagent` PTC 豁免 |
+| `dsh-better-compact` | `0.4.0` | 压缩 companion + engine + 设置页/诊断 |
+| `dsh-better-ask-user` | `0.3.2` | 官方 `ask_user_question` 入参/返回 + 插件超时等待 + 历史预览行；注册 PTC 豁免；旧 goal 等待迁移 |
 | `dsh-better-ptc` | `0.2.0` | 单例 PTC deadline 豁免服务 |
 | `@deepseek-ai/schemastery` | `~3.19.0` | Better DSH 行 Config |
 | `react` | peer | 宿主提供 |

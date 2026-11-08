@@ -55,17 +55,17 @@
 
 ```sh
 # npm
-dsh plugin --profile <profile> add dsh-better-dsh@0.10.1
+dsh plugin --profile <profile> add dsh-better-dsh@0.11.0
 
 # 或从 GitHub tag 安装
-dsh plugin --profile <profile> add github:omdsh-dev/dsh-better-dsh#v0.10.1
+dsh plugin --profile <profile> add github:omdsh-dev/dsh-better-dsh#v0.11.0
 ```
 
 > 安装、升级或换包后必须**重启对应 profile**；只刷新网页不够。
 >
 > 不要同时显式添加 Better DSH 和独立插件 bundle：行实例仍只有一个，但 DSH 0.2.2-rc.1 会把同一 id 的配置写入拒绝为只读。只保留一个显式入口。
 
-本轮版本：**Better DSH `0.10.1`**，搭配 goal `0.4.1`、subagent `0.5.0`、compact `0.3.1`、ask-user `0.3.1`、ptc `0.2.0`。
+本轮版本：**Better DSH `0.11.0`**，搭配 goal `0.4.2`、subagent `0.5.1`、compact `0.4.0`、ask-user `0.3.2`、ptc `0.2.0`。
 
 ## 架构
 
@@ -183,10 +183,10 @@ Better DSH 包详情里的「集成设置」按 Core、Subagents、Compaction、
 # 旧入口
 dsh plugin --profile <profile> remove @menghuan1918/dsh-apollo
 # 新入口
-dsh plugin --profile <profile> add dsh-better-dsh@0.10.1
+dsh plugin --profile <profile> add dsh-better-dsh@0.11.0
 # subagent 独立安装的用户
 dsh plugin --profile <profile> remove @menghuan1918/dsh-better-subagent
-dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.0
+dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.1
 ```
 
 <details>
@@ -209,10 +209,10 @@ dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.0
 五个插件都可以单独安装；独立安装和 Better DSH 组合使用的是**同一组稳定行**。
 
 ```sh
-dsh plugin --profile <profile> add dsh-better-goal@0.4.1
-dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.0
-dsh plugin --profile <profile> add dsh-better-compact@0.3.1
-dsh plugin --profile <profile> add dsh-better-ask-user@0.3.1 dsh-better-ptc@0.2.0
+dsh plugin --profile <profile> add dsh-better-goal@0.4.2
+dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.1
+dsh plugin --profile <profile> add dsh-better-compact@0.4.0
+dsh plugin --profile <profile> add dsh-better-ask-user@0.3.2 dsh-better-ptc@0.2.0
 ```
 
 <details>
@@ -245,11 +245,11 @@ dsh plugin --profile <profile> add dsh-better-ask-user@0.3.1 dsh-better-ptc@0.2.
 **发布顺序**：先发布独立包，再发布 Better DSH（精确依赖必须已存在）：
 
 1. `dsh-better-ptc@0.2.0`（不变）
-2. `dsh-better-ask-user@0.3.1`
-3. `dsh-better-compact@0.3.1`
-4. `dsh-better-goal@0.4.1`
-5. `@oh-my-dsh/dsh-better-subagent@0.5.0`
-6. `dsh-better-dsh@0.10.1`
+2. `dsh-better-ask-user@0.3.2`
+3. `dsh-better-compact@0.4.0`
+4. `dsh-better-goal@0.4.2`
+5. `@oh-my-dsh/dsh-better-subagent@0.5.1`
+6. `dsh-better-dsh@0.11.0`
 
 各仓库使用 npm trusted publishing（OIDC）；创建对应 GitHub Release 会发布 tag 指向的版本。旧包 `@menghuan1918/dsh-apollo` 与 `@menghuan1918/dsh-better-subagent` 已标记 deprecate，仅作为历史入口保留。
 </details>

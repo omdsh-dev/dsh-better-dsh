@@ -15,7 +15,7 @@
  *    `t` 用 `ctx.locale.bind(entry.locale)` 补齐。子插件页面永远是单一事实
  *    源，本文件不复制任何字段定义。
  *
- * 主题：局部强调色 #3388BB，中性表面与文字继承宿主 --dsw-alias-* 令牌。
+ * 主题：选择、按钮、表面与文字均映射宿主 --dsw-alias-* 令牌。
  * 零构建：closure factory，只 require('react') + 可选 ui-primitives（Modal
  * 兜底为自绘 overlay）；不 fetch、不直接写 DOM。
  */
@@ -58,40 +58,35 @@ window.__ModuleLoader__.load({
 		];
 
 		const zh = {
-			summary: '后台任务退出守卫与兼容性说明',
+			summary: '后台任务与远程访问设置',
 			title: '通用',
-			connectionTitle: '连接与访问',
-			guardTitle: '退出守卫',
-			ownsHostLabel: '将反代页面声明为可信宿主',
+			purpose: '控制助手在后台任务运行时如何收尾，以及是否允许受信任的反向代理修改设置。',
+			connectionTitle: '远程访问',
+			guardTitle: '后台任务',
+			ownsHostLabel: '允许通过反向代理修改设置',
 			ownsHostHint: '仅在你控制访问权限的可信反向代理后启用。这会允许该页面写入宿主设置；不改变子代理 API 的可信地址列表。',
 			ownsHostReload: '保存后需重载 profile 并刷新页面。',
 			savedReload: '已保存；重载 profile 并刷新页面后生效。',
-			guardEnd: '回合结束',
-			guardJobs: '后台任务',
-			guardContinue: '有任务则继续',
-			guardAllow: '允许结束',
-			compatTitle: '兼容性',
-			migratedBody: 'CLI 子代理、wait_subagent、运行中子代理守卫、模型分档与子代理设置页由 @oh-my-dsh/dsh-better-subagent 拥有；压缩模式与预算由 dsh-better-compact 拥有。请到 Plugins 中对应的行配置，或使用包详情页的集成设置弹窗。',
-			deprecatedBody: '旧 Apollo 行里的 tiers / subagents / trustedHosts 只为迁移旧 profile 保留，运行时不再生效；迁移在启动后自动补齐新插件的缺失值，目标行已有显式设置时不会被覆盖。',
-			reloadBody: '从 0.4.x 升级、或同时显式选中了独立 bundle 时，行可能显示为只读/不可寻址；请只保留一个显式入口并重载 profile。压缩设置的保存需要重载 profile 才会被引擎采用。',
 			loading: '正在读取配置…',
-			waitingForm: '正在等待宿主提供这一行的配置快照…',
-			noFormHint: '长时间停在这里说明宿主没有为这一行提供可编辑配置：本部署没组合 dsh-settings/config-editor，或本行的 Config 未被识别。',
-			unavailable: '当前连接下该配置不可用：请通过 loopback 地址访问，或在宿主部署层把该权威加入受信反代。',
-			readonly: '当前连接只读（设置镜像为进程内 memory），无法写入宿主配置。',
-			exitGuardLabel: '等待后台任务结束',
+			waitingForm: '正在读取设置…',
+			noFormHint: '暂时无法读取设置。请重新连接后再试。',
+			unavailable: '当前地址无法修改设置。请使用本机地址打开，或在服务器上允许此地址访问设置。',
+			readonly: '当前连接仅支持查看设置。',
+			exitGuardLabel: '等待后台任务完成',
+			exitGuardDescription: '后台命令尚未结束时，让助手继续跟进。',
+			ownsHostDescription: '仅对你控制访问权限的反向代理开启；保存后需重载。',
 			exitGuardHint: '回合结束时仍有运行中的后台命令会注入提醒强制继续处理；Esc 中断始终放行。',
 			save: '保存',
 			saving: '保存中…',
 			reset: '放弃改动',
 			saved: '已保存，即时生效。',
-			conflict: '宿主拒绝了这次写入：配置可能已被其他改动更新或被更高优先级配置覆盖，已重新读取宿主值。',
+			conflict: '设置已在其他地方更新。已重新读取最新值，请检查后重试。',
 			saveFailed: '保存失败：',
 			readonlyNote: '只读：当前无法写入宿主配置。',
 			unavailableNote: '不可写：当前连接下该配置不可用。',
 			hubButton: '集成设置',
 			hubTitle: 'Better DSH',
-			hubEmpty: '暂无可用的子插件设置：子插件客户端尚未注册设置页，或本部署未组合设置服务。',
+			hubEmpty: '暂无可用的设置页。请检查插件是否已启用。',
 			close: '关闭',
 			unsavedTitle: '有未保存的改动',
 			unsavedBody: '关闭将放弃各页面尚未保存的设置。',
@@ -99,48 +94,43 @@ window.__ModuleLoader__.load({
 			discardClose: '放弃并关闭',
 			entryError: '此设置区加载失败：',
 			retry: '重新加载',
-			pluginBetterDsh: '核心',
+			pluginBetterDsh: '通用',
 			pluginSubagent: '子代理',
 			pluginCompact: '上下文压缩',
-			pluginGoal: '目标',
+			pluginGoal: '目标与续跑',
 			pluginAskUser: '提问',
 		};
 
 		const en = {
-			summary: 'Background-job exit guard and compatibility notes',
+			summary: 'Background work and remote access settings',
 			title: 'General',
-			connectionTitle: 'Connection and access',
-			guardTitle: 'Exit guard',
-			ownsHostLabel: 'Trust this reverse-proxied page as the host',
+			purpose: 'Control how the assistant finishes while background work runs, and whether a trusted reverse proxy may change settings.',
+			connectionTitle: 'Remote access',
+			guardTitle: 'Background work',
+			ownsHostLabel: 'Allow settings changes through a reverse proxy',
 			ownsHostHint: 'Enable only behind a trusted proxy whose access you control. This allows the page to write host settings; it does not change the subagent API’s trusted authorities.',
 			ownsHostReload: 'Save, then reload the profile and refresh the page.',
 			savedReload: 'Saved. Reload the profile and refresh the page to apply.',
-			guardEnd: 'Turn ends',
-			guardJobs: 'Background jobs',
-			guardContinue: 'Continue if running',
-			guardAllow: 'Allow completion',
-			compatTitle: 'Compatibility',
-			migratedBody: 'CLI subagents, wait_subagent, the running-child guard, model tiers and the subagent settings page are owned by @oh-my-dsh/dsh-better-subagent; compaction modes and budgets are owned by dsh-better-compact. Configure their rows under Plugins, or use the integrated settings dialog on the package page.',
-			deprecatedBody: 'The old Apollo tiers / subagents / trustedHosts fields are kept only so 0.4.x profiles load; they are inert at runtime. After boot the migration fills the new plugins’ missing values and never overwrites an explicit target setting.',
-			reloadBody: 'Upgrading from 0.4.x, or selecting both the standalone and Apollo bundles explicitly, can make the row read-only/unaddressable: keep a single explicit entry and reload the profile. Saved compaction settings take effect only after the profile reloads.',
 			loading: 'Loading configuration…',
-			waitingForm: 'Waiting for the host to provide this row’s configuration snapshot…',
-			noFormHint: 'Staying here means the host exposes no editable config for this row: dsh-settings/config-editor is not composed, or this row’s Config was not recognized.',
-			unavailable: 'This configuration is unavailable on the current connection: use a loopback address, or trust this authority in the host deployment.',
-			readonly: 'This connection is read-only (settings mirror is process-local memory); host configuration cannot be written.',
+			waitingForm: 'Loading settings…',
+			noFormHint: 'Settings could not be loaded. Reconnect and try again.',
+			unavailable: 'Settings cannot be changed from this address. Open the local address or allow this address on the server.',
+			readonly: 'Settings can only be viewed on this connection.',
 			exitGuardLabel: 'Wait for background work',
+			exitGuardDescription: 'Keep the assistant working while background commands are still running.',
+			ownsHostDescription: 'Enable for a reverse proxy whose access you control. Reload after saving.',
 			exitGuardHint: 'Blocks turn end while background commands still run; Esc always passes through.',
 			save: 'Save',
 			saving: 'Saving…',
 			reset: 'Discard',
 			saved: 'Saved and applied.',
-			conflict: 'The host refused this write: the configuration changed elsewhere or a higher layer overrides it. Host values were reloaded.',
+			conflict: 'Settings changed elsewhere. The latest values have been loaded; review them and try again.',
 			saveFailed: 'Save failed: ',
 			readonlyNote: 'Read-only: host configuration cannot be written.',
 			unavailableNote: 'Not writable: this configuration is unavailable on the current connection.',
 			hubButton: 'Integrated settings',
 			hubTitle: 'Better DSH',
-			hubEmpty: 'No sub-plugin settings are available yet: the sub-plugin clients have not registered their pages, or this deployment does not compose the settings service.',
+			hubEmpty: 'No settings pages are available. Check that the plugins are enabled.',
 			close: 'Close',
 			unsavedTitle: 'Unsaved changes',
 			unsavedBody: 'Closing discards unsaved settings on all pages.',
@@ -148,10 +138,10 @@ window.__ModuleLoader__.load({
 			discardClose: 'Discard and close',
 			entryError: 'This settings pane failed to load: ',
 			retry: 'Retry',
-			pluginBetterDsh: 'Core',
+			pluginBetterDsh: 'General',
 			pluginSubagent: 'Subagents',
 			pluginCompact: 'Compaction',
-			pluginGoal: 'Goals',
+			pluginGoal: 'Goals and continuation',
 			pluginAskUser: 'Questions',
 		};
 
@@ -165,9 +155,11 @@ window.__ModuleLoader__.load({
 		const STYLE_ID = 'dsh-better-dsh/settings.css';
 		const CSS = `
 /* UI-KIT v1 — keep in sync with docs/UI-KIT.md. Flat surfaces, 1px lines, one accent. */
-.apollo-cfg,.apollo-root,.apollo-hub,.apollo-modal,.apollo-modalCard,.apollo-button[data-apollo-hub=trigger]{--cfg-accent:#3388BB;--cfg-accent-solid:#20709e;--cfg-accent-text:#14587f;--cfg-accent-fg:#fff;--cfg-accent-soft:color-mix(in srgb,var(--cfg-accent) 10%,transparent);--cfg-accent-ink:color-mix(in srgb,var(--cfg-accent) 70%,var(--dsw-alias-label-primary));--cfg-surface:var(--dsw-alias-bg-layer-1);--cfg-raised:var(--dsw-alias-bg-layer-2);--cfg-overlay:var(--dsw-alias-bg-layer-3);--cfg-sunken:color-mix(in srgb,var(--dsw-alias-label-primary) 4%,var(--cfg-surface));--cfg-ink:var(--dsw-alias-label-primary);--cfg-ink-2:var(--dsw-alias-label-secondary);--cfg-ink-3:color-mix(in srgb,var(--dsw-alias-label-tertiary) 80%,var(--dsw-alias-label-primary));--cfg-border:var(--dsw-alias-border-l2,color-mix(in srgb,currentColor 14%,transparent));--cfg-border-strong:var(--dsw-alias-border-l3,color-mix(in srgb,currentColor 22%,transparent));--cfg-line:var(--dsw-alias-border-l1,color-mix(in srgb,currentColor 8%,transparent));--cfg-hover:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 6%,transparent));--cfg-danger:var(--dsw-alias-state-error-primary);--cfg-success:color-mix(in srgb,var(--dsw-alias-state-success-primary) 60%,var(--dsw-alias-label-primary));--cfg-warn:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 60%,var(--dsw-alias-label-primary));--cfg-mono:ui-monospace,SFMono-Regular,Menlo,monospace;--cfg-control:32px;--cfg-radius:8px;--cfg-dur:140ms;font-size:13px;line-height:20px;color:var(--cfg-ink);font-variant-numeric:tabular-nums}
-[data-ds-dark-theme] :is(.apollo-cfg,.apollo-root,.apollo-hub,.apollo-modal,.apollo-modalCard,.apollo-button[data-apollo-hub=trigger]){--cfg-accent:#4eb0e8;--cfg-accent-solid:#4eb0e8;--cfg-accent-text:#6fc0ee;--cfg-accent-fg:#0e1014;--cfg-accent-soft:color-mix(in srgb,var(--cfg-accent) 14%,transparent);--cfg-accent-ink:#6fc0ee}
-.apollo-cfg{display:flex;flex-direction:column;gap:24px;max-width:920px;width:100%;margin:0 auto;min-width:0}
+.apollo-cfg,.apollo-root,.apollo-hub,.apollo-modal,.apollo-modalCard,.apollo-button[data-apollo-hub=trigger]{--cfg-accent:var(--dsw-alias-state-business-primary,#4176e6);--cfg-accent-solid:var(--dsw-alias-button-primary-fill,#0f1115);--cfg-accent-text:color-mix(in srgb,var(--cfg-accent) 70%,var(--dsw-alias-label-primary));--cfg-accent-fg:var(--dsw-alias-label-primary-foreground,#fff);--cfg-accent-soft:color-mix(in srgb,var(--cfg-accent) 10%,transparent);--cfg-accent-ink:color-mix(in srgb,var(--cfg-accent) 70%,var(--dsw-alias-label-primary));--cfg-surface:var(--dsw-alias-bg-layer-1);--cfg-raised:var(--dsw-alias-bg-layer-2);--cfg-overlay:var(--dsw-alias-bg-layer-3);--cfg-sunken:color-mix(in srgb,var(--dsw-alias-label-primary) 4%,var(--cfg-surface));--cfg-ink:var(--dsw-alias-label-primary);--cfg-ink-2:var(--dsw-alias-label-secondary);--cfg-ink-3:color-mix(in srgb,var(--dsw-alias-label-tertiary) 80%,var(--dsw-alias-label-primary));--cfg-border:var(--dsw-alias-border-l2,color-mix(in srgb,currentColor 14%,transparent));--cfg-border-strong:var(--dsw-alias-border-l3,color-mix(in srgb,currentColor 22%,transparent));--cfg-line:var(--dsw-alias-border-l1,color-mix(in srgb,currentColor 8%,transparent));--cfg-hover:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 6%,transparent));--cfg-danger:color-mix(in srgb,var(--dsw-alias-state-error-primary) 60%,var(--dsw-alias-label-primary));--cfg-success:color-mix(in srgb,var(--dsw-alias-state-success-primary) 60%,var(--dsw-alias-label-primary));--cfg-warn:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 60%,var(--dsw-alias-label-primary));--cfg-mono:ui-monospace,SFMono-Regular,Menlo,monospace;--cfg-control:32px;--cfg-radius:8px;--cfg-dur:140ms;font-size:13px;line-height:20px;color:var(--cfg-ink);font-variant-numeric:tabular-nums}
+[data-ds-dark-theme] :is(.apollo-cfg,.apollo-root,.apollo-hub,.apollo-modal,.apollo-modalCard,.apollo-button[data-apollo-hub=trigger]){--cfg-accent:var(--dsw-alias-state-business-primary,#a6c4ff);--cfg-accent-solid:var(--dsw-alias-button-primary-fill,#e4e4e9);--cfg-accent-text:color-mix(in srgb,var(--cfg-accent) 70%,var(--dsw-alias-label-primary));--cfg-accent-fg:var(--dsw-alias-label-primary-foreground,#000);--cfg-accent-soft:color-mix(in srgb,var(--cfg-accent) 14%,transparent);--cfg-accent-ink:var(--cfg-accent-text)}
+.apollo-cfg{display:flex;flex-direction:column;gap:20px;max-width:960px;width:100%;margin:0 auto;min-width:0}
+.apollo-pageTitleBlock{display:flex;flex-direction:column;gap:4px;min-width:0}
+.apollo-pageSub{margin:0;color:var(--cfg-ink-3);font-size:13px;line-height:20px}
 .apollo-pageHead{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
 .apollo-pageTitle{margin:0;font-size:20px;line-height:28px;font-weight:500;letter-spacing:-.01em;color:var(--cfg-ink)}
 .apollo-badge{display:inline-flex;align-items:center;height:20px;padding:0 8px;border:1px solid var(--cfg-border);border-radius:999px;background:var(--cfg-raised);font-size:11px;line-height:18px;color:var(--cfg-ink-3);white-space:nowrap}
@@ -178,10 +170,11 @@ window.__ModuleLoader__.load({
 @keyframes apollo-pulse{0%{opacity:1}40%{opacity:.6}80%,to{opacity:1}}
 .apollo-hint{margin:0;font-size:12px;line-height:18px;color:var(--cfg-ink-3)}
 .apollo-mono{font-family:var(--cfg-mono);font-variant-numeric:tabular-nums}
-.apollo-card{display:flex;flex-direction:column;gap:12px;min-width:0;padding:16px 0 0;border:0;border-top:1px solid var(--cfg-border);border-radius:0;background:transparent}
-.apollo-sectionTitle{margin:0;font-size:12px;line-height:18px;font-weight:500;color:var(--cfg-ink-3)}
-.apollo-row{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;padding:10px 0;min-width:0;border-bottom:1px solid var(--cfg-line)}
-.apollo-row:last-child{border-bottom:0;padding-bottom:0}
+.apollo-card{display:flex;flex-direction:column;gap:4px;min-width:0;padding:0;border:0;border-radius:0;background:transparent}
+.apollo-sectionTitle{margin:0;padding-bottom:0;border-bottom:0;font-size:12px;line-height:18px;font-weight:500;color:var(--cfg-ink-3)}
+.apollo-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:10px 8px;margin:0 -8px;min-width:0;border-bottom:0;border-radius:8px}
+.apollo-row:hover{background:var(--cfg-hover)}
+.apollo-row:last-child{padding-bottom:10px}
 .apollo-rowText{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
 .apollo-rowTitle{font-size:13px;line-height:20px;font-weight:500;color:var(--cfg-ink);cursor:default}
 .apollo-rowDesc{max-width:560px;font-size:12px;line-height:18px;color:var(--cfg-ink-3)}
@@ -192,18 +185,18 @@ window.__ModuleLoader__.load({
 .apollo-help>button:focus-visible{outline:2px solid var(--cfg-accent);outline-offset:2px}
 .apollo-help>p{position:absolute;left:0;top:26px;z-index:40;width:320px;max-width:min(320px,70vw);margin:0;padding:10px 12px;border:1px solid var(--cfg-border-strong);border-radius:8px;background:var(--cfg-overlay);color:var(--cfg-ink-2);font-size:12px;line-height:18px;font-weight:400;box-shadow:0 12px 32px -16px rgb(0 0 0/.45)}
 .apollo-help>p[hidden]{display:none}
-.apollo-switch{box-sizing:border-box;position:relative;flex:none;width:34px;height:20px;margin:1px 0 0;padding:2px;border:1px solid var(--cfg-border-strong);border-radius:999px;background:var(--cfg-sunken);cursor:pointer;appearance:none;transition:background var(--cfg-dur) ease,border-color var(--cfg-dur) ease}
+.apollo-switch{box-sizing:border-box;position:relative;flex:none;width:34px;height:20px;margin:1px 5px 0 0;padding:2px;border:1px solid var(--cfg-border-strong);border-radius:999px;background:var(--cfg-sunken);cursor:pointer;appearance:none;transition:background var(--cfg-dur) ease,border-color var(--cfg-dur) ease}
 .apollo-switch:hover:not(:disabled){border-color:var(--cfg-ink-3)}
-.apollo-switch[aria-checked=true]{border-color:var(--cfg-accent);background:var(--cfg-accent-solid)}
+.apollo-switch[aria-checked=true]{border-color:var(--cfg-accent-solid);background:var(--cfg-accent-solid)}
 .apollo-switch:disabled{opacity:.4;cursor:not-allowed}
 .apollo-switchThumb{display:block;width:14px;height:14px;border-radius:50%;background:var(--cfg-ink-3);transition:transform var(--cfg-dur) ease,background var(--cfg-dur) ease}
 .apollo-switch[aria-checked=true] .apollo-switchThumb{transform:translateX(14px);background:var(--cfg-accent-fg)}
-.apollo-switch:before{content:"";position:absolute;inset:-11px 0 -11px -8px}
+.apollo-switch:before{content:"";position:absolute;inset:-12px -5px}
 .apollo-switch:focus-visible{outline:2px solid var(--cfg-accent);outline-offset:2px}
 .apollo-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 12px;border:1px solid transparent;border-radius:8px;font:inherit;font-size:13px;line-height:20px;font-weight:500;color:var(--cfg-ink);background:transparent;cursor:pointer;transition:background var(--cfg-dur) ease,border-color var(--cfg-dur) ease,color var(--cfg-dur) ease}
 .apollo-button:disabled{opacity:.4;cursor:not-allowed}
 .apollo-button[data-variant=primary]{background:var(--cfg-accent-solid);color:var(--cfg-accent-fg)}
-.apollo-button[data-variant=primary]:hover:not(:disabled){background:color-mix(in srgb,var(--cfg-accent-solid) 88%,black)}
+.apollo-button[data-variant=primary]:hover:not(:disabled){background:color-mix(in srgb,var(--cfg-accent-solid) 88%,var(--cfg-accent-fg))}
 .apollo-button[data-variant=outline]{border-color:var(--cfg-border-strong)}
 .apollo-button[data-variant=outline]:hover:not(:disabled),.apollo-button[data-variant=ghost]:hover:not(:disabled){background:var(--cfg-hover)}
 .apollo-button:focus-visible{outline:2px solid var(--cfg-accent);outline-offset:2px}
@@ -217,38 +210,23 @@ window.__ModuleLoader__.load({
 .apollo-status[data-tone=ok]{color:var(--cfg-success)}
 .apollo-status[data-tone=error]{color:var(--cfg-danger)}
 .apollo-status[data-tone=warn]{color:var(--cfg-warn)}
-.apollo-details{min-width:0;border-top:1px solid var(--cfg-border);padding:8px 0 0;font-size:13px;line-height:20px}
-.apollo-details>summary{display:flex;align-items:center;gap:8px;list-style:none;cursor:pointer;min-height:32px;padding:4px 0;font-size:13px;line-height:20px;font-weight:500;color:var(--cfg-ink-2)}
-.apollo-details>summary::-webkit-details-marker{display:none}
-.apollo-details>summary:before{content:"";width:6px;height:6px;flex:none;border-right:1px solid currentColor;border-bottom:1px solid currentColor;transform:rotate(-45deg);transition:transform var(--cfg-dur) ease}
-.apollo-details[open]>summary:before{transform:rotate(45deg)}
-.apollo-details>summary:hover{color:var(--cfg-ink)}
-.apollo-details>summary:focus-visible{outline:2px solid var(--cfg-accent);outline-offset:2px;border-radius:4px}
-.apollo-detailsBody{display:flex;flex-direction:column;gap:10px;padding:6px 0 4px;color:var(--cfg-ink-2)}
-.apollo-guardFlow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:2px 0 0;padding:14px 12px;border:1px solid var(--cfg-border);border-radius:8px;background:var(--cfg-sunken)}
-.apollo-flowStep{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;text-align:center;color:var(--cfg-ink-2)}
-.apollo-flowStep svg{box-sizing:content-box;display:block;padding:6px;border:1px solid var(--cfg-border);border-radius:8px;background:var(--cfg-raised);color:var(--cfg-ink-2)}
-.apollo-flowLabel{font-size:12px;line-height:18px;max-width:130px;overflow-wrap:normal;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
-.apollo-flowStep:not(:last-child):after{content:"";position:absolute;left:calc(50% + 24px);top:15px;width:calc(100% - 40px);border-top:1px solid var(--cfg-border)}
-.apollo-guardFlow[data-enabled=true] .apollo-flowStep:last-child{color:var(--cfg-accent-text)}
-.apollo-guardFlow[data-enabled=true] .apollo-flowStep:last-child svg{border-color:color-mix(in srgb,var(--cfg-accent) 35%,var(--cfg-border));background:var(--cfg-accent-soft);color:var(--cfg-accent-text)}
 .apollo-hubGlyph{flex:none;color:var(--cfg-ink-3)}
 .apollo-closeConfirm{box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:16px;min-height:280px;width:100%;padding:32px}
 .apollo-closeConfirm p{margin:0;color:var(--cfg-ink-2);font-size:13px;line-height:20px}
 .apollo-closeActions{display:flex;justify-content:flex-end;gap:8px}
-.apollo-modal.apollo-modal{width:min(1240px,calc(100vw - 32px));max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);padding-bottom:0;border:1px solid var(--cfg-border);border-radius:12px}
+.apollo-modal.apollo-modal{width:min(1240px,calc(100vw - 32px));max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);padding-bottom:0;border:1px solid var(--cfg-border);border-radius:10px}
 .apollo-hubModalContent>:first-child{margin:0;padding:14px 20px;border-bottom:1px solid var(--cfg-border)}
 .apollo-hubModalContent>:first-child h2{font-size:15px;line-height:22px;font-weight:500}
 .apollo-hubModalContent>:last-child{margin:0;padding:0}
 .apollo-hub{display:flex;gap:0;height:min(760px,calc(100dvh - 96px));min-height:320px;width:100%;overflow:hidden}
-.apollo-hubNav{box-sizing:border-box;flex:none;width:200px;display:flex;flex-direction:column;gap:2px;padding:12px 8px;border-right:1px solid var(--cfg-border);background:color-mix(in srgb,var(--cfg-ink) 2%,var(--cfg-surface));overflow-y:auto;scrollbar-width:thin}
-.apollo-hubNavItem{display:flex;align-items:center;gap:10px;flex-shrink:0;min-height:36px;padding:0 10px;border:1px solid transparent;border-radius:8px;background:transparent;font:inherit;font-size:13px;line-height:20px;text-align:left;cursor:pointer;color:var(--cfg-ink-2);transition:background var(--cfg-dur) ease,color var(--cfg-dur) ease,border-color var(--cfg-dur) ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.apollo-hubNav{box-sizing:border-box;flex:none;width:188px;display:flex;flex-direction:column;gap:2px;padding:12px 8px;border-right:1px solid var(--cfg-border);background:color-mix(in srgb,var(--cfg-ink) 2%,var(--cfg-surface));overflow-y:auto;scrollbar-width:thin}
+.apollo-hubNavItem{display:flex;align-items:center;gap:10px;flex-shrink:0;min-height:32px;padding:0 10px;border:1px solid transparent;border-radius:8px;background:transparent;font:inherit;font-size:13px;line-height:20px;text-align:left;cursor:pointer;color:var(--cfg-ink-2);transition:background var(--cfg-dur) ease,color var(--cfg-dur) ease,border-color var(--cfg-dur) ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .apollo-hubNavItem:hover{background:var(--cfg-hover);color:var(--cfg-ink)}
 .apollo-hubNavItem[data-active]{background:var(--cfg-accent-soft);border-color:color-mix(in srgb,var(--cfg-accent) 25%,var(--cfg-border));color:var(--cfg-accent-ink);font-weight:500}
 .apollo-hubNavItem svg{flex:none;opacity:.7}
 .apollo-hubNavItem[data-active] svg{opacity:1;color:var(--cfg-accent-ink)}
 .apollo-hubNavItem:focus-visible{outline:2px solid var(--cfg-accent);outline-offset:1px}
-.apollo-hubContent{flex:1;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:24px 32px 32px;scrollbar-width:thin;scrollbar-gutter:stable}
+.apollo-hubContent{flex:1;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:24px 28px 32px;scrollbar-width:thin;scrollbar-gutter:stable}
 .apollo-hubContent .apollo-footer{position:sticky;bottom:-1px;background:var(--cfg-surface);padding-bottom:12px;margin-top:auto}.apollo-hubPane{display:flex;flex-direction:column;min-height:100%}.apollo-hubPane>:first-child{flex:1 0 auto;min-height:0;display:flex;flex-direction:column}.apollo-root{flex:1;min-height:0;display:flex;flex-direction:column}.apollo-cfg{flex:1;min-height:0}.apollo-footer{margin-top:auto}
 .apollo-hubModalContent{padding:0!important;overflow:hidden}
 .apollo-hubPane{min-width:0;width:100%;overflow-wrap:anywhere}
@@ -260,11 +238,11 @@ window.__ModuleLoader__.load({
 .apollo-modalHead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--cfg-border)}
 .apollo-modalTitle{margin:0;font-size:15px;font-weight:500;line-height:22px}
 .apollo-modalBody{flex:1;min-height:0;overflow:hidden;display:flex}
-.apollo-iconBtn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:var(--cfg-ink-3);font-size:16px;line-height:1;cursor:pointer}
+.apollo-iconBtn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--cfg-ink-3);font-size:16px;line-height:1;cursor:pointer}
 .apollo-iconBtn:hover{background:var(--cfg-hover);color:var(--cfg-ink)}
 .apollo-iconBtn:focus-visible{outline:2px solid var(--cfg-accent);outline-offset:1px}
 @media (max-width:800px){.apollo-help>p{position:static;width:auto;max-width:none;margin-top:6px}.apollo-hub{flex-direction:column;height:min(80dvh,calc(100dvh - 24px))}.apollo-hubNav{width:auto;flex-direction:row;gap:4px;padding:8px;border-right:0;border-bottom:1px solid var(--cfg-border);overflow-x:auto}.apollo-hubNavItem{min-height:44px;flex:none}.apollo-hubContent{padding:20px 16px 24px}.apollo-cfg{gap:24px}.apollo-pageTitle{font-size:18px}.apollo-hubContent .apollo-footer{bottom:0}.apollo-mask{padding:12px}.apollo-modalCard{max-height:calc(100dvh - 24px)}}
-@media (max-width:640px){.apollo-row{flex-direction:column;gap:8px}.apollo-row .apollo-switch{align-self:flex-start}.apollo-guardFlow{padding:10px 6px}.apollo-flowLabel{font-size:11px}.apollo-footer{flex-wrap:wrap}.apollo-status{flex-basis:100%}}
+@media (max-width:640px){.apollo-row{gap:12px;margin:0;padding:10px 0}.apollo-rowText{min-width:0;position:relative}.apollo-help{position:static}.apollo-row .apollo-switch{align-self:center}.apollo-footer{flex-wrap:wrap}.apollo-status{flex-basis:100%}.apollo-mask{padding:0}.apollo-modal.apollo-modal,.apollo-modalCard{flex-shrink:0;width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border:0;border-radius:0}.apollo-hubModalContent>:first-child button{width:44px;height:44px}.apollo-hub{height:calc(100dvh - 73px);min-height:0}.apollo-hubNav{scrollbar-width:none}.apollo-hubNav::-webkit-scrollbar{display:none}.apollo-help>button{width:44px;height:44px}.apollo-help>p{position:absolute;top:100%;left:0;right:auto;width:100%;max-width:none;box-sizing:border-box}}
 @media (pointer:coarse),(max-width:640px){.apollo-iconBtn{width:44px;height:44px}.apollo-button{height:44px}}
 @media (prefers-reduced-motion:reduce){.apollo-pulse{animation:none}.apollo-switch,.apollo-switchThumb,.apollo-button,.apollo-hubNavItem,.apollo-help>button{transition:none}}
 		`.trim();
@@ -290,13 +268,14 @@ window.__ModuleLoader__.load({
 				h('p', { id, hidden: !open, role: 'note' }, children));
 		}
 
-		function SwitchRow({ id, label, hint, checked, disabled, onChange }) {
+		function SwitchRow({ id, label, description, hint, checked, disabled, onChange }) {
 			const hintId = hint === undefined ? undefined : id + '-hint';
 			return h('div', { className: 'apollo-row' },
 				h('div', { className: 'apollo-rowText' },
 					h('div', { className: 'apollo-rowLabel' },
 						h('label', { className: 'apollo-rowTitle', htmlFor: id }, label),
-						hint === undefined ? null : h(Help, { label, id: hintId }, hint))),
+						hint === undefined ? null : h(Help, { label, id: hintId }, hint)),
+					description === undefined ? null : h('div', { className: 'apollo-rowDesc' }, description)),
 				h('button', {
 					type: 'button',
 					id,
@@ -369,39 +348,32 @@ window.__ModuleLoader__.load({
 
 			return h('div', { className: 'apollo-cfg', 'data-settings-dirty': dirty, 'data-settings-busy': busy },
 				h('div', { className: 'apollo-pageHead' },
-					h('h2', { className: 'apollo-pageTitle' }, translate('title'))),
+					h('div', { className: 'apollo-pageTitleBlock' },
+						h('h2', { className: 'apollo-pageTitle' }, translate('title')),
+						h('p', { className: 'apollo-pageSub' }, translate('purpose')))),
 				writable ? null : h('p', { className: 'apollo-note', 'data-tone': 'warn' }, translate('readonlyNote')),
 				h('section', { className: 'apollo-card' },
 					h('h3', { className: 'apollo-sectionTitle' }, translate('guardTitle')),
 					h(SwitchRow, {
 						id: 'apollo-exit-guard',
 						label: translate('exitGuardLabel'),
+						description: translate('exitGuardDescription'),
 						hint: translate('exitGuardHint'),
 						checked: live.exitGuard,
 						disabled: !writable || busy,
 						onChange: (next) => edit({ exitGuard: next }),
-					}),
-					h('div', { className: 'apollo-guardFlow', 'aria-hidden': 'true', 'data-enabled': live.exitGuard },
-						['guardEnd', 'guardJobs', live.exitGuard ? 'guardContinue' : 'guardAllow'].map((key, index) => h('div', { key, className: 'apollo-flowStep' },
-							h('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' },
-								h('path', { d: ['M5 12h14m-6-6 6 6-6 6', 'M4 5h16v14H4ZM8 9l3 3-3 3m6 0h3', live.exitGuard ? 'M12 8v4l3 2M5 4 2 7m20 0-3-3M12 4a8 8 0 1 0 8 8' : 'M5 12l4 4L19 6'][index] })),
-							h('span', { className: 'apollo-flowLabel' }, translate(key)))))),
+					})),
 				h('section', { className: 'apollo-card' },
 					h('h3', { className: 'apollo-sectionTitle' }, translate('connectionTitle')),
 					h(SwitchRow, {
 						id: 'apollo-owns-host',
 						label: translate('ownsHostLabel'),
+						description: translate('ownsHostDescription'),
 						hint: translate('ownsHostHint') + ' ' + translate('ownsHostReload'),
 						checked: live.declareOwnsHost,
 						disabled: !writable || busy,
 						onChange: (next) => edit({ declareOwnsHost: next }),
 					})),
-				h('details', { className: 'apollo-details' },
-					h('summary', null, translate('compatTitle')),
-					h('div', { className: 'apollo-detailsBody' },
-						h('p', { className: 'apollo-hint' }, translate('migratedBody')),
-						h('p', { className: 'apollo-hint' }, translate('deprecatedBody')),
-						h('p', { className: 'apollo-hint' }, translate('reloadBody')))),
 				h('div', { className: 'apollo-footer', hidden: !dirty && !busy && notice === null },
 					status,
 					h('button', {

@@ -22,10 +22,10 @@ component rules; do not hard-code surfaces.
 | surface sunken | `color-mix(in srgb, ink-1 4%, canvas)` | same rule |
 | ink 1 / 2 / 3 | `--dsw-alias-label-primary/secondary/tertiary` | host dark labels |
 | line 1 / 2 / 3 | `--dsw-alias-border-l1/l2/l3` | host dark borders |
-| accent | `#3388BB` | `#4eb0e8` |
-| accent solid | `#20709e` | `#4eb0e8` |
-| accent foreground | `#fff` | `#0e1014` |
-| accent text | `#14587f` | `#6fc0ee` |
+| accent / focus | `--dsw-alias-state-business-primary` | host dark business color |
+| primary action / switch fill | `--dsw-alias-button-primary-fill` | host dark button fill |
+| primary action foreground | `--dsw-alias-label-primary-foreground` | host dark foreground |
+| accent text | `color-mix(in srgb, accent 70%, ink-1)` | same rule |
 | accent soft | `color-mix(in srgb, accent 10%, transparent)` | 14% |
 | success / danger / warn | `--dsw-alias-state-*` | host dark state tokens |
 | radius sm / md / lg / xl | `6 / 8 / 10 / 12px` | same |
@@ -55,40 +55,85 @@ Rules:
 - Rail 200px: 36px items, 8px radius. Active = accent-soft background +
   accent-text + 1px line; no left decoration bar.
 - Content padding 24px 32px; each page is a max-920px column, centered.
-- Narrow `<= 640px`: rail becomes a horizontal scrolling tab strip; content
-  padding 16px; dialog full-bleed.
+- Narrow `<= 800px`: rail becomes a horizontal scrolling tab strip; content
+  padding 16px. At `<= 640px` the dialog fills the viewport with no outer
+  margin or corner radius.
 
 ### Settings page
 
 - Content column `max-width: 920px; margin: 0 auto`.
 - Page title 20/28/500, letter-spacing -0.01em.
-- Section title 12/500, ink-3, 1px bottom line; section spacing 24px.
-- Setting row: label 13/500; one consequence line 12/ink-3 max two lines;
-  control right-aligned. Row padding 10–12px, 1px line-1 between rows.
+- Section label 12/500, ink-3, no rule; section spacing 24px.
+- Setting row: label 13/500; control right-aligned. Add one neutral consequence
+  line (12/ink-3) only when the label cannot explain the choice. Row padding
+  10–12px with a hover surface; no per-row divider. Explain model recommendations
+  and their scope where they are edited; do not hide essential effects in
+  screen-reader-only text.
+- Dividers are reserved for group boundaries (footer, cards, inputs,
+  selectable rows). A form of anonymous horizontal rules between every row is a
+  bug, not a style.
+- Everyday settings contain no compatibility notes, migration history, package
+  ownership or implementation terminology. Keep actionable loading, read-only,
+  conflict and reload feedback next to the affected controls.
 - Use sections, not card grids. Cards are reserved for selectable strategy
   cards, read-only budget panels, conversation cards and overlays.
-- Save footer: sticky, 1px top line, canvas background, 12px padding; only
+- Save footer: normal flow at the end, 1px top line, canvas background, 12px padding; only
   visible while dirty, busy or showing a notice. Status left, actions right.
+
+### Editable compaction process
+
+- Use one bold visualization as the primary surface: a capacity bar with drag
+  handles, four strategy cards (native, goal-aware, handoff, custom), a compact
+  generation row, and a custom-prompt editor. Edit the existing configuration
+  draft through these controls; saving and discarding use the same form.
+- The capacity bar supports pointer dragging and keyboard adjustment
+  (`role=slider`), with one synchronized numeric field per value. Do not repeat
+  the bar as full-width range sliders. If the model window is unknown, show a
+  proportional schematic and say so; never invent token totals.
+- The four strategy cards are compact choices: title, tag and one-line effect,
+  no repeated mini-diagrams. On wide screens they sit in a two-column
+  **选择 | 示意图** layout: choices on the left, one shared SVG process drawing on
+  the right, capped at 400px so it fits beside the choices. It uses labeled
+  nodes and arrows for context, trigger, summary and continuation; it stacks
+  below the choices on narrow screens.
+  Selected state uses accent border + accent-soft + check; keyboard arrows,
+  Home/End and Space/Enter work.
+- Custom mode is the fourth strategy: its expanded prompt is the only
+  instruction sent to the summary model. It appends no built-in structure,
+  state block or safety rules; the ten `{{variable}}` chips are the only
+  context injection. Entering custom mode with an empty prompt pre-fills the
+  **goal-mode default instruction** as an editable template; never overwrite an
+  existing prompt. Clearing the pre-filled text blocks saving; output must be
+  non-empty. Built-in modes never use the custom prompt.
+- Capacity, reserved output and measured usage are observations. Unknown values
+  stay unknown; do not present active-engine estimates as a prediction of
+  unsaved settings.
+- Keep only genuinely rare advanced policies and long read-only diagnostics
+  expandable. Behavior and effect settings are always visible.
 
 ### Narrow `<= 640px`
 
-- Rows stack: label above, control full width, touch targets 44px.
-- Tables become cards; diagrams shrink or become 3–4 value rows.
+- Field rows stack: label above, control full width, touch targets 44px.
+- Binary switches stay beside their labels, with a 44px hit area. Help buttons
+  are 44px, with descriptions contained inside the content column.
+- Tables become cards. Read-only diagrams may become value rows. The editable
+  compaction process reflows into connected vertical stages and keeps its controls
+  available; never shrink the entire diagram into unreadable labels.
 - No horizontal scrolling at 390px.
 
 ## 3. Controls
 
 | Control | Contract |
 | --- | --- |
-| Button | 32px; radius 8; 13/500; primary accent-solid, secondary 1px line-2, ghost transparent; hover line-1 fill; focus 2px accent ring offset 2; disabled .4; loading spinner 12px |
+| Button | 32px; radius 8; 13/500; primary host button fill/foreground, secondary 1px line-2, ghost transparent; hover line-1 fill; focus 2px accent ring offset 2; disabled .4; loading spinner 12px |
 | Text input / textarea | 32px; radius 8; 1px line-2; raised background; focus accent border + ring; number inputs tabular, no native spinners |
 | Combobox | trigger shaped like text input; menu overlay surface, 1px line-3, radius 10, 4px padding, shadow; option 30px, radius 6, selected accent-soft + accent-text + check; ArrowUp/Down, Home/End, Enter/Space, Escape, typeahead; flip above when short; no native select/datalist |
 | Segmented | container 32px, sunken, 1px line-2, radius 8; item 28px radius 6; selected raised + 1px line + accent-text 500; Arrow keys/Home/End; used for tabs and exclusive modes |
-| Switch | 34×20 track, 2px padding, 14px thumb; on accent-solid, off sunken + line-3; focus ring; disabled .4 |
+| Switch | 34×20 track, 2px padding, 14px thumb; on host button fill/foreground, off sunken + line-3; focus ring; disabled .4 |
 | Range | 4px track, accent filled portion, 14px thumb with 2px accent ring; number readout tabular and 76px wide |
 | Choice card | 1px line-2, radius 10, padding 12; selected 1px accent + accent-soft; title 13/500, one line of 12/ink-3, schematic 120–160px; radio semantics |
 | Chip / badge | 20px high, 11px, 1px line, radius 999; status only; at most one emphasized badge per screen |
-| Details | summary 28–32px, 6px chevron, Escape closes; only for advanced/diagnostics/compatibility |
+| Details | summary 28–32px, 6px chevron, Escape closes; only for rare advanced fields and long read-only diagnostics; behavior settings never hide here |
 | Dialog / overlay | 1px line-2, radius 12; focus trapped and returned; Escape closes; shadow only here |
 
 Keyboard:
@@ -129,12 +174,14 @@ tests. Add classes instead. In particular:
 - Subagent: `.bs-root`, `.bs-title h2`, `.bs-header`, `.bs-switch`,
   `.bs-advanced`, `.bs-cellLabel`, `.bs-footer` first child `.bs-status`,
   `.bs-feedback`, `.bs-overviewGlyph`, combobox roles/ids, CSS literals.
-- Compact: `.dsh-bc-page`, three `data-diagram` SVGs, `.dsh-bc-row`,
-  `.dsh-bc-current-line`, `.dsh-bc-explanation`, mode radios, `data-bc` hooks,
+- Compact: `.dsh-bc-page`, four `data-mode` radios, `data-bc=capacity-bar`,
+  `[role=slider]` handles, `data-bc-section=capacity|strategy|generation|prompt`,
+  `data-bc=process-result`, custom-prompt textarea and variable buttons,
   form names/ids.
-- Goal: `.dbg-cfg`, `h3.dbg-title`, `.dbg-section`, `.dbg-segmented` ids,
-  `.dbg-advanced`, `.dbg-help.dbg-info`, `.dbg-runtime`, `.dbg-footer`,
-  `.dbg-status`, dock/history ids.
+- Goal: `.dbg-cfg`, `h3.dbg-title`, `.dbg-section`, implementation/round-mode
+  radio ids, `.dbg-runtime`, `.dbg-footer`, `.dbg-status`, dock/history ids.
+  Native parameters and round policy are visible; no behavior `dbg-advanced`
+  or `dbg-diagnostics` fold.
 - Ask-user: `better-ask-user-*` ids, `data-settings-dirty/busy`,
   `data-settings-save`, `data-question-wait`, exact labels/aria.
 

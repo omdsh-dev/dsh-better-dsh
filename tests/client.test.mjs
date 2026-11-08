@@ -263,22 +263,22 @@ test('装载与 slot 注册：声明才注册、新键与旧键并排、塌缩�
   assert.equal(slots.registrations.length, 0)
 })
 
-test('ready：只渲染 exitGuard 开关、样式表与迁移说明；不再有旧子代理表单', async () => {
+test('ready：显示当前设置，不显示兼容性和迁移说明', async () => {
   const page = await mountPage()
   const renderer = page.renderer
 
   const styles = byType(renderer, 'style')
   assert.equal(styles.length, 1)
   assert.match(styles[0].children[0], /\.apollo-switch/)
-  assert.match(styles[0].children[0], /--cfg-accent:#3388BB/)
+  assert.match(styles[0].children[0], /--cfg-accent:var\(--dsw-alias-state-business-primary,/)
+  assert.match(styles[0].children[0], /--cfg-accent-solid:var\(--dsw-alias-button-primary-fill,/)
   assert.equal(renderer.root.findAll((node) => String(node.props.className ?? '').includes('apollo-root')).length, 1)
 
   assert.equal(byId(renderer, 'apollo-exit-guard').props['aria-checked'], false)
   assert.equal(byType(renderer, 'select').length, 0, 'CLI 权限/模型控件已迁移')
   assert.equal(byType(renderer, 'input').length, 0, '可执行文件/模型输入已迁移')
   assert.equal(renderer.root.findAll((node) => String(node.props.id ?? '').startsWith('apollo-codex')).length, 0)
-  assert.match(pageText(renderer), /migratedBody/)
-  assert.match(pageText(renderer), /deprecatedBody/)
+  assert.doesNotMatch(pageText(renderer), /compatTitle|migratedBody|deprecatedBody|reloadBody/)
   assert.equal(saveButton(renderer).props.disabled, true, '无改动时保存不可用')
   assert.equal(resetButton(renderer).props.disabled, true)
   assert.equal(renderer.root.findByProps({ className: 'apollo-footer' }).props.hidden, true, '无改动时保存栏不占位')
@@ -471,10 +471,8 @@ test('行配置页：单一标题、退出守卫行、兼容性细节默认折�
   assert.equal(textOf(titles[0].props.children), 'title')
   assert.doesNotMatch(pageText(renderer), /hubIntro|intro\(|migratedTitle/)
 
-  const compat = renderer.root.findAll((node) => host(node) && node.type === 'details')[0]
-  assert.ok(compat)
-  assert.equal(compat.props.open, undefined, '兼容性说明默认折叠')
-  assert.match(pageText(renderer), /compatTitle|migratedBody|deprecatedBody|reloadBody/)
+  assert.equal(renderer.root.findAll((node) => host(node) && node.type === 'details').length, 0)
+  assert.doesNotMatch(pageText(renderer), /compatTitle|migratedBody|deprecatedBody|reloadBody/)
   await act(async () => { renderer.unmount() })
 })
 
