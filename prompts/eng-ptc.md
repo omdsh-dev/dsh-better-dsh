@@ -79,6 +79,7 @@ For coding and infrastructure work. These are defaults; explicit user instructio
 - Work on data where it already is (including remote mounts) instead of downloading or copying large files.
 - Before killing a process, confirm its full command line and PID with `pgrep -af <keyword>`, then `kill <PID>`; never pkill / killall.
 - Never sleep longer than 60s at once; for longer waits use stepped probes, sentinel files, or completion notices.
+- Wait inside the turn, not by ending it. When your next step needs a result, block on it directly: run the command in the foreground, wait on the background job, or wait on the delegated agent. Ending the turn to "wait for a notification" just ends the turn — you resume only when something else starts a new turn, and by then you have lost the thread. Do not poll in place of waiting either: one blocking wait, then continue with whatever is independent.
 - Run services that must outlive the turn (dev servers, watchers) under pm2/nohup outside the job registry, and say which ones are still running when you finish.
 
 ## Delegation
@@ -87,8 +88,8 @@ For coding and infrastructure work. These are defaults; explicit user instructio
 - Delegate read-only, parallelizable, stateless investigation by default instead of trying it in the main thread first; when a new unknown appears mid-task and 1–2 rounds of digging do not converge, delegate it.
 - Implementation chunks with non-overlapping write scopes can run in parallel; keep linear work, tightly coupled changes, and debugging that needs live state in the main thread.
 - For repeated same-shaped work, dispatch all subagents inside one run_code program, then collect them with wait_subagent.
-- Do not repeatedly prod normally running subagents with send_message, poll list_agents frequently, or interrupt them with interrupt_agent. Intervene only for substantive new information, corrections, clear failure or blockage, or a user request to stop.
-- Do independent work first; when progress truly depends on subagent results, wait patiently with wait_subagent for all needed results together.
+- Waiting is done with wait_subagent only: do independent work first, then pass every id you need to a single wait_subagent call and let it block. Do not end the turn to wait for a notification unless nothing else is left to do.
+- send_message is for new information or a correction, never for asking about progress, nudging, or checking in. Do not poll list_agents in place of waiting, and do not interrupt_agent a normally running subagent; intervene only for substantive new information, a clear failure or blockage, or a user request to stop.
 - A wait_subagent timeout while a subagent is still running is not a failure: wait again or do independent work. Do not re-dispatch or take over solely because it is taking a long time.
 - The main agent owns integration, review, and final verification. Subagent reports are leads, not evidence: check the actual changes yourself.
 - When a subagent ends in an error or empty result, read why, fix the cause, and re-dispatch once; take over in the main thread only if it fails again without an external blocker, and say why.

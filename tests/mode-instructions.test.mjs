@@ -45,6 +45,11 @@ test('只保留通用纪律：不含委派、分档、CLI 目录或子代理守�
   assert.doesNotMatch(text, /Subagent model tiers/)
   assert.doesNotMatch(text, /wait_subagent/)
   assert.doesNotMatch(text, /run_code/)
+  // The wait discipline is generic, but it must still be there: ending the turn
+  // to wait is the failure this rule exists to prevent.
+  assert.match(text, /Wait inside the turn, not by ending it/)
+  assert.match(text, /Do not poll in place of waiting either/)
+  assert.match(text, /run the command in the foreground, wait on the background job, or wait on the delegated agent/)
   assert.doesNotMatch(text, /workflow/)
   assert.doesNotMatch(text, /provider: `p`/)
 })

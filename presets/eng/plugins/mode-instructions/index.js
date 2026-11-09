@@ -62,6 +62,7 @@ For coding and infrastructure work. These are defaults; explicit user instructio
 - Work on data where it already is (including remote mounts) instead of downloading or copying large files.
 - Before killing a process, confirm its full command line and PID with \`pgrep -af <keyword>\`, then \`kill <PID>\`; never pkill / killall.
 - Never sleep longer than 60s at once; for longer waits use stepped probes, sentinel files, or completion notices.
+- Wait inside the turn, not by ending it. When your next step needs a result, block on it directly: run the command in the foreground, wait on the background job, or wait on the delegated agent. Ending the turn to "wait for a notification" just ends the turn — you resume only when something else starts a new turn, and by then you have lost the thread. Do not poll in place of waiting either: one blocking wait, then continue with whatever is independent.
 - Run services that must outlive the turn (dev servers, watchers) under pm2/nohup outside the job registry, and say which ones are still running when you finish.`
 
 const JOB_EXIT_GUARD = `## Exit guard
