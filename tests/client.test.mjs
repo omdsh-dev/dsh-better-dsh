@@ -307,6 +307,42 @@ test('切换开关 → 保存只提交 exitGuard set 操作并带当前 revision
   assert.equal(byId(renderer, 'apollo-exit-guard').props['aria-checked'], true, '镜像折叠后的宿主值就是新值')
 })
 
+test('守卫开启时显示等待时长输入，保存只提交改动过的字段', async () => {
+  const page = await mountPage({ form: { revision: 3 } })
+  const renderer = page.renderer
+  // Closed guard hides the numeric row: it only matters when the guard runs.
+  assert.equal(byId(renderer, 'apollo-exit-guard-wait'), undefined)
+  await page.run(async () => { byId(renderer, 'apollo-exit-guard').props.onClick() })
+  const input = byId(renderer, 'apollo-exit-guard-wait')
+  assert.equal(input.props.value, 2400, 'default window is 40 minutes')
+  assert.equal(input.props.disabled, false)
+  await page.run(async () => { input.props.onChange({ target: { value: '600' } }) })
+  assert.equal(renderer.root.findByProps({ className: 'apollo-cfg' }).props['data-settings-dirty'], true)
+  await page.run(async () => {
+    saveButton(renderer).props.onClick()
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+  assert.deepEqual(page.controller.calls, [{
+    ops: [{ op: 'set', path: ['exitGuard'], value: true }, { op: 'set', path: ['exitGuardWaitSeconds'], value: 600 }],
+    revision: 3,
+  }])
+})
+
+test('等待时长输入只接受 0..86400 的整数，非法输入不会写出垃圾值', async () => {
+  const page = await mountPage({ form: { revision: 1, value: { exitGuard: true, exitGuardWaitSeconds: 2400 } } })
+  const renderer = page.renderer
+  const set = async (value) => {
+    await page.run(async () => { byId(renderer, 'apollo-exit-guard-wait').props.onChange({ target: { value } }) })
+    return byId(renderer, 'apollo-exit-guard-wait').props.value
+  }
+  assert.equal(await set('3600'), 3600)
+  assert.equal(await set('0'), 0, '0 is the documented off switch and must survive')
+  assert.equal(await set('86400'), 86400)
+  assert.equal(await set('86401'), 86400, 'above the ceiling clamps instead of saving junk')
+  assert.equal(await set('abc'), 0)
+})
+
 test('放弃改动：恢复宿主值，不发写入', async () => {
   const page = await mountPage()
   const renderer = page.renderer

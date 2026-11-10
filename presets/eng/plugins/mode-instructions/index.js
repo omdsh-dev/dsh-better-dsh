@@ -65,8 +65,18 @@ For coding and infrastructure work. These are defaults; explicit user instructio
 - Wait inside the turn, not by ending it. When your next step needs a result, block on it directly: run the command in the foreground, wait on the background job, or wait on the delegated agent. Ending the turn to "wait for a notification" just ends the turn — you resume only when something else starts a new turn, and by then you have lost the thread. Do not poll in place of waiting either: one blocking wait, then continue with whatever is independent.
 - Run services that must outlive the turn (dev servers, watchers) under pm2/nohup outside the job registry, and say which ones are still running when you finish.`
 
-const JOB_EXIT_GUARD = `## Exit guard
-- If background commands are still running when the turn would end, the system injects a reminder and the turn continues. Collect them with job_output, stop unneeded ones with job_kill, then finish.`
+/**
+ * Render the exit-guard paragraph for one configured wait window.
+ * @param seconds - longest block in seconds; 0 means the block is unbounded.
+ * @returns one markdown bullet.
+ */
+function jobExitGuardText(seconds) {
+  const bound = typeof seconds === 'number' && Number.isSafeInteger(seconds) && seconds > 0
+    ? `The block lasts at most ${seconds} seconds: after that the turn ends normally, the background work keeps running uncancelled, and you can still collect it with job_output later. `
+    : ''
+  return `## Exit guard
+- If background commands are still running when the turn would end, the system injects a reminder and the turn continues. ${bound}Collect them with job_output, stop unneeded ones with job_kill, then finish.`
+}
 
 /**
  * Render the section text.
@@ -75,7 +85,7 @@ const JOB_EXIT_GUARD = `## Exit guard
  */
 export function renderInstructions(config) {
   const blocks = [PRINCIPLES]
-  if (config?.exitGuard) blocks.push(JOB_EXIT_GUARD)
+  if (config?.exitGuard) blocks.push(jobExitGuardText(config.exitGuardWaitSeconds))
   return blocks.join('\n\n')
 }
 

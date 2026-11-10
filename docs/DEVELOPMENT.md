@@ -98,6 +98,7 @@ PTC deadline 豁免由独立的 `dsh-better-ptc` 单例行提供（无浏览器�
 ```js
 {
   exitGuard: false,                       // 活跃：只拦运行中后台 job
+  exitGuardWaitSeconds: 2400,             // 活跃：最长拦截时长；0 = 无期限
   tiers: { fast: {...}, quality: {...} }, // deprecated，仅旧 profile 装载/迁移
   subagents: { eng: true, global: false, codex: {...}, claude: {...} }, // deprecated
   trustedHosts: [],                       // deprecated（新插件拥有自己的）
@@ -105,7 +106,7 @@ PTC deadline 豁免由独立的 `dsh-better-ptc` 单例行提供（无浏览器�
 }
 ```
 
-- `exitGuard`、`tiers.*`、`subagents.*`、`declareOwnsHost` 是 volatile：旧 profile 能保存/装载，不需要重挂。
+- `exitGuard`、`exitGuardWaitSeconds`、`tiers.*`、`subagents.*`、`declareOwnsHost` 是 volatile：旧 profile 能保存/装载，不需要重挂。
 - `trustedHosts` 是非 volatile 部署字段，仅为旧 profile 装载保留。
 - `declareOwnsHost` 虽走 volatile 写入路径，但 index tap 只在装配时读取：保存后需重载 profile 并刷新页面才应用（页面对此有明确提示）。
 - deprecated 字段在运行时**没有消费方**：job 守卫只读 `exitGuard`，工程提示词只读 `exitGuard`，客户端只展示 `exitGuard` 与 `declareOwnsHost`。它们存在只为旧 profile 的 schema 兼容与迁移读取。保留旧默认值：
@@ -122,7 +123,7 @@ PTC deadline 豁免由独立的 `dsh-better-ptc` 单例行提供（无浏览器�
 [src/client.js](../src/client.js) 只注册 `<包名>#apollo-skills` 与旧名 `<旧包名>#apollo-skills` 两个 `plugins.row.config` 键，closure id 必须是 npm 包名。页面：
 
 - `summary` 只回一行；
-- `page` 渲染 `exitGuard` 开关、「连接与访问」折叠组里的 `declareOwnsHost` 开关、保存/放弃、只读/不可用状态与迁移说明；
+- `page` 渲染 `exitGuard` 开关（开启后显示 `exitGuardWaitSeconds` 数字输入）、「连接与访问」折叠组里的 `declareOwnsHost` 开关、保存/放弃、只读/不可用状态与迁移说明；
 - 保存只提交实际改动的 `{op:'set', path:[...], value}`，带宿主 revision；`declareOwnsHost` 变更后提示重载 profile；
 - 不 fetch 任何 `/apollo/api/*`，不注册新插件的页面键。
 
@@ -175,6 +176,8 @@ PTC deadline 豁免由独立的 `dsh-better-ptc` 单例行提供（无浏览器�
 [presets/eng/plugins/exit-guard/index.js](../presets/eng/plugins/exit-guard/index.js)：
 
 - 监听 `agent/turn-stopping`；`exitGuard` 开启且本会话仍有非终态后台 job 时 `agent.steer()` 注入提醒；
+- 拦截有时限（`exitGuardWaitSeconds`，默认 2400 秒）：超时即放行回合结束并 `logger.warn` 一次，后台 job 不被取消、之后仍可 `job_output` 收取；`0` 恢复旧的无期限拦截。计时有 `WeakMap` 按代理保存首次拦截时刻，一旦本代理没有运行中 job 即清零，使下一次阻塞事件重新起算；
+- 本代理有 **armed goal**（`ctx.goals.get(agent)` 的 `phase === 'active' && activation === 'armed'`）时完全不拦：goal 回合的等待由 dsh-better-goal 的驱动在「上一回合结束 → 排下一轮」之间负责，两处都拦会叠加成双倍等待。`ctx.goals` 是宿主声明的服务，与 `ctx.jobs` 同构；goal 行缺失时读不到，守卫退回限时拦截；
 - **不检查子代理**：运行中直接子代理由 better-subagent 的 `childExitGuard` 拥有；
 - jobs 经 `ctx.get('jobs').list(agent.id)` 读取（0.1.7 起参数是 SessionId；传 Agent 对象不会报错但恒不匹配）；
 - 查询/注入失败 fail-open（告警放行）；用户中断（`payload.signal.aborted`）不触发；
@@ -186,7 +189,7 @@ PTC deadline 豁免由独立的 `dsh-better-ptc` 单例行提供（无浏览器�
 [presets/eng/plugins/mode-instructions/index.js](../presets/eng/plugins/mode-instructions/index.js)（`eng:mode-instructions`，order 1）只保留：
 
 - 通用工程纪律：KISS/YAGNI、检查先行、修复根因、一个连贯变更、既有约定、防过度设计与过度防御、验证与汇报、权限/Git 身份/依赖边界、命令与进程纪律；
-- `exitGuard` 开启时的 job-only 退出守卫说明。
+- `exitGuard` 开启时的 job-only 退出守卫说明，其中写明最长拦截时长与「超时后任务继续运行、可稍后收取」；`exitGuardWaitSeconds: 0` 时不写上限。
 
 不含委派纪律、模型分档、PTC fan-out、CLI 目录或 child guard；这些是 better-subagent 的 per-Agent section，Apollo 不再生成第二份。文本是函数，每次组装读取活配置；改设置会让下一次请求的前缀缓存失效一次。
 

@@ -79,7 +79,7 @@ dsh plugin --profile <profile> add github:omdsh-dev/dsh-better-dsh#v0.11.1
 Better DSH 只做三件事：
 
 1. **装配**：把五个插件的稳定行插入当前 profile；
-2. **收口**：提供流程技能、两套工程预设、后台任务退出守卫；
+2. **收口**：提供流程技能、两套工程预设、限时后台任务退出守卫（超时放行、不取消任务；有 armed goal 时交给 goal 驱动等待）；
 3. **迁移**：把旧 Apollo 配置幂等地补进新的插件行。
 
 每个插件仍然是独立包：自己的 npm 名、自己的行 id、自己的设置页、自己的生命周期。Better DSH 不复制它们的实现，也不产生第二份配置。
@@ -166,7 +166,7 @@ Better DSH 包详情里的「集成设置」按 Core、Subagents、Compaction、
 
 | 行 | 所属包 | 主要设置 | 生效 |
 |---|---|---|---|
-| `apollo-skills` | Better DSH | `exitGuard`（只拦运行中后台 job）、`declareOwnsHost` | volatile 保存；`declareOwnsHost` 装配时读取，需重载 profile |
+| `apollo-skills` | Better DSH | `exitGuard`（只拦运行中后台 job）、`exitGuardWaitSeconds`（最长拦截时长，0 = 无期限）、`declareOwnsHost` | volatile 保存；`declareOwnsHost` 装配时读取，需重载 profile |
 | `dsh-better-subagent` | better-subagent | `childExitGuard`、`tiers.*`、两个 CLI 后端、`subagents.eng/global`、`trustedHosts` | volatile，保存即生效 |
 | `dsh-better-compact` | better-compact | 模式、auto、阈值/headroom/保留、摘要模型、重试、模型规则 | volatile 保存；引擎快照需重载 profile |
 | `dsh-better-goal` | goal | 实现选择（增强/原生）、轮数策略、原生参数 | 轮数策略保存即生效；实现与原生参数需重载 profile |

@@ -37,6 +37,7 @@ import {
 const EMPTY_TIER = { provider: '', model: '', reasoningEffort: '' }
 const EXPECTED_DEFAULT = {
   exitGuard: false,
+  exitGuardWaitSeconds: 2400,
   tiers: { fast: EMPTY_TIER, quality: EMPTY_TIER },
   subagents: {
     eng: true,
@@ -179,6 +180,7 @@ test('volatile 路径恰好是设置页可编辑集合（deprecated 字段为旧
   assert.deepEqual(paths.sort(), [
     'declareOwnsHost',
     'exitGuard',
+    'exitGuardWaitSeconds',
     'subagents.claude',
     'subagents.codex',
     'subagents.eng',
@@ -211,6 +213,7 @@ test('normalizeConfig：非对象输入一律回退默认', () => {
 test('normalizeConfig：展开 volatile 引用（含嵌套）', () => {
   const config = {
     exitGuard: volatileRef(true),
+    exitGuardWaitSeconds: volatileRef(600),
     subagents: {
       eng: volatileRef(false),
       global: volatileRef(true),
@@ -229,6 +232,7 @@ test('normalizeConfig：展开 volatile 引用（含嵌套）', () => {
   }
   assert.deepEqual(normalizeConfig(config), {
     exitGuard: true,
+    exitGuardWaitSeconds: 600,
     tiers: { fast: EMPTY_TIER, quality: EMPTY_TIER },
     subagents: {
       eng: false,
@@ -347,9 +351,10 @@ test('normalizeConfig：返回全新普通对象（可安全改写、两次调�
 test('dsh-settings 投影：表单字段恰好是 volatile 集合，值不含装载兼容字段', () => {
   const form = volatileForm(liveSchema)
   assert.equal(form?.type, 'object')
-  assert.deepEqual(Object.keys(form.dict).sort(), ['declareOwnsHost', 'exitGuard', 'subagents', 'tiers'])
+  assert.deepEqual(Object.keys(form.dict).sort(), ['declareOwnsHost', 'exitGuard', 'exitGuardWaitSeconds', 'subagents', 'tiers'])
   const resolved = Config({
     exitGuard: true,
+    exitGuardWaitSeconds: 600,
     trustedHosts: ['dsh.example.com'],
     declareOwnsHost: true,
     subagents: { codex: { enabled: true, models: [{ id: 'gpt-5', efforts: ['low'], defaultEffort: 'low' }] } },
@@ -358,6 +363,7 @@ test('dsh-settings 投影：表单字段恰好是 volatile 集合，值不含装
   assert.deepEqual(value, {
     declareOwnsHost: true,
     exitGuard: true,
+    exitGuardWaitSeconds: 600,
     tiers: { fast: EMPTY_TIER, quality: EMPTY_TIER },
     subagents: {
       eng: true,
