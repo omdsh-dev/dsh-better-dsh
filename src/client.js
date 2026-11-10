@@ -75,7 +75,9 @@ window.__ModuleLoader__.load({
 			exitGuardLabel: '等待后台任务完成',
 			exitGuardDescription: '后台命令尚未结束时，让助手继续跟进。',
 			ownsHostDescription: '仅对你控制访问权限的反向代理开启；保存后需重载。',
-			exitGuardHint: '回合结束时仍有运行中的后台命令会注入提醒强制继续处理；Esc 中断始终放行。',
+			exitGuardHint: '回合结束时仍有运行中的后台命令会注入提醒继续处理，最多持续下面设定的时长；超时后照常结束，命令继续运行。Esc 中断始终放行。goal 回合由 goal 插件自己等待，不在这里拦截。',
+			exitGuardWaitLabel: '最长拦截时长（秒）',
+			exitGuardWaitDescription: '超过该时长后放行回合结束，后台命令不被取消。0 表示无限期拦截。',
 			save: '保存',
 			saving: '保存中…',
 			reset: '放弃改动',
@@ -119,7 +121,9 @@ window.__ModuleLoader__.load({
 			exitGuardLabel: 'Wait for background work',
 			exitGuardDescription: 'Keep the assistant working while background commands are still running.',
 			ownsHostDescription: 'Enable for a reverse proxy whose access you control. Reload after saving.',
-			exitGuardHint: 'Blocks turn end while background commands still run; Esc always passes through.',
+			exitGuardHint: 'Blocks turn end while background commands still run, for at most the duration below; after that the turn ends and the commands keep running. Esc always passes through. Goal rounds are waited on by the goal plugin, not here.',
+			exitGuardWaitLabel: 'Longest block (seconds)',
+			exitGuardWaitDescription: 'After this the turn is released and background commands are not cancelled. 0 blocks forever.',
 			save: 'Save',
 			saving: 'Saving…',
 			reset: 'Discard',
@@ -173,6 +177,8 @@ window.__ModuleLoader__.load({
 .apollo-card{display:flex;flex-direction:column;gap:4px;min-width:0;padding:0;border:0;border-radius:0;background:transparent}
 .apollo-sectionTitle{margin:0;padding-bottom:0;border-bottom:0;font-size:12px;line-height:18px;font-weight:500;color:var(--cfg-ink-3)}
 .apollo-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:10px 8px;margin:0 -8px;min-width:0;border-bottom:0;border-radius:8px}
+.apollo-numberInput{width:96px;height:var(--cfg-control);padding:0 10px;border:1px solid var(--cfg-border-strong);border-radius:var(--cfg-radius);background:var(--cfg-surface);color:var(--cfg-ink);font:inherit;font-variant-numeric:tabular-nums;text-align:end}
+.apollo-numberInput:disabled{opacity:.5;cursor:not-allowed}
 .apollo-row:hover{background:var(--cfg-hover)}
 .apollo-row:last-child{padding-bottom:10px}
 .apollo-rowText{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
@@ -250,7 +256,40 @@ window.__ModuleLoader__.load({
 		/** 宿主快照只投影当前仍生效的可编辑字段。 */
 		function shape(value) {
 			const source = typeof value === 'object' && value !== null && !Array.isArray(value) ? value : {};
-			return { exitGuard: source.exitGuard === true, declareOwnsHost: source.declareOwnsHost === true };
+			return {
+				exitGuard: source.exitGuard === true,
+				exitGuardWaitSeconds: Number.isSafeInteger(source.exitGuardWaitSeconds) && source.exitGuardWaitSeconds >= 0 && source.exitGuardWaitSeconds <= 86400 ? source.exitGuardWaitSeconds : 2400,
+				declareOwnsHost: source.declareOwnsHost === true,
+			};
+		}
+
+		/** Numeric row: same geometry as SwitchRow so the column stays aligned. */
+		function NumberRow({ id, label, description, value, min, max, disabled, onChange }) {
+			return h('div', { className: 'apollo-row' },
+				h('div', { className: 'apollo-rowText' },
+					h('div', { className: 'apollo-rowLabel' },
+						h('label', { className: 'apollo-rowTitle', htmlFor: id }, label)),
+					description === undefined ? null : h('div', { className: 'apollo-rowDesc' }, description)),
+				h('input', {
+					id,
+					className: 'apollo-numberInput',
+					type: 'number',
+					inputMode: 'numeric',
+					min,
+					max,
+					step: 1,
+					value,
+					disabled,
+					'aria-label': label,
+					onChange: (event) => onChange(event.target.value),
+				}));
+		}
+
+		/** Parse one wait draft: 0..86400 integers only; anything else keeps the previous value. */
+		function parseWaitSeconds(text) {
+			if (!/^[0-9]+$/.test(String(text).trim())) return 0;
+			const value = Number(String(text).trim());
+			return Number.isSafeInteger(value) && value <= 86400 ? value : 86400;
 		}
 
 		function Help({ label, id, children }) {
@@ -362,7 +401,17 @@ window.__ModuleLoader__.load({
 						checked: live.exitGuard,
 						disabled: !writable || busy,
 						onChange: (next) => edit({ exitGuard: next }),
-					})),
+					}),
+					live.exitGuard ? h(NumberRow, {
+						id: 'apollo-exit-guard-wait',
+						label: translate('exitGuardWaitLabel'),
+						description: translate('exitGuardWaitDescription'),
+						value: live.exitGuardWaitSeconds,
+						min: 0,
+						max: 86400,
+						disabled: !writable || busy,
+						onChange: (text) => edit({ exitGuardWaitSeconds: parseWaitSeconds(text) }),
+					}) : null),
 				h('section', { className: 'apollo-card' },
 					h('h3', { className: 'apollo-sectionTitle' }, translate('connectionTitle')),
 					h(SwitchRow, {

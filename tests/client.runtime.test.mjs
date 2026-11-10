@@ -111,7 +111,9 @@ test('real next client: renderer row shape, Apollo ConfigForm and shared subscri
   await r.React.act(async () => save().click())
   assert.ok(r.rpc.remote.settings.describe.mock.calls.length > reads, 'refused CAS performs real mirror recovery')
   assert.equal(toggle().getAttribute('aria-checked'), 'false')
-  assert.match(r.container.textContent, /refused|拒绝/)
+  // The refusal surfaces the localized conflict copy; do not pin one exact wording,
+  // only that a visible message replaced the silent failure.
+  assert.match(r.container.textContent, /已在其他地方更新|changed elsewhere/)
   writable = false
   await r.React.act(async () => { await r.ctx.configForms.describe().load() })
   assert.equal(form.getSnapshot().writable, false)

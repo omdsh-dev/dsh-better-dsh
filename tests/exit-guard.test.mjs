@@ -11,7 +11,7 @@ import { apply, buildJobGuardMessage, name, NOTICE_SOURCE_KIND } from '../preset
 let liveConfig = {}
 
 /** Fake the same profile-backed live config used by the real guard. */
-function makeCtx({ jobs, listError } = {}) {
+function makeCtx({ jobs, listError, goal } = {}) {
   const handlers = new Map()
   const warnings = []
   const listed = []
@@ -29,6 +29,9 @@ function makeCtx({ jobs, listError } = {}) {
             return jobs
           },
         }
+      }
+      if (serviceName === 'goals') {
+        return goal === undefined ? undefined : { get: () => goal }
       }
       if (serviceName === 'configEditor') {
         return { entries: () => [{ options: { id: 'apollo-skills' }, fiber: { config: liveConfig } }] }
@@ -50,6 +53,18 @@ async function fireTurnStopping(ctx, agent, { aborted = false } = {}) {
   return steered
 }
 
+/** Replace `Date.now` with a movable clock for the duration of one callback. */
+async function withClock(run) {
+  const clock = { now: 1_000_000 }
+  const realNow = Date.now
+  Date.now = () => clock.now
+  try {
+    return await run(clock)
+  } finally {
+    Date.now = realNow
+  }
+}
+
 /** Change the live configuration without reloading the guard. */
 function withConfig(content, run) {
   const previous = liveConfig
@@ -60,6 +75,105 @@ function withConfig(content, run) {
 const PARENT = { id: 'parent-1' }
 /** 守卫是显式开关：默认关闭，开启必须写进 profile 配置。 */
 const ENABLED = '{"exitGuard": true}'
+
+test('armed goal：守卫完全不拦，等待交给 goal 驱动', async () => {
+  await withConfig(ENABLED, async () => {
+    for (const goal of [
+      { id: 'g', phase: 'active', activation: 'armed' },
+    ]) {
+      const ctx = makeCtx({ jobs: [{ id: 'job-1', kind: 'bash', status: 'running' }], goal })
+      const steered = await fireTurnStopping(ctx, { ...PARENT })
+      assert.equal(steered.length, 0, 'a goal round must not be blocked here: the driver already waits')
+    }
+    // Paused / blocked / disarmed goals do not own the wait, so the guard applies.
+    for (const goal of [
+      { id: 'g', phase: 'active', activation: 'disarmed' },
+      { id: 'g', phase: 'paused', activation: 'disarmed' },
+      { id: 'g', phase: 'blocked', activation: 'disarmed' },
+    ]) {
+      const ctx = makeCtx({ jobs: [{ id: 'job-1', kind: 'bash', status: 'running' }], goal })
+      const steered = await fireTurnStopping(ctx, { ...PARENT })
+      assert.equal(steered.length, 1, `phase/activation ${goal.phase}/${goal.activation} keeps the guard active`)
+    }
+  })
+})
+
+test('没有 goals 服务时退回限时拦截（不会失去保护）', async () => {
+  await withConfig(ENABLED, async () => {
+    const ctx = makeCtx({ jobs: [{ id: 'job-1', kind: 'bash', status: 'running' }] })
+    const steered = await fireTurnStopping(ctx, { ...PARENT })
+    assert.equal(steered.length, 1)
+  })
+})
+
+test('限时拦截：窗口内反复提醒，超时后放行并告警一次', async () => {
+  await withClock(async (clock) => {
+    await withConfig('{"exitGuard": true, "exitGuardWaitSeconds": 60}', async () => {
+      const ctx = makeCtx({ jobs: [{ id: 'job-1', kind: 'bash', status: 'running' }] })
+      apply(ctx)
+      const steered = []
+      const agent = { ...PARENT, steer: (message) => steered.push(message) }
+      const handler = ctx.handlers.get('agent/turn-stopping')
+
+      await handler({ agent, turn: 1, signal: { aborted: false } })
+      assert.equal(steered.length, 1, 'the first block is immediate')
+      clock.now += 59_000
+      await handler({ agent, turn: 1, signal: { aborted: false } })
+      assert.equal(steered.length, 2, 'still inside the window')
+      clock.now += 2_000
+      await handler({ agent, turn: 1, signal: { aborted: false } })
+      assert.equal(steered.length, 2, 'past the window: the turn is released')
+      assert.ok(ctx.warnings.some((line) => /guard released after 60s with 1 job\(s\) still running/.test(line)))
+    })
+  })
+})
+
+test('计时按一次阻塞事件：job 收完后重新起算', async () => {
+  await withClock(async (clock) => {
+    await withConfig('{"exitGuard": true, "exitGuardWaitSeconds": 60}', async () => {
+      const jobs = []
+      const ctx = makeCtx({ jobs })
+      apply(ctx)
+      const steered = []
+      const agent = { ...PARENT, steer: (message) => steered.push(message) }
+      const handler = ctx.handlers.get('agent/turn-stopping')
+
+      jobs.push({ id: 'job-1', kind: 'bash', status: 'running' })
+      await handler({ agent, turn: 1, signal: { aborted: false } })
+      assert.equal(steered.length, 1)
+      // The turn ended, the job was collected, the next turn runs long work.
+      jobs.length = 0
+      clock.now += 90_000
+      await handler({ agent, turn: 2, signal: { aborted: false } })
+      assert.equal(steered.length, 1, 'no job: nothing to guard')
+      // A new job starts a fresh window rather than inheriting the old deadline.
+      jobs.push({ id: 'job-2', kind: 'bash', status: 'running' })
+      await handler({ agent, turn: 3, signal: { aborted: false } })
+      assert.equal(steered.length, 2, 'a new blocking event blocks again from zero')
+      clock.now += 30_000
+      await handler({ agent, turn: 3, signal: { aborted: false } })
+      assert.equal(steered.length, 3, 'still inside its own window')
+    })
+  })
+})
+
+test('exitGuardWaitSeconds 0 保留旧的无期限拦截', async () => {
+  await withClock(async (clock) => {
+    await withConfig('{"exitGuard": true, "exitGuardWaitSeconds": 0}', async () => {
+      const ctx = makeCtx({ jobs: [{ id: 'job-1', kind: 'bash', status: 'running' }] })
+      apply(ctx)
+      const steered = []
+      const agent = { ...PARENT, steer: (message) => steered.push(message) }
+      const handler = ctx.handlers.get('agent/turn-stopping')
+      for (let i = 0; i < 5; i++) {
+        await handler({ agent, turn: 1, signal: { aborted: false } })
+        clock.now += 3_600_000
+      }
+      assert.equal(steered.length, 5, '0 means block forever, as before')
+      assert.equal(ctx.warnings.filter((line) => /guard released/.test(line)).length, 0)
+    })
+  })
+})
 
 test('插件契约：name 与 producer-owned source kind', () => {
   assert.equal(name, 'eng-exit-guard')

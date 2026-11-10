@@ -30,6 +30,7 @@
  * 只由 `src/settings.js` 一次性只读导入。
  *
  * 读取入口：
+ *   - `exitGuardWaitSeconds` 是最长拦截时长（秒），`0` 表示旧的无期限拦截。
  *   - `normalizeConfig(value)`——把任意来源（volatile 引用、解析后的配置、旧
  *     JSON、残缺对象）规整成**普通 JSON**，形状 EXACT 且与 `DEFAULT_CONFIG`
  *     一致；一切非法值回退默认，绝不抛错。
@@ -128,6 +129,12 @@ export const Config = z.object({
    * 运行中子代理的拦截由 dsh-better-subagent 的 childExitGuard 拥有。
    */
   exitGuard: z.boolean().default(false).volatile(),
+  /**
+   * 退出守卫的最长拦截时间（秒，默认 2400 = 40 分钟）：超时后放行本次回合结束，
+   * 仍在运行的后台任务继续运行、之后可再用 job_output 收取。
+   * `0` 保留旧的无限期拦截行为。
+   */
+  exitGuardWaitSeconds: z.natural().max(86400).default(2400).volatile(),
   /**
    * @deprecated 0.5.0 起重命名为 dsh-better-subagent 的 `tiers.*`，本字段只供
    * 迁移读取；运行时提示词不再从这里生成。保留旧默认值以装载旧 profile。
@@ -275,6 +282,7 @@ export function normalizeConfig(config) {
   const tiers = isRecord(source.tiers) ? source.tiers : {}
   return {
     exitGuard: booleanOf(source.exitGuard, false),
+    exitGuardWaitSeconds: waitSecondsOf(source.exitGuardWaitSeconds),
     tiers: { fast: tierOf(tiers.fast), quality: tierOf(tiers.quality) },
     subagents: {
       eng: booleanOf(subagents.eng, true),
@@ -285,6 +293,11 @@ export function normalizeConfig(config) {
     trustedHosts: stringList(source.trustedHosts),
     declareOwnsHost: booleanOf(source.declareOwnsHost, false),
   }
+}
+
+/** 守卫等待秒数：0..86400 的整数，非法值退回默认值。 */
+function waitSecondsOf(value, fallback = 2400) {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= 86400 ? value : fallback
 }
 
 /** 默认配置形状（`normalizeConfig(undefined)` 的结果）。 */

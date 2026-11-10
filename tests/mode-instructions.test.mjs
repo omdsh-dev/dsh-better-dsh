@@ -34,6 +34,17 @@ test('section 契约：名称、order、不插值、文本按次读取活配置'
   assert.match(section.text(), /## Exit guard/)
 })
 
+test('退出守卫段写明最长拦截时长，且 0 时不写上限', () => {
+  const bounded = renderInstructions(normalizeConfig({ exitGuard: true, exitGuardWaitSeconds: 2400 }))
+  assert.match(bounded, /The block lasts at most 2400 seconds/)
+  assert.match(bounded, /keeps running uncancelled/)
+  assert.match(bounded, /job_output/)
+  // 0 restores the unbounded block, so no ceiling may be claimed.
+  const unbounded = renderInstructions(normalizeConfig({ exitGuard: true, exitGuardWaitSeconds: 0 }))
+  assert.doesNotMatch(unbounded, /lasts at most/)
+  assert.match(unbounded, /## Exit guard/)
+})
+
 test('只保留通用纪律：不含委派、分档、CLI 目录或子代理守卫文本', () => {
   const text = renderInstructions(normalizeConfig({ exitGuard: true, tiers: { fast: { provider: 'p', model: 'm' } } }))
   assert.match(text, /## Principles/)
@@ -45,6 +56,11 @@ test('只保留通用纪律：不含委派、分档、CLI 目录或子代理守�
   assert.doesNotMatch(text, /Subagent model tiers/)
   assert.doesNotMatch(text, /wait_subagent/)
   assert.doesNotMatch(text, /run_code/)
+  // The wait discipline is generic, but it must still be there: ending the turn
+  // to wait is the failure this rule exists to prevent.
+  assert.match(text, /Wait inside the turn, not by ending it/)
+  assert.match(text, /Do not poll in place of waiting either/)
+  assert.match(text, /run the command in the foreground, wait on the background job, or wait on the delegated agent/)
   assert.doesNotMatch(text, /workflow/)
   assert.doesNotMatch(text, /provider: `p`/)
 })
