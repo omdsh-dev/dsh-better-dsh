@@ -1,0 +1,17 @@
+packages:
+  - packages/*
+  - packages/dsh-lazy-session-list/tests/client-support
+
+autoInstallPeers: false
+strictPeerDependencies: false
+peerDependencyRules:
+  ignoreMissing:
+    - '@deepseek-ai/dsh-web-server'
+onlyBuiltDependencies:
+  - esbuild
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - '@oh-my-dsh/dsh-better-subagent@0.5.2'
+  - dsh-better-ask-user@0.3.3
+  - dsh-better-goal@0.4.3

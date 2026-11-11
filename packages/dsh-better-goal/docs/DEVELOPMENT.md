@@ -1,0 +1,306 @@
+# dsh-better-goal 开发文档
+
+面向维护者、从源码安装的人，以及需要排查兼容问题的使用者。日常安装和用法见 [README](../README.md)。
+
+## 状态与兼容性
+
+- 当前包版本：`0.2.0`。
+- DSH 基准：`0.2.1-rc.2`；`package.json` 的 engines 声明为 `>=0.2.1-rc.2 <0.3.0`。
+- Node.js：`^22.19.0 || >=24.0.0`。
+- 纯 ESM，无构建步骤，没有需要生成的资源文件。
+- 版本范围会纳入预发布版；`0.2.1-rc.2` 之后的 RC 可能被接受，但版本范围不等于逐版验证保证。
+
+本仓库的测试和冒烟不包含“当前正在使用的浏览器 GUI 已完成验收”，也没有对 PTC 工具呈现模式或其他自定义提问工具做专项验证。不要把这些未覆盖场景写成已验证。
+
+## 装配入口
+
+`package.json` 声明：
+
+- `main` / `exports["."]`：宿主入口 [src/index.js](../src/index.js)。
+- `exports["./client"]`：浏览器入口 [src/client.js](../src/client.js)。
+- `dsh.bundle.patch`：顶层装配 [cordis.patch.yml](../cordis.patch.yml)。
+- `dsh.client`：Web 客户端及注入的宿主服务。
+
+[cordis.patch.yml](../cordis.patch.yml) 做两件事：
+
+1. 禁用原生 `goal`、`goal-round-driver`、`command-goal`、`tool-goal`、`ui-goal` 行；两种模式都保持禁用，避免双服务或双驱动。
+2. 插入顶层行 `id: dsh-better-goal`、`name: dsh-better-goal`，由这一行唯一负责后端装配选择。
+
+插件不会修改 DSH 安装目录，也不依赖实验性的 plugin records。对旧 Agent 上仍可见的 `get_goal` / `create_goal` / `update_goal`，[src/index.js](../src/index.js) 在 Agent 的 tools 作用域内做 deny 过滤，并在每个 pre-step 重新检查，避免预设换代后残留旧工具。
+
+## 后端选择与运行状态
+
+`implementation` 默认 `enhanced`，选择本包的 service、driver、单 `goal` 工具和命令。设为 `native` 后重启 profile，本插件通过宿主公开 `ctx.loader.import()` 加载实际 `@deepseek-ai/dsh-goal`、`@deepseek-ai/dsh-goal-round-driver`、`@deepseek-ai/dsh-tool-goal`、`@deepseek-ai/dsh-command-goal`，由同一 owner 挂载。native 模式把 `nativeDefaultMaxGoalRounds`（默认 256）传为 GoalService 的 `defaultMaxGoalRounds`，把 `nativeBlockedAfterConsecutiveRounds`（默认 3）传为工具模块的 `blockedAfterConsecutiveRounds`。不消费增强轮数策略；模型恢复原生三工具与权限/阻塞门槛。UI 仍由插件提供，使用相同 `remote.goals` 契约。
+
+静态 patch 无法根据插件配置重新启用 native 行。这里不修改全局配置、不启用原行，也不同时挂载两个 service/driver。启动时发现已有 `goals` 或启用的 native `goal` / `goal-round-driver` 行会拒绝装配；native 导入失败也直接失败，不回退成一个无效开关。重载不迁移或清空目标；两种实现读取同一 `goal/change` v1、projection v6，重新打开会话后仍需显式恢复。
+
+所有配置字段仍为 volatile，保存不会拆卸运行中的目标。`implementation` 与两项 `native*` 参数保留本次加载值，保存后需重启 profile；增强实现的 `roundLimitMode` / `roundLimit` 继续按原行为热更新。`questionTimeoutSeconds` 始终仅兼容读取。
+
+可选 Web 读取接口：`GET /better-goal/api/config`。仅在 `webServer` 和宿主 `connection.requestRejection` 同时可用时挂载，沿用宿主 Host/Origin/认证检查，响应 `cache-control: no-store`；不提供独立写配置或重启接口。保存继续使用宿主 Plugins 行设置的 CAS。
+
+```js
+{
+  activeConfig: { implementation, nativeDefaultMaxGoalRounds, nativeBlockedAfterConsecutiveRounds, roundLimitMode, roundLimit, questionTimeoutSeconds },
+  savedConfig: { implementation, nativeDefaultMaxGoalRounds, nativeBlockedAfterConsecutiveRounds, roundLimitMode, roundLimit, questionTimeoutSeconds },
+  loadedConfig: { /* 本次加载时冻结的完整配置 */ },
+  requiresReload: ['implementation', 'nativeDefaultMaxGoalRounds', 'nativeBlockedAfterConsecutiveRounds']
+    .some((key) => savedConfig[key] !== loadedConfig[key]),
+  runtime: { implementation: 'enhanced' /* 或 native */, owner: 'dsh-better-goal' },
+  capabilities: {
+    implementation: true, hotReplacement: false,
+    roundLimitPolicy: activeConfig.implementation === "enhanced",
+    singleGoalTool: activeConfig.implementation === "enhanced", questionTimeout: false,
+  },
+}
+```
+
+前端应使用 `runtime.implementation` / `activeConfig.implementation` 展示当前实现，并在 `requiresReload` 为真时提示重启 profile；不能把已保存值当成当前实现。native 模式下 `activeConfig` 仍保留 better 字段供下次切回，只有能力为真的字段参与当前行为。`betterGoalConfig.get()` 给 better 执行层读当前策略，`snapshot()` 返回冻结的加载快照，`status()` 返回上述状态。两个模式都注册独立的只读 `better-goal-history` projection，不改变原生 `goal` projection。
+
+## 会话列表与详情的所有权
+
+[src/list-hints.js](../src/list-hints.js) 由 goal 的 `apply` 在增强、原生两种实现的公共装配路径调用。它用可选 `ctx.inject(['sessionController'], ...)` 等待 Web controller，随后只包装当前 controller 实例的 `list`；不修改 prototype，不把 controller 包加入运行时依赖或顶层必需注入。无 controller 的 headless 装配保持原样。
+
+`/api/session/list` 的 live / cached rows 都会去掉 `projections.values` 下整个 `goal` 和 `better-goal-history` key；不截断目标、不生成摘要，也不按白名单裁掉其它插件的值。其余 row 字段、metadata、projection `kind` / `asOfSeq` 和其它值保留。wrapper 以 `Reflect.apply(original, this, args)` 调原方法，保留 Cordis 调用方 context、权限过滤、请求参数、取消与错误。
+
+这个边界归 better-goal 自己所有，不依赖 `dsh-lazy-session-list`。通用 lazy 插件可以叠加自己的列表裁剪；任一层卸载时先置 `active = false`，再仅在实例 `list` 仍为自身 wrapper 时恢复原 descriptor。外层仍持有已卸载的 wrapper 时，该 wrapper 原样透传宿主结果，避免因卸载顺序继续裁剪。
+
+完整 `goal` / `better-goal-history` wire projections 继续用于已有会话的 history snapshot、control baseline / feed 和 `projections` 详情。浏览器 [src/client.js](../src/client.js) 通过绑定会话的 projection face 读取目标和历史，history 基线会补齐列表省略的值，没有依赖 `session.list` 全表目标数据。这里不改 UI、service 持久化或 goal 协议；control 基线仍可能包含完整目标，本改动只缩小列表响应。
+
+## 架构
+
+| 文件 | 职责 |
+| --- | --- |
+| [src/index.js](../src/index.js) | 挂载 goal 服务、设置页、单工具、`/goal` 命令、系统提示和续跑驱动；按 Agent 管理生命周期。 |
+| [src/service.js](../src/service.js) | 原生兼容的 goal 域：持久 schema、replay fold、projection、CAS 写操作、process-local activation。 |
+| [src/driver.js](../src/driver.js) | 同会话自动续跑：在静默边界排队下一轮，处理暂停、中断、计划模式、子代理和竞态。 |
+| [src/tool.js](../src/tool.js) | 模型侧唯一的 `goal` 工具；统一动作执行与参数校验，内部引用由服务/命令层管理。 |
+| [src/commands.js](../src/commands.js) | 人类侧 `/goal` 命令解析与输出。 |
+| [src/history.js](../src/history.js) | 复用原生严格 fold 的只读历史 projection，保留各目标最后状态、轮数与清除标记。 |
+| [src/list-hints.js](../src/list-hints.js) | 可选 Web controller 实例 wrapper，仅从 list hints 去掉完整 goal/history keys。 |
+| [src/config.js](../src/config.js) / [src/settings.js](../src/settings.js) | 正式 Config schema、默认值、volatile 热设置和设置页挂载。 |
+| [src/client.js](../src/client.js) | 零构建 browser closure：GoalBar 和 Plugins 行配置页。 |
+| [scripts/runtime-smoke.mjs](../scripts/runtime-smoke.mjs) | 真实 DSH profile、真实 AgentLoop、脚本化模型适配器的宿主冒烟。 |
+| [tests/](../tests) | 单元与组件测试；无浏览器构建依赖。 |
+
+## 数据、兼容与恢复
+
+- 持久格式沿用 DSH 原生 `goal/change` v1 事件；projection 保持 `stateVersion: 6`。没有独立 sidecar 状态，也不使用日志截断式 rewind。
+- 写入通过 revision-based CAS 校验；旧 revision 的编辑、暂停、恢复等操作会被拒绝，不会覆盖新状态。
+- 会话重开、宿主重启或 fork 时，从会话日志前缀恢复 goal 和 `roundsStarted`；activation 是 process-local 状态，恢复后为 `disarmed`，必须显式 `resume` 才会重新排队自动轮次。`disarm` 不写持久 revision。
+- fork 只影响新会话；父会话的 activation 不会被 fork 关闭。
+- 每个会话最多一个当前 goal。模型侧 `set` 用于整体替换并开始新目标（轮数归零）；已完成目标也可以开始新目标。
+- `clear` 写入 tombstone 并保留历史；旧 goal 事件仍可 replay。
+- 原生 goal 行被替换后，已有原生目标仍可读取。新写入保持同一协议，可被相同协议版本的原生实现回放。
+- 原生 v1 要求 `maxGoalRounds` 是正安全整数。插件的“无上限”使用 `Number.MAX_SAFE_INTEGER` 兼容哨兵；驱动对该值不额外施加策略上限，UI 显示为“无上限”。它不是数学无限；回退到原生实现后会显示一个极大的有限数。
+- 下调有效上限时，服务层的 `edit` 会拒绝低于已执行轮数的上限；如果运行中的 `fixed` 配置低于已用轮数，驱动会以 `round-limit` 阻塞目标，而不是把 `roundsStarted` 写回更小的值。
+- 切换装配或回退时，不要让两个 goal 状态服务或两个续跑驱动同时工作。
+
+## 原生 Goal 对比的核验边界
+
+用户 README 的对比以本项目验证基线 DSH `0.2.1-rc.2` 的默认装配为准，核对了该版本的 `dsh-tool-goal`、`dsh-goal-round-driver`、`dsh-goal`、`dsh-tool-ask-user` 发布代码及 standard 预设。公开规则见[原生 Goal 工具说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/goal/tool-goal/README.md)；该链接跟随上游演进，不代替已验证版本。
+
+- 原生并非没有停止路径：模型可 `complete` 或在满足门槛后 `blocked`，用户还可暂停、清除；不能把它描述成绝对无法终止或必然无限运行。
+- 原生自主目标轮次不具备 direct-human authority，不能主动 `pause`；`blocked` 默认在 `roundsStarted < 3` 时被拒绝。文档要求同一阻塞持续多个轮次，代码门槛实际比较累计目标轮数，不证明每轮都是同一阻塞。README 因此只说“默认至少经过 3 个目标轮次”。
+- 原生模型的 `resume` 需要直接人类请求，且拒绝恢复 durable paused 状态；该状态由用户 Web 或 `/goal resume` 路径恢复。本插件不保留这些人类授权门槛，但保留目标状态与预算校验。
+- 原生默认轮数上限是 256，达到有效上限后 driver 会记录 `round-limit` 并停续；可配置的轮数上限不是固定值，也不是提问等待的时间上限。
+- 原生 `ask_user_question` 默认是阻塞式 legacy 模式；timed 是同一工具已有的可选模式，默认 120 秒且支持 `-1`。本插件并不独占 pending / late-answer 能力，而是在 active + armed 目标中统一应用用户配置的等待策略。
+- 目标持久化、自动续跑、用户暂停、重开或 fork 后 disarm 都是原生已有能力，不应写成本插件相对原生的独有优势。
+
+## 单工具与动作契约
+
+模型侧只注册一个名为 `goal` 的工具，最终动作集合为 `get` / `set` / `pause` / `complete` / `resume`。工具参数不接受 `goal_id` / `revision`；工具内部读取当前目标并生成引用，服务层仍执行 revision-based CAS。返回值保留只读的原生目标视图，模型不需要管理其中的 ID 和 revision。
+
+| 动作 | 语义 |
+| --- | --- |
+| `get` | 读取当前 goal。 |
+| `set` | 全量替换为新目标：新的 objective、`roundsStarted` 归零、立即 arm 并启动。 |
+| `resume` | 恢复现有目标，保留 objective 和已用轮数，不重置计数。 |
+| `complete` | 标记完成并 disarm。 |
+| `pause` | 暂停并 disarm（原生 `active → paused`）；不存原因，Agent 在回复里说明需要什么。只接受 armed 或 disarmed 的 `active`。 |
+
+`set` 是整体替换，不是“改几个字”；只在确实要替换总目标时使用。清除（`clear`）和受阻（`block`）不在模型侧动作中：清除由 GoalBar、Remote 服务和 `/goal clear` 提供；受阻只来自轮数上限、运行时错误、续跑被拒和人类 `/goal fail`。人类 `/goal create` 映射到 `set`；`/goal edit` 仍在原目标上就地编辑（已完成目标会新建）；`/goal pause`、`/goal fail` 和 `/goal clear` 直接走服务层。
+
+0.2.0 起模型侧 `fail` 改为 `pause`：模型缺密钥、权限或决定时只需停下等人，持久化原因对它没有额外价值，而 `pause` 记录与原生 `goal/change v1` 字节兼容。历史 `model-reported` 受阻目标仍可读取、恢复和完成。
+
+原生协议没有替换事务：覆盖未完成目标通过内部 CAS `clear` 后 `create` 实现，恢复时调整上限可能通过 `edit` 后 `resume` 实现。参数、策略和状态校验在首次写入前完成；底层追加失败或同步重入不具有跨事件回滚保证，不应把这两步描述成原子事务。
+
+README 只写五个动作的用户语义，不复制 JSON、schema 或内部引用；精确契约以本文档和测试为准。动作集合变化时同步 README、本文档和测试，不要提前宣称未实现内容。
+
+人类命令由 [src/commands.js](../src/commands.js) 注册：
+
+| 输入 | 行为 |
+| --- | --- |
+| `/goal` | 读取当前 goal |
+| `/goal <objective>` | 创建或整体替换 goal（映射到 `set`） |
+| `/goal set <objective>` | 整体替换为新目标，轮数归零并启动 |
+| `/goal create <objective>` | 创建别名，映射到 `set` |
+| `/goal edit <objective>` | 在原目标上就地编辑；若当前 goal 已完成，则创建新 goal |
+| `/goal pause` / `/goal off` | 暂停并 disarm（服务层） |
+| `/goal resume` / `/goal on` | 恢复并 arm |
+| `/goal complete` | 标记完成 |
+| `/goal fail <reason>` | 仅人类：以 `user-reported` 记录原因并阻塞（服务层） |
+| `/goal clear` | 清除当前 goal（服务层） |
+
+GoalBar 不新建 goal，只通过正式 `remote.goals` RPC 做编辑、暂停、恢复和清除。它使用 click 时从 live projection 读取的 CAS ref，不在聊天中写入 slash-command 生命周期；完成后隐藏当前目标条，历史入口仍可查看。编辑支持多行，使用 Ctrl/⌘ + Enter 提交，并避开输入法组合状态。
+
+历史从独立 `better-goal-history` projection 获取，复用原生严格 fold 验证事件与轮数；每个目标保留最后状态，支持搜索、状态筛选和折叠详情。重开或 fork 由宿主回放日志恢复，清除当前目标不会删除历史。此视图不写浏览器缓存，不提供恢复旧历史为当前目标的操作。
+
+## 轮数策略
+
+配置由正式 Config 管理，以 volatile 保存而不拆卸运行中的服务。轮数策略仅在增强实现下热更新；实现选择在重启 profile 时应用。默认值在 [src/config.js](../src/config.js)：
+
+| 字段 | 默认 | 约束 | 用途 |
+| --- | --- | --- | --- |
+| `implementation` | `enhanced` | `enhanced` / `native` | 选择增强或原生实现，保存后重启 profile 生效。 |
+| `nativeDefaultMaxGoalRounds` | `256` | 正安全整数 | 原生服务默认轮数；保存后重启 profile 生效。 |
+| `nativeBlockedAfterConsecutiveRounds` | `3` | 正安全整数 | 原生工具报告受阻的累计轮数门槛；保存后重启 profile 生效。 |
+| `roundLimitMode` | `agent` | `agent` / `unlimited` / `fixed` | 增强模式下解释轮数上限的策略。 |
+| `roundLimit` | `256` | 正安全整数 | 只在 `fixed` 模式使用。 |
+| `questionTimeoutSeconds` | `120` | `-1` 或 `1..2147483` 的整数 | **已弃用、仅保留读取**；新的提问等待由 dsh-better-ask-user 管理，用于旧配置迁移。 |
+
+`resolveRoundLimit` 的解析顺序：
+
+- `fixed`：配置的 `roundLimit` 胜出，调用方传入值被忽略。
+- `unlimited`：哨兵胜出，调用方传入值被忽略。
+- `agent`：显式传入值优先；编辑/恢复时没有传入则沿用当前 goal 的上限；创建时没有传入则使用哨兵。
+
+工具 schema 会在下一个 step 刷新：`agent` 模式暴露可选的 `max_goal_rounds`，`fixed` / `unlimited` 模式不暴露。驱动在每次准入时重新读取 live config，所以热设置只影响之后的新轮次和操作，不重置计数，也不自动恢复已停止的 goal。
+
+## 提问等待
+
+提问等待已迁移到独立的 **dsh-better-ask-user**。本仓库不再包含 `src/ask-user.js`，也不再注册 `ask_user_question` 影子或消费 `questionTimeoutSeconds`。保留该 Config 字段仅用于读取旧配置，供 ask-user 的一次性迁移使用；设置页在折叠的兼容信息中只读展示原值，不提供无效编辑。
+
+## 完成与暂停
+
+- 自动轮次的 prompt 要求从 objective 和引用规格逐项推导要求，并检查当前文件、命令结果、测试和运行状态；局部进度、记忆或“应该可以”不能作为完成证据。它是行为约束，不是硬编码测试门。
+- 进展需要用户时（缺密钥、凭据、权限、账号或只有用户能做的决定），模型应先做完独立工作，再立即 `pause` 并说明缺什么；不得用 mock、stub、硬编码、跳过检查或缩小范围来“完成”。没有“必须阻塞三个回合”的门槛。
+- 模型在目标轮次内自行 `pause` 时，驱动不会取消当前回合（只有非本 Agent 发起的暂停才取消运行中的回合）；回合结束后目标不再可驱动，不排下一轮。
+- `complete` 接受 `active` / `paused` / `blocked`；完成后 disarm，GoalBar 隐藏。
+- 用户中断会 disarm，并在安全 idle 边界把 active goal 持久化为 paused；不会把暂停通知当作新提示自动启动。
+- Plan mode 或待提交选择存在时，驱动不排下一轮；计划模式退出后可以恢复。
+- 普通工具返回失败不等于整个 goal 失败；目标轮次的运行时终止错误会阻塞对应 goal，普通对话轮次的错误仅停续，不把目标误标失败。每次只保留一个候选续跑，在进入 step 前再次校验 revision、竞争输入、取消和落盘状态。
+
+## 双入口与设置只读
+
+这是 README 只保留一句提示、本文档保留完整原理的部分。
+
+Apollo 在 `package.json` 中把 `dsh-better-goal` 声明为精确 npm 依赖 `0.2.0`（不是 Git commit、分支、范围或 `file:` 说明符）；它的顶层 patch 自己插入了 `id/name` 都是 `dsh-better-goal` 的行。独立包也插入同一行。
+
+- 两个 bundle 同时被显式选中时，DSH Loader 按行 id 去重，通常只激活一个实例，浏览器模块也只有一个 active source。
+- 但 DSH `0.2.1-rc.2` 的插件管理器会把组合行开关标成只读（`unaddressable`），配置编辑器也可能拒绝保存目标设置。
+- 这不是两个服务同时运行，也不是通过修改 DSH 核心可以安全绕过的行为；推荐只保留 Apollo 入口，不重复 add。
+- [src/client.js](../src/client.js) 注册三个 row-config key：`dsh-better-goal#dsh-better-goal`（独立安装）、`@menghuan1918/dsh-apollo#dsh-better-goal`（scoped Apollo）和 `dsh-apollo#dsh-better-goal`（历史 Apollo）。三者指向同一个设置页、同一份配置和同一个行 id。
+- Apollo 自身的 `apollo-skills` 行用 `@menghuan1918/dsh-apollo#apollo-skills`，并保留 `dsh-apollo#apollo-skills` 旧键；两键同样指向同一行配置。行 id、预设 ID 和 CLI 路由不随包名改名。
+- 如果只需要临时开关有效行，可在 profile 覆盖中写 `id: dsh-better-goal`、`disabled: true`；不要写成 `id: goal, disabled: false`，那会启用原生 goal 服务。
+
+## 安装与开发
+
+### npm 安装
+
+```sh
+dsh plugin --profile <profile> add dsh-better-goal@0.2.0
+```
+
+npm 安装后，目标设置出现在 **Plugins → dsh-better-goal → dsh-better-goal 行**。GitHub main 仍保留为源码安装选项。
+
+### 本地 link 安装
+
+```sh
+# 在仓库根目录安装依赖
+npm install
+
+# 把当前工作树链接到 profile
+dsh plugin --profile <profile> add link:/absolute/path/to/dsh-better-goal
+```
+
+链接后要重启 profile；better 轮数策略支持热更新，`implementation` 与两项 `native*` 参数保存后保留当前运行快照，直到重启 profile。
+
+Apollo 本地开发时，先在其根目录执行 `npm install`。`dsh plugin add link:` 只链接 Apollo 本身，不代装依赖；Apollo 的依赖是精确 npm 版本 `dsh-better-goal@0.2.0`，本地联调可临时改成 `file:../dsh-better-goal`，但不要提交该改动。GitHub 源码安装同样从 registry 解析这个精确版本。
+
+## 测试与宿主冒烟
+
+单元测试：
+
+```sh
+npm test
+```
+
+测试覆盖 Config 默认值与边界、round policy、goal service 的持久 schema/replay/CAS、driver 的续跑与中断、单工具动作、命令、GoalBar 和设置页。提问等待的影子测试已随实现迁移到 ask-user。
+
+`tests/index.test.mjs` 使用真实 Cordis、SessionStore、projection、工具与命令注册表验证单 owner、保存不改变目标及读取接口。设置 `DSH_PACKAGE_ROOT` 后还会运行宿主真实 native 模块、默认轮数及阻塞门槛执行测试，以及临时真实 profile 的双向切换/回放测试；未设置时原生模块、原生参数执行与真实 profile 测试明确 skip，不以模拟 native 代替：
+
+```sh
+DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh npm test
+```
+
+[tests/list-hints.test.mjs](../tests/list-hints.test.mjs) 使用真实 registry 构建 live / cached hints，验证两个 key 整体省略、其它值与 metadata 保留、完整 detail 可读、源数据不变、真实 Cordis receiver / invocation、可选 controller 迟到、卸载恢复和进行中请求的透传。真实 profile 测试还直接比较宿主实际 list 方法产生的 live / cold cached rows，并验证 enhanced / native 的 history、control、projections 基线保持完整；宿主 controller 通过 `createRequire` 从 `DSH_PACKAGE_ROOT` 解析，没有新增运行时依赖。
+
+[tests/list-composition.test.mjs](../tests/list-composition.test.mjs) 可选加载独立 lazy 插件，运行两种挂载顺序和两种卸载顺序的四组回归，使用真实 host `SessionController.list` 验证权限过滤与两层独立所有权：
+
+```sh
+LAZY_SESSION_LIST_ROOT=/path/to/dsh-lazy-session-list DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh npm test
+```
+
+宿主冒烟需要指向已安装的 DSH 包：
+
+```sh
+DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh npm run smoke
+
+# Apollo 装配路径
+GOAL_SMOKE_MODE=apollo DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh npm run smoke
+
+# 热设置 + 迟到回答
+GOAL_SMOKE_HOT=1 DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh npm run smoke
+GOAL_SMOKE_MODE=apollo GOAL_SMOKE_HOT=1 DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh npm run smoke
+
+# 仅验证双入口不会重复激活；不宣称该模式可以保存设置
+GOAL_SMOKE_MODE=both DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh npm run smoke
+```
+
+冒烟使用临时 home/profile、真实 DSH AgentLoop 和脚本化模型适配器，不调用付费模型，也不启动替代 GUI。通过条件是进程退出码为 0、输出 `BETTER_GOAL_RUNTIME_SMOKE_PASSED`，以及临时目录 `results.json` 的 `passed` 为 `true`。`apollo` / `both` 模式默认从 `../dsh-apollo` 读取 Apollo 仓库，可用 `APOLLO_PACKAGE_ROOT` 指定其他位置。
+
+实际检查包括：真实 profile 启动、单 `goal` 工具、五动作枚举、无 `goal_id` / `revision` 参数、旧三工具隐藏、`/goal` 命令、创建/替换/暂停/恢复/完成/清除、真实工具 dispatch、native goal RPC、自动轮次、冷恢复 disarmed、fork disarmed、Agent 无需新人类消息即可控制完整生命周期；`GOAL_SMOKE_HOT=1` 还检查热设置持久化和迟到回答。冒烟路径覆盖 `standard`（standalone）以及 `eng` / `eng-ptc`（apollo / both）；`apollo` / `both` 模式会检查 `eng-ptc` 同样只有一个 `goal` 工具、旧三工具隐藏。
+
+未覆盖：PTC 模式下 `run_code` 内调用 goal 的真实回合、其他自定义提问工具、当前浏览器 GUI 的人工验收。单元测试或冒烟通过都不代表这些场景已验证。
+
+## npm 发布
+
+发布走 [.github/workflows/release.yml](../.github/workflows/release.yml) 的 npm trusted publishing（OIDC），仓库不保存 npm token：
+
+1. 把 `package.json` 的 `version` 改为新版本，同步 `package-lock.json`（`npm install --package-lock-only`），提交并推到 GitHub `main`。
+2. 创建并发布 GitHub Release，tag 必须是 `v<version>`。
+3. CI 校验 tag 与版本一致，执行 `npm ci`、`npm test`，再 `npm publish --provenance --access public`。
+4. 本包在 registry 可取得后，才把 Apollo 的精确依赖改到新版本并发布 Apollo；否则 Apollo 安装会 404。
+
+## 卸载、禁用与回退
+
+独立安装：
+
+```sh
+dsh plugin --profile <profile> remove dsh-better-goal
+```
+
+Apollo 安装（scoped）：
+
+```sh
+dsh plugin --profile <profile> remove @menghuan1918/dsh-apollo
+```
+
+旧 unscoped Apollo 安装使用 `remove dsh-apollo`。
+
+- 禁用或移除独立 bundle **不等于**移除 Apollo 插入的 `dsh-better-goal` 行；只要 Apollo 仍在装配，goal 能力仍然存在。
+- 要彻底移除 goal 能力，需要移除 Apollo，或显式禁用该行，然后重启 profile。
+- 回退到原生实现时，先移除插件装配，并确认 profile 中没有遗留的 goal 行禁用覆盖，再让原生行恢复；不要在插件仍启用时用 `goal` 行重新启用原生服务。
+- 卸载不会清空已有会话日志，也没有独立 sidecar 需要迁移。再次安装后，已有 goal 仍可恢复；恢复后需要显式继续。
+
+## 文档维护约定
+
+- README 面向使用者：只保留用户可感知的状态、设置、命令和限制；CAS、协议版本、projection、row id、Loader 去重、兼容哨兵等内部实现放在本文档。
+- README 可写五个动作的用户语义，但不写 JSON、schema 或内部引用；模型接口变化时同步更新 README、本文档和测试。
+- 不伪造 CI 通过、npm 发行或版本徽章。README 只使用可直接核对的静态徽章；没有确认 npm 发行前不要加 npm 版本徽章。
+- 相对链接必须在仓库内存在；修改 README 或本文档后重新检查链接。
+- 测试通过、冒烟通过、当前 GUI 验收是三件事，报告中要区分。
+
+## 许可
+
+Apache-2.0，见 [LICENSE](../LICENSE)。移植的 DeepSeek Harness 代码保留 MIT 声明，见 [third-party/NOTICE](../third-party/NOTICE) 和 [third-party/LICENSE-MIT-dsh](../third-party/LICENSE-MIT-dsh)。

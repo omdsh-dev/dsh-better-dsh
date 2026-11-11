@@ -1,0 +1,45 @@
+{
+  "name": "dsh-lazy-session-list",
+  "version": "0.2.0",
+  "description": "Keep a configurable native session-list index and defer other projections to per-session loading.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/omdsh-dev/dsh-lazy-session-list.git"
+  },
+  "homepage": "https://github.com/omdsh-dev/dsh-lazy-session-list#readme",
+  "bugs": {
+    "url": "https://github.com/omdsh-dev/dsh-lazy-session-list/issues"
+  },
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0",
+    "dsh": ">=0.2.1-rc.2 <0.3.0"
+  },
+  "scripts": {
+    "test": "node --test",
+    "smoke": "node scripts/live-smoke.mjs"
+  },
+  "files": [
+    "src",
+    "docs/assets",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.5",
+    "@deepseek-ai/schemastery": "^3.18.5",
+    "@deepseek-ai/dsh-api-session-controller": ">=0.2.1-rc.2 <0.3.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

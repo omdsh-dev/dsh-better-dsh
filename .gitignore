@@ -20,6 +20,8 @@ atlas.json
 *.bak
 .plugin-manager/
 .DS_Store
+.agents/
+.pnpm-store/
 
-# 子插件源码仓库（各自独立 git 仓库）
+# 迁移前的子插件源码归档（各自保留独立 git 历史）
 plugins/

@@ -1,0 +1,6 @@
+node_modules/
+lib/client.cjs
+.DS_Store
+*.log
+*.tgz
+node_modules

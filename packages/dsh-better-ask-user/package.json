@@ -1,0 +1,82 @@
+{
+  "name": "dsh-better-ask-user",
+  "version": "0.3.3",
+  "description": "Independent ask_user_question plugin: configurable wait, input-extended countdown, markdown/mobile card, native or default timeout behavior, and PTC deadline exemption.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/omdsh-dev/dsh-better-dsh.git",
+    "directory": "packages/dsh-better-ask-user"
+  },
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=24.9.0",
+    "dsh": "0.2.2-rc.1"
+  },
+  "scripts": {
+    "pretest": "node scripts/build-client.mjs",
+    "test": "node --test",
+    "build": "node scripts/build-client.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "~3.19.0",
+    "dsh-better-ptc": "0.2.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.1.0",
+    "@deepseek-ai/dsh-agent": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-session": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-user-questions": "0.2.2-rc.1",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "clsx": "^2.1.1",
+    "esbuild": "^0.25.0",
+    "js-yaml": "^4.2.0",
+    "react": "18.3.1",
+    "react-test-renderer": "18.3.1"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-ui-chat",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
+  },
+  "files": [
+    "src",
+    "lib/client.js",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "homepage": "https://github.com/omdsh-dev/dsh-better-dsh/tree/main/packages/dsh-better-ask-user#readme",
+  "bugs": {
+    "url": "https://github.com/omdsh-dev/dsh-better-dsh/issues"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  }
+}

@@ -1,0 +1,48 @@
+dsh-better-subagent — third-party notices
+=========================================
+
+This package is licensed Apache-2.0 (see ../LICENSE).
+
+Ported from dsh-apollo
+---------------------
+Portions of this package (the Codex/Claude CLI protocol adapters, JSONL
+parsing, the durable identity KV, the CLI routing bridge, the read-only
+capability/model APIs, and the row-config settings form) are adapted from
+dsh-apollo (npm: @menghuan1918/dsh-apollo,
+https://github.com/Menghuan1918/dsh-apollo), which is licensed under
+Apache-2.0. Copyright (C) 2026 Menghuan1918. The subagent CLI route ids,
+the `apollo_cli_<sha256(profile.dir)[:16]>` KV namespace and the stored record
+shape are kept for compatibility and are not a new contract.
+
+Trust-fence boundary logic
+--------------------------
+The `/better-subagent/api/*` request trust boundary (loopback hostname check,
+trustedHosts comparison, cross-site rejection, same-origin Origin check) is
+adapted from the trust-fence boundary used by dsh-better-sidebar
+(https://github.com/omdsh-dev/DSH-better-sidebar) and the api-request-trust /
+loopback-hostname helpers of @deepseek-ai/dsh-client-connection, both under the
+MIT License. The logic was reimplemented here without importing either package.
+
+MIT License
+-----------
+
+Copyright (c) 2026 dsh-external
+Copyright (c) 2026 DeepSeek
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

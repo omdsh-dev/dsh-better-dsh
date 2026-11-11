@@ -9,5 +9,7 @@ scripts/
 prompts/
 .github/
 .worktrees/
+packages/
+pnpm-workspace.yaml
+pnpm-lock.yaml
 *.tgz
-package-lock.json

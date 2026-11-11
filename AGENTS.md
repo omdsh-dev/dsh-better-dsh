@@ -1,0 +1,56 @@
+# AGENTS.md — Better DSH
+
+本仓是 Better DSH bundle 与其六个子包的 monorepo。修改前先读 `docs/DEVELOPMENT.md` 与 `docs/UI-KIT.md`；本文件只记录 agent 最常踩的边界与命令。
+
+## 目录
+
+| 路径 | 说明 |
+|---|---|
+| `src/`、`presets/`、`skills/`、`prompts/`、`tests/`、`docs/` | Better DSH bundle 本体 |
+| `packages/dsh-better-ask-user` | 提问插件（官方 `ask_user_question` 影子 + 等待/卡片/历史行） |
+| `packages/dsh-better-compact` | 压缩 companion + engine + 设置页 |
+| `packages/dsh-better-goal` | goal 域 |
+| `packages/dsh-better-ptc` | PTC deadline 豁免单例 |
+| `packages/dsh-better-subagent` | 子代理 CLI/等待/child guard/分档（本地包名仍为 `@menghuan1918/...`） |
+| `packages/dsh-lazy-session-list` | 惰性 session list 实验包 |
+| `plugins/` | 迁移前的子包源码归档，已被 gitignore，**不要修改** |
+| `.agents/worktrees/` | 本地隔离 worktree，已被 gitignore |
+
+## 工具链
+
+- Node `>=24.9.0`，pnpm `11.7.0`，DSH 精确 `0.2.2-rc.1`。
+- 根目录：
+  - `pnpm install --frozen-lockfile`
+  - `pnpm test`：只跑根 bundle 的 `tests/*.test.mjs`
+  - `pnpm test:packages`：跑 `packages/*`（暂时排除 `dsh-lazy-session-list`，见下）
+  - `pnpm test:all`：根 + 子包
+  - `pnpm build:packages`、`pnpm prompts`、`pnpm smoke`
+- 单包：
+  - `pnpm --filter dsh-better-ask-user test`
+  - ask-user 的 `pretest` 会重建已跟踪的 `lib/client.js`；改了 `src/client/` 后必须重新生成并提交。
+- 根 `node --test` 必须带 `tests/*.test.mjs`，否则会把 `packages/*/tests` 也发现进来。
+
+## 依赖与版本
+
+- 根 `dependencies` 目前固定已发布的精确版本（ask-user `0.3.3`、compact `0.4.0`、goal `0.4.3`、subagent `0.5.2`、ptc `0.2.0`）。
+- **不要**在没有对齐版本/名称前把根依赖切成 `workspace:*`：本地子包版本普遍落后于已发布版本，subagent 还是 `@menghuan1918/` 而 bundle 使用 `@oh-my-dsh/`；强行链接会静默把发布依赖降级。
+- 本地 `packages/*` 是后续源码真相，但只有 ask-user 已同步到已发布的 `0.3.3`；其余包仍是迁移快照，更新它们要单独对齐版本、依赖和测试。
+- 发布前先确认子包版本在 `https://registry.npmjs.org/` 可取得；不要提交 `file:`/`link:`/`git:` 依赖。
+
+## 发布
+
+- 根 bundle：更新 `package.json` 版本与子包依赖 → `pnpm test:all` → 建 `v<version>` tag 与 GitHub Release。根 `.github/workflows/release.yml` 用 pnpm 安装、测试，并通过 npm trusted publishing（OIDC）发布；仓库里不存 npm token。
+- 子包：目前仍走各子包的独立发布流程；monorepo 统一的子包发布 workflow 尚未完成。ask-user 的发版仓是 `omdsh-dev/dsh-better-ask-user`，本地 `packages/dsh-better-ask-user` 要与其已发布代码保持同步。
+- 不要在基于旧 bundle 版本的分支上直接发 bundle；先把分支 rebase 到最新 `main`/release 基线。
+
+## 测试已知限制
+
+- `dsh-lazy-session-list` 的 `tests/session-list.test.mjs` 需要 DSH 0.2.x 的 `@deepseek-ai/dsh-skill` / `@deepseek-ai/dsh-native-command`，npm 上只有不兼容的 `0.0.1-rc.1`；因此 `pnpm test:packages` 排除该包。仅在有匹配 DSH host 时单独跑 `pnpm test:lazy-session-list`。
+- 需要真实 DSH 安装的漂移/迁移测试：设置 `DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh` 后跑 `pnpm test`。
+- 浏览器/客户端测试使用 esbuild + `react-test-renderer`；不要用 jsdom 替代真实渲染边界。
+
+## 约定
+
+- 保持中文文档与既有命名；新增副本、迁移或发布说明时同步更新 `README.md` 与 `docs/DEVELOPMENT.md`。
+- 保留无关的未提交改动；需要隔离时用 `.agents/worktrees/` 新建 worktree，不要在主检出上切来切去。
+- 第三方内容与 Apache-2.0 许可声明分别保留在 `third-party/` 和各包自己的 `third-party/`；不要删除 NOTICE/LICENSE。

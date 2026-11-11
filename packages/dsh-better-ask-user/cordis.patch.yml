@@ -1,0 +1,14 @@
+# Replace the official Web question card. The base tool-ask-user row stays in
+# each preset as the fallback/shadow probe point; the new host row shadows
+# ask_user_question and the client half renders the replacement card.
+- id: ui-user-questions
+  disabled: true
+
+- insert:
+    # Singleton shared PTC exemption service. The subagent bundle inserts the
+    # same id/name; the Loader keeps one service and one runtime wrapper.
+    - id: dsh-better-ptc
+      name: dsh-better-ptc
+
+    - id: dsh-better-ask-user
+      name: dsh-better-ask-user

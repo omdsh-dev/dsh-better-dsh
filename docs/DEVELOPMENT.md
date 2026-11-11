@@ -2,7 +2,11 @@
 
 面向维护者、集成者和需要排查装配问题的用户。用户安装与配置请看 [README](../README.md)；本文保留 DSH 插件的实现细节、旧配置迁移、组合安装边界与验证方法。
 
-当前实现版本：`0.11.2`；npm 包名是 `dsh-better-dsh`。纯 ESM，无构建步骤；宿主浏览器半边是直接加载的闭包工厂。旧 `Apollo` 名称只保留在迁移、历史兼容和旧包 deprecate 说明里。
+当前实现版本：`0.11.3`；npm 包名是 `dsh-better-dsh`。纯 ESM，无构建步骤；宿主浏览器半边是直接加载的闭包工厂。旧 `Apollo` 名称只保留在迁移、历史兼容和旧包 deprecate 说明里。
+
+**仓库布局**：`packages/*` 是六个子包的源码真相（pnpm workspaces；根目录 `pnpm install`、`pnpm test:packages`）。迁移前的 `plugins/` 目录和各自 `.git` 原样保留作归档，不再修改。子包版本对齐、根依赖切 `workspace:*`、各包发布流合并尚未完成。
+
+`pnpm test:packages` 暂时排除 `dsh-lazy-session-list`：它的 `tests/session-list.test.mjs` 需要 DSH 0.2.x 的 `@deepseek-ai/dsh-skill` / `@deepseek-ai/dsh-native-command`，而 npm 上只有不兼容的 `0.0.1-rc.1`；live-smoke 测试仍可单独运行。
 
 ## 目录
 
@@ -36,15 +40,15 @@
 | `dsh-better-goal` | `0.4.3` | 目标域（`questionTimeoutSeconds` 已弃用、仅保留读取；`spinHintSeconds` 控制空转提示） |
 | `@oh-my-dsh/dsh-better-subagent` | `0.5.2` | 子代理 CLI/等待/child guard/分档/设置页；注册 `wait_subagent` PTC 豁免；委派提示词由 `delegation.prompt` 单独控制 |
 | `dsh-better-compact` | `0.4.0` | 压缩 companion + engine + 设置页/诊断 |
-| `dsh-better-ask-user` | `0.3.2` | 官方 `ask_user_question` 入参/返回 + 插件超时等待 + 历史预览行；注册 PTC 豁免；旧 goal 等待迁移 |
+| `dsh-better-ask-user` | `0.3.3` | 官方 `ask_user_question` 入参/返回 + 插件超时等待 + 历史预览行；注册 PTC 豁免；旧 goal 等待迁移 |
 | `dsh-better-ptc` | `0.2.0` | 单例 PTC deadline 豁免服务 |
 | `@deepseek-ai/schemastery` | `~3.19.0` | Better DSH 行 Config |
 | `react` | peer | 宿主提供 |
 
-发布前隔离验证使用本地 tarball；发布顺序中每个依赖在官方 registry 可取得后，再用 npm 重新生成真实 registry lock，并干净安装验证。manifest 始终保留精确 npm 版本，不伪造 registry URL。正式发布提交可直接运行：
+发布前隔离验证使用本地 tarball；发布顺序中每个依赖在官方 registry 可取得后，再用 pnpm 重新生成真实 registry lock，并干净安装验证。manifest 始终保留精确 npm 版本，不伪造 registry URL。正式发布提交可直接运行：
 
 ```sh
-npm install
+pnpm install --frozen-lockfile
 ```
 
 发布顺序必须是先 PTC、再依赖它的子包及其余子包、最后 Better DSH（见[发布](#实现入口打包与发布)）。
@@ -322,7 +326,7 @@ DSH_PACKAGE_ROOT="/…/node_modules/@deepseek-ai/dsh" npm run prompts
 ### npm 安装
 
 ```sh
-dsh plugin --profile <profile> add dsh-better-dsh@0.11.2
+dsh plugin --profile <profile> add dsh-better-dsh@0.11.3
 ```
 
 包发布后即可用此命令安装，并带入五个精确依赖、应用三份 bundle patch。安装后需要重启对应 profile 的 DSH 进程。本轮版本与精确依赖见上述包清单；发布后需重新验证 registry 干净安装。
@@ -365,7 +369,7 @@ dsh --profile <profile> --dump-config
 
 - 升级包后重启 profile；0.4.x → 0.5.x 的迁移见 [旧配置迁移](#旧配置迁移)；
 - 迁移写入的 compact 设置需要再重载一次才会被运行中引擎采用；
-- 升级 DSH 后先跑 `npm test`，漂移测试会按目标 DSH 安装比较预设；
+- 升级 DSH 后先跑 `pnpm test`，漂移测试会按目标 DSH 安装比较预设；
 - 版本契约：Node `>=24.9.0`，DSH 精确 `0.2.2-rc.1`；只针对该 next 发布包验收，不实现旧 RC 兼容层。
 
 ### 卸载
@@ -380,12 +384,12 @@ dsh plugin --profile <profile> remove @menghuan1918/dsh-apollo   # 旧包；新�
 
 本轮按以下顺序通过 GitHub Release 发布 npm；仅推送隔离发布分支与 tag，不修改共享 main，不升级/重启现有 3384 GUI。
 
-五个子仓和 Apollo 都用 GitHub Release 触发 `.github/workflows/release.yml`，通过 npm trusted publishing（OIDC）发布，仓库里不存 npm token。tag 必须是 `v<package.json 的 version>`，CI 会先校验再跑测试和 `npm publish --provenance`。
+当前阶段仍使用迁移前各子包的独立发布流程（归档的子仓里保留原 `.github/workflows/release.yml`）；monorepo 统一的子包发布 workflow 尚未完成。根包 `dsh-better-dsh` 用 GitHub Release 触发根 `.github/workflows/release.yml`，通过 npm trusted publishing（OIDC）发布，仓库里不存 npm token。tag 必须是 `v<package.json 的 version>`，CI 会先校验再跑测试和 `npm publish --provenance`。
 
-1. 先发布 `dsh-better-ptc@0.2.0`、`dsh-better-ask-user@0.3.2`、`@oh-my-dsh/dsh-better-subagent@0.5.2`、`dsh-better-goal@0.4.3`、`dsh-better-compact@0.4.0`（各自仓库的 Release）；
+1. 先发布 `dsh-better-ptc@0.2.0`、`dsh-better-ask-user@0.3.3`、`@oh-my-dsh/dsh-better-subagent@0.5.2`、`dsh-better-goal@0.4.3`、`dsh-better-compact@0.4.0`（各自仓库的 Release）；
 2. 在官方 registry（`https://registry.npmjs.org/`）确认五个版本可取得、可安装；
-3. 再把 Better DSH 的精确依赖指向已发布版本，推已验证的发布提交及 tag 并发布 Better DSH Release（本轮为 `v0.11.2`）；
-4. 子包版本可取得前，不要把指向它们的精确依赖推到 Apollo main，否则 `npm install` / GitHub 源码安装会 404。
+3. 再把 Better DSH 的精确依赖指向已发布版本，推已验证的发布提交及 tag 并发布 Better DSH Release（本轮为 `v0.11.3`）；
+4. 子包版本可取得前，不要把指向它们的精确依赖推到 Apollo main，否则 `pnpm install` / GitHub 源码安装会 404。
 
 ## 测试与冒烟
 
@@ -403,11 +407,11 @@ dsh plugin --profile <profile> remove @menghuan1918/dsh-apollo   # 旧包；新�
 ### 单元、组件与契约测试
 
 ```sh
-npm install
-npm test
+pnpm install --frozen-lockfile
+pnpm test:all
 
 # 严格指定真实 DSH 安装（漂移、真实迁移测试）
-DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh npm test
+DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh pnpm test
 ```
 
 测试栈使用 Node 内置 `node:test`。普通测试依赖 `js-yaml`、React 和 React TestRenderer；启用真实 next 客户端专项时，还须安装独立支持环境（不进入发布包、不修改宿主依赖）：
@@ -530,7 +534,7 @@ APOLLO_PLUGIN_SOURCE_ROOT=/path/to/Code node scripts/ptc-smoke.mjs
 
 ### 发布
 
-release workflow 使用 npm trusted publishing：tag 必须等于 `package.json` 版本，先 `npm install` / `npm test` 再 `npm publish --provenance`。Apollo 0.5.x 的 release job 只有在两个子包 0.1.0 可取得后才可能成功；不要硬编码 token、假发布或用开发 link 代替正式依赖。
+release workflow 使用 npm trusted publishing：tag 必须等于 `package.json` 版本，先 `pnpm install --frozen-lockfile` / `pnpm test:all` 再 `npm publish --provenance`。子包版本必须先在官方 registry 可取得；不要硬编码 token、假发布或用开发 link 代替正式依赖。
 
 ## 许可与致谢
 

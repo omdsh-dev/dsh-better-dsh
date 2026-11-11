@@ -1,0 +1,20 @@
+# This row owns backend selection. Keep native rows disabled in both modes:
+# implementation=native loads the real host modules under the single plugin
+# owner at profile startup, rather than enabling a second service/driver.
+# The plugin client owns the UI in both modes.
+- id: goal
+  disabled: true
+- id: goal-round-driver
+  disabled: true
+- id: command-goal
+  disabled: true
+- id: tool-goal
+  disabled: true
+- id: ui-goal
+  disabled: true
+
+# This exact top-level identity is also inserted by Apollo. Loader row IDs
+# deduplicate independently selected bundles before host/client activation.
+- insert:
+    - id: dsh-better-goal
+      name: dsh-better-goal
