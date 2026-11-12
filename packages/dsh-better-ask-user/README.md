@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/dsh-better-ask-user"><img src="https://img.shields.io/npm/v/dsh-better-ask-user.svg" alt="npm 版本"></a>
   <a href="LICENSE"><img alt="Apache-2.0" src="https://img.shields.io/github/license/omdsh-dev/dsh-better-ask-user?color=blue"></a>
-  <a href="package.json"><img alt="DSH 0.2.2-rc.1" src="https://img.shields.io/badge/DSH-0.2.2--rc.1-4B32C3"></a>
+  <a href="package.json"><img alt="DSH 0.2.2-rc.2" src="https://img.shields.io/badge/DSH-0.2.2--rc.2-4B32C3"></a>
   <a href="https://github.com/omdsh-dev/dsh-better-dsh"><img alt="Part of Better DSH" src="https://img.shields.io/badge/part%20of-dsh--better--dsh-2F80B7"></a>
 </p>
 

@@ -16,8 +16,9 @@
  * the live session projection at click time (not from the rendered snapshot),
  * so a stale render cannot become the authority.
  *
- * Styling follows the shipped DSH design tokens and the native GoalBar's
- * geometry. Everything is scoped under `dbg-` classes; no shadcn, no build.
+ * Styling follows the shared UI contract (Apollo docs/UI-KIT.md): flat 1px
+ * lines, one 960px settings column, 32px controls. Everything is scoped under
+ * `dbg-` classes; no shadcn, no build.
  */
 
 window.__ModuleLoader__.load({
@@ -48,16 +49,22 @@ window.__ModuleLoader__.load({
      * is scoped. Registering the same page under every exact key keeps the
      * independent plugin's config namespace and store unchanged in any assembly.
      */
+    const BETTER_DSH_ROW_KEY = 'dsh-better-dsh#dsh-better-goal'
     const APOLLO_ROW_KEY = 'dsh-apollo#dsh-better-goal'
     /** Apollo's published scoped package name declares the same row. */
     const SCOPED_APOLLO_ROW_KEY = '@menghuan1918/dsh-apollo#dsh-better-goal'
     /** Every assembly's `plugins.row.config` key, in dispatch order. */
-    const ROW_CONFIG_KEYS = Object.freeze([ROW_KEY, APOLLO_ROW_KEY, SCOPED_APOLLO_ROW_KEY])
+    const ROW_CONFIG_KEYS = Object.freeze([ROW_KEY, BETTER_DSH_ROW_KEY, APOLLO_ROW_KEY, SCOPED_APOLLO_ROW_KEY])
     const ROUND_LIMIT_MODES = Object.freeze(['agent', 'unlimited', 'fixed'])
     /** Continuation-mode cards, in radiogroup order. */
     const IMPLEMENTATION_MODES = Object.freeze(['enhanced', 'native'])
     const DEFAULT_ROUND_LIMIT = 256
     const UNLIMITED_ROUNDS = Number.MAX_SAFE_INTEGER
+    // Mirrors src/config.js: the idle-spin warning defaults to 120s; 0 turns it off.
+    const DEFAULT_SPIN_HINT_SECONDS = 120
+    const MAX_SPIN_HINT_SECONDS = 3600
+    const DEFAULT_JOB_WAIT_SECONDS = 2400
+    const MAX_JOB_WAIT_SECONDS = 86400
     const STYLE_GOAL = 'dsh-better-goal/goal.css'
     const STYLE_SETTINGS = 'dsh-better-goal/settings.css'
 
@@ -69,8 +76,8 @@ window.__ModuleLoader__.load({
       waitingForm: '正在加载设置…',
       noFormHint: '请使用受信任的连接打开设置。',
       loading: '正在读取配置…',
-      unavailable: '当前连接无法访问设置。',
-      readonly: '此连接只能查看设置。',
+      unavailable: '设置不可用',
+      readonly: '只读',
       save: '保存',
       saving: '保存中…',
       saved: '已保存',
@@ -93,11 +100,17 @@ window.__ModuleLoader__.load({
       roundLimitLabel: '轮数上限',
       roundLimitHint: '达到上限后停止续跑。',
       roundLimitUnlimited: '当前值等于兼容哨兵，界面显示为无上限。',
+      spinHintLabel: '空转提示阈值（秒）',
+      spinHintHint: '上一轮 goal 回合短于该值时，下一轮提示会写清 goal 无延迟投递、需要在回合内阻塞等待。0 表示关闭。',
+      jobWaitLabel: '等待后台任务（秒）',
+      jobWaitHint: '回合结束到开始下一轮 goal 之间，最多等本会话的后台任务这么久；超时则照常开轮，并在提示词里列出仍在运行的任务。任务不会被取消。0 表示不等待。',
       questionTimeoutLabel: '目标提问超时（秒）',
       questionTimeoutHint: '-1 表示永不超时；否则为 1 到 2147483 的整数。热设置只影响新发起的等待，不改变当前等待。',
       questionTimeoutNever: '当前设置：永不超时。',
       invalidMode: '请选择一种轮数上限策略。',
       invalidRoundLimit: '固定轮数必须是 1 到 9007199254740991 之间的正整数。',
+      invalidSpinHint: '空转阈值必须是 0（关闭），或 1 到 3600 之间的整数。',
+      invalidJobWait: '等待时长必须是 0（不等待），或 1 到 86400 之间的整数。',
       invalidQuestionTimeout: '提问超时必须是 -1，或 1 到 2147483 之间的整数。',
       readonlyNote: '只读：当前无法写入宿主配置。',
       unavailableNote: '不可写：当前连接下该配置不可用。',
@@ -183,8 +196,8 @@ window.__ModuleLoader__.load({
       waitingForm: 'Loading settings…',
       noFormHint: 'Use a trusted connection to open these settings.',
       loading: 'Loading configuration…',
-      unavailable: 'Settings are unavailable on this connection.',
-      readonly: 'Settings are read-only on this connection.',
+      unavailable: 'Settings unavailable',
+      readonly: 'Read-only',
       save: 'Save',
       saving: 'Saving…',
       saved: 'Saved',
@@ -207,11 +220,17 @@ window.__ModuleLoader__.load({
       roundLimitLabel: 'Round limit',
       roundLimitHint: 'Automatic continuation stops at the limit.',
       roundLimitUnlimited: 'This value is the compatibility sentinel; the UI renders it as unlimited.',
+      spinHintLabel: 'Idle-spin hint threshold (seconds)',
+      spinHintHint: 'When the previous goal turn was shorter than this, the next round says goal rounds arrive with no delay and that waits must block inside the turn. 0 turns it off.',
+      jobWaitLabel: 'Wait for background jobs (seconds)',
+      jobWaitHint: 'Between a finished turn and the next goal round, wait this long at most for this session’s background jobs. When it expires the round starts anyway and the prompt lists the jobs still running. Nothing is cancelled. 0 never waits.',
       questionTimeoutLabel: 'Goal-question timeout (seconds)',
       questionTimeoutHint: '-1 never times out; otherwise an integer from 1 to 2147483. Hot changes affect only newly started waits, never the current one.',
       questionTimeoutNever: 'Current setting: never times out.',
       invalidMode: 'Choose a round-cap policy.',
       invalidRoundLimit: 'The fixed cap must be a positive integer from 1 to 9007199254740991.',
+      invalidSpinHint: 'The idle-spin threshold must be 0 (off) or an integer from 1 to 3600.',
+      invalidJobWait: 'The wait must be 0 (never wait) or an integer from 1 to 86400.',
       invalidQuestionTimeout: 'The timeout must be -1 or an integer from 1 to 2147483.',
       readonlyNote: 'Read-only: host configuration cannot be written.',
       unavailableNote: 'Not writable: this configuration is unavailable on the current connection.',
@@ -559,6 +578,16 @@ window.__ModuleLoader__.load({
 
     function isRecord(value) {
       return typeof value === 'object' && value !== null && !Array.isArray(value)
+    }
+
+    /** Mirrors src/config.js: exactly 0 (off) or an integer in [1, MAX_SPIN_HINT_SECONDS]. */
+    function isSpinHintSeconds(value) {
+      return Number.isSafeInteger(value) && value >= 0 && value <= MAX_SPIN_HINT_SECONDS
+    }
+
+    /** Mirrors src/config.js: exactly 0 (never wait) or an integer in [1, MAX_JOB_WAIT_SECONDS]. */
+    function isJobWaitSeconds(value) {
+      return Number.isSafeInteger(value) && value >= 0 && value <= MAX_JOB_WAIT_SECONDS
     }
 
     function isPositiveSafeInteger(value) {
@@ -1199,6 +1228,9 @@ window.__ModuleLoader__.load({
         nativeBlockedAfterConsecutiveRounds: isPositiveSafeInteger(source.nativeBlockedAfterConsecutiveRounds) ? source.nativeBlockedAfterConsecutiveRounds : 3,
         roundLimitMode: ROUND_LIMIT_MODES.includes(source.roundLimitMode) ? source.roundLimitMode : 'agent',
         roundLimit: isPositiveSafeInteger(source.roundLimit) ? source.roundLimit : DEFAULT_ROUND_LIMIT,
+        // 0 is the documented off switch, so it must survive the fallback.
+        spinHintSeconds: isSpinHintSeconds(source.spinHintSeconds) ? source.spinHintSeconds : DEFAULT_SPIN_HINT_SECONDS,
+        jobWaitSeconds: isJobWaitSeconds(source.jobWaitSeconds) ? source.jobWaitSeconds : DEFAULT_JOB_WAIT_SECONDS,
       }
     }
 
@@ -1210,7 +1242,27 @@ window.__ModuleLoader__.load({
         nativeBlockedAfterConsecutiveRounds: String(config.nativeBlockedAfterConsecutiveRounds),
         roundLimitMode: config.roundLimitMode,
         roundLimit: String(config.roundLimit),
+        spinHintSeconds: String(config.spinHintSeconds),
+        jobWaitSeconds: String(config.jobWaitSeconds),
       }
+    }
+
+    /** One spin threshold draft: exactly 0 (off) or an integer in [1, MAX_SPIN_HINT_SECONDS]. */
+    function parseSpinHintText(text) {
+      if (typeof text !== 'string') return undefined
+      const trimmed = text.trim()
+      if (!/^[0-9]+$/.test(trimmed)) return undefined
+      const value = Number(trimmed)
+      return Number.isSafeInteger(value) && value <= MAX_SPIN_HINT_SECONDS ? value : undefined
+    }
+
+    /** One job-wait draft: exactly 0 (never wait) or an integer in [1, MAX_JOB_WAIT_SECONDS]. */
+    function parseJobWaitText(text) {
+      if (typeof text !== 'string') return undefined
+      const trimmed = text.trim()
+      if (!/^[0-9]+$/.test(trimmed)) return undefined
+      const value = Number(trimmed)
+      return Number.isSafeInteger(value) && value <= MAX_JOB_WAIT_SECONDS ? value : undefined
     }
 
     function parsePositiveSafeIntegerText(text) {
@@ -1243,6 +1295,10 @@ window.__ModuleLoader__.load({
         if (nativeDefaultMaxGoalRounds === undefined) return { error: 'invalidNative', field: 'nativeDefaultMaxGoalRounds' }
         if (nativeBlockedAfterConsecutiveRounds === undefined) return { error: 'invalidNative', field: 'nativeBlockedAfterConsecutiveRounds' }
       }
+      const spinHintSeconds = parseSpinHintText(draft.spinHintSeconds)
+      if (spinHintSeconds === undefined) return { error: 'invalidSpinHint' }
+      const jobWaitSeconds = parseJobWaitText(draft.jobWaitSeconds)
+      if (jobWaitSeconds === undefined) return { error: 'invalidJobWait' }
       return {
         value: {
           implementation: draft.implementation,
@@ -1250,6 +1306,8 @@ window.__ModuleLoader__.load({
           nativeBlockedAfterConsecutiveRounds,
           roundLimitMode: draft.implementation === 'enhanced' ? draft.roundLimitMode : host.roundLimitMode,
           roundLimit,
+          spinHintSeconds,
+          jobWaitSeconds,
         },
       }
     }
@@ -1265,6 +1323,12 @@ window.__ModuleLoader__.load({
       }
       if (host.roundLimit !== next.roundLimit) {
         ops.push({ op: 'set', path: ['roundLimit'], value: next.roundLimit })
+      }
+      if (host.spinHintSeconds !== next.spinHintSeconds) {
+        ops.push({ op: 'set', path: ['spinHintSeconds'], value: next.spinHintSeconds })
+      }
+      if (host.jobWaitSeconds !== next.jobWaitSeconds) {
+        ops.push({ op: 'set', path: ['jobWaitSeconds'], value: next.jobWaitSeconds })
       }
       return ops
     }
@@ -1361,7 +1425,9 @@ window.__ModuleLoader__.load({
       const writable = state?.status === 'ready' && state?.writable === true
       const editableKeys = live?.implementation === 'native'
         ? ['implementation', 'nativeDefaultMaxGoalRounds', 'nativeBlockedAfterConsecutiveRounds']
-        : ['implementation', 'roundLimitMode', ...(live?.roundLimitMode === 'fixed' ? ['roundLimit'] : [])]
+        // spinHintSeconds drives the enhanced driver only, and renders in every
+        // round policy mode, so it always counts toward the dirty guard here.
+        : ['implementation', 'roundLimitMode', ...(live?.roundLimitMode === 'fixed' ? ['roundLimit'] : []), 'spinHintSeconds', 'jobWaitSeconds']
       // Invalid text still differs from the saved snapshot and must guard closing.
       const changedCount = host === null ? 0 : editableKeys.filter((key) => parsed?.value ? parsed.value[key] !== host[key] : live[key] !== baseDraft[key]).length
       const dirty = changedCount > 0
@@ -1528,6 +1594,18 @@ window.__ModuleLoader__.load({
             h('p', { className: 'dbg-hint' }, tr(t, 'roundDefinition')),
             h('div', { className: 'dbg-optionCards', role: 'radiogroup', 'aria-label': tr(t, 'modeLabel'), onKeyDown: onRoundModeKeyDown },
               ROUND_LIMIT_MODES.map(roundModeCard)),
+            h(Field, { t, id: 'dsh-better-goal-spin-hint', label: tr(t, 'spinHintLabel'), hint: tr(t, 'spinHintHint'),
+              error: invalid === 'invalidSpinHint' ? tr(t, invalid) : undefined,
+            }, h('input', { className: 'dbg-input', id: 'dsh-better-goal-spin-hint', type: 'number', min: 0, max: MAX_SPIN_HINT_SECONDS, step: 1, inputMode: 'numeric', value: live.spinHintSeconds, disabled,
+              'aria-invalid': invalid === 'invalidSpinHint' || undefined,
+              'aria-describedby': invalid === 'invalidSpinHint' ? 'dsh-better-goal-spin-hint-error' : undefined,
+              onChange: (event) => edit((current) => ({ ...current, spinHintSeconds: event.target.value })),
+            })),
+            h(Field, { t, id: 'dsh-better-goal-job-wait', label: tr(t, 'jobWaitLabel'), hint: tr(t, 'jobWaitHint'),
+              error: invalid === 'invalidJobWait' ? tr(t, invalid) : undefined,
+            }, h('input', { className: 'dbg-input', id: 'dsh-better-goal-job-wait', type: 'number', min: 0, max: MAX_JOB_WAIT_SECONDS, step: 1, inputMode: 'numeric', value: live.jobWaitSeconds, disabled,
+              onChange: (event) => edit((current) => ({ ...current, jobWaitSeconds: event.target.value })),
+            })),
             live.roundLimitMode === 'fixed' ? h(Field, { t, id: 'dsh-better-goal-round-limit', label: tr(t, 'roundLimitLabel'),
               error: invalid === 'invalidRoundLimit' ? tr(t, invalid) : undefined,
             }, h('input', { className: 'dbg-input', id: 'dsh-better-goal-round-limit', type: 'number', min: 1, max: UNLIMITED_ROUNDS, step: 1, inputMode: 'numeric', value: live.roundLimit, disabled,

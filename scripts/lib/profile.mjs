@@ -61,7 +61,7 @@ export async function packageSources() {
   if (apolloManifest.dependencies[SUBAGENT_NAME] !== '0.5.2'
     || apolloManifest.dependencies[COMPACT_NAME] !== '0.4.0'
     || apolloManifest.dependencies[GOAL_NAME] !== '0.4.3'
-    || apolloManifest.dependencies[ASK_NAME] !== '0.3.2'
+    || apolloManifest.dependencies[ASK_NAME] !== '0.3.3'
     || apolloManifest.dependencies[PTC_NAME] !== '0.2.0') {
     throw new Error('Better DSH dependencies must pin the verification versions')
   }
@@ -152,7 +152,11 @@ export async function prepareProfile(options = {}) {
   // Tests disable the headless CLI parser. Replace its startup-dependent policy
   // with an explicit temporary-workspace policy rather than leaving fs/PTC pending.
   const patch = [
-    { id: 'sandbox-policy', inject: [], config: { mode: 'workspace-write', workspaceRoot: home, additionalWritableRoots: [] } },
+    // Test profiles run on hosts without a workspace-write backend (no
+    // bubblewrap/Landlock). Use the same unrestricted mode the test host already
+    // grants, while keeping all fixtures under the throwaway home.
+    { id: 'sandbox-policy', inject: [], config: { mode: 'danger-full-access', workspaceRoot: home, additionalWritableRoots: [] } },
+    { id: 'permission', config: { defaultPreset: 'danger-full-access' } },
     ...(options.patch ?? []),
   ]
   await writeFile(join(dir, 'cordis.patch.yml'), JSON.stringify(patch, null, 2))

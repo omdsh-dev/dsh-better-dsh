@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url'
 import yaml from 'js-yaml'
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url))
-const PACKAGE_NAME = '@menghuan1918/dsh-better-subagent'
+const PACKAGE_NAME = '@oh-my-dsh/dsh-better-subagent'
 const ENTRY_ID = 'dsh-better-subagent'
 const manifest = () => JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'))
 const patch = () => yaml.load(readFileSync(join(ROOT, 'cordis.patch.yml'), 'utf8'))
@@ -26,7 +26,7 @@ const patch = () => yaml.load(readFileSync(join(ROOT, 'cordis.patch.yml'), 'utf8
 test('manifest identity: scoped name, version, Apache-2.0, repository, publish config', () => {
   const m = manifest()
   assert.equal(m.name, PACKAGE_NAME)
-  assert.equal(m.version, '0.2.0')
+  assert.equal(m.version, '0.5.2')
   assert.equal(m.license, 'Apache-2.0')
   assert.equal(m.type, 'module')
   assert.equal(m.main, 'src/index.js')
@@ -37,25 +37,26 @@ test('manifest identity: scoped name, version, Apache-2.0, repository, publish c
   })
   assert.deepEqual(m.repository, {
     type: 'git',
-    url: 'git+https://github.com/Menghuan1918/dsh-better-subagent.git',
+    url: 'git+https://github.com/omdsh-dev/dsh-better-subagent.git',
   })
   assert.deepEqual(m.publishConfig, {
     registry: 'https://registry.npmjs.org/',
     access: 'public',
   })
-  assert.equal(m.engines.node, '^22.19.0 || >=24.0.0')
-  assert.equal(m.engines.dsh, '>=0.2.1-rc.2 <0.3.0')
+  assert.equal(m.engines.node, '>=24.9.0')
+  assert.equal(m.engines.dsh, '0.2.2-rc.2')
 })
 
 test('manifest: no build step, schemastery dependency, peer ranges, dev test deps', () => {
   const m = manifest()
   assert.equal(m.scripts?.build, undefined, 'pure ESM package must not require a build')
   assert.equal(m.scripts.test, 'node --test')
-  assert.match(m.dependencies['@deepseek-ai/schemastery'], /^~3\.18\./)
+  assert.equal(m.dependencies['@deepseek-ai/schemastery'], '~3.19.0')
+  assert.equal(m.dependencies['dsh-better-ptc'], '0.2.0')
   for (const [name, range] of Object.entries(m.peerDependencies)) {
     if (name === 'react') assert.equal(range, '^18.2.0')
-    else if (name === '@deepseek-ai/cordis') assert.equal(range, '~4.0.5')
-    else assert.equal(range, '>=0.2.1-rc.2 <0.3.0', name)
+    else if (name === '@deepseek-ai/cordis') assert.equal(range, '~4.1.0')
+    else assert.equal(range, '0.2.2-rc.2', name)
   }
   assert.equal(m.peerDependencies.react, '^18.2.0')
   assert.equal(m.devDependencies.react, '18.3.1')
@@ -89,16 +90,17 @@ test('manifest dsh block: bundle patch path and client platform/inject baseline'
   assert.deepEqual(m.dsh.bundle, { patch: './cordis.patch.yml' })
   assert.equal(m.dsh.client.platform, 'web')
   assert.deepEqual(m.dsh.client.inject, [
-    '@deepseek-ai/dsh-client-runtime',
     '@deepseek-ai/dsh-client-connection',
     '@deepseek-ai/dsh-client-ui-settings',
+    '@deepseek-ai/dsh-client-ui-renderer',
+    '@deepseek-ai/dsh-client-locale',
   ])
 })
 
 test('scoped install layout: package root, client and package.json resolve', () => {
   const dir = mkdtempSync(join(tmpdir(), 'better-subagent-scoped-'))
   try {
-    const scope = join(dir, 'node_modules', '@menghuan1918')
+    const scope = join(dir, 'node_modules', '@oh-my-dsh')
     mkdirSync(scope, { recursive: true })
     symlinkSync(ROOT, join(scope, 'dsh-better-subagent'), process.platform === 'win32' ? 'junction' : 'dir')
     writeFileSync(join(dir, 'package.json'), '{}\n')
@@ -111,11 +113,13 @@ test('scoped install layout: package root, client and package.json resolve', () 
   }
 })
 
-test('client half: closure id equals the package name and all four row config keys exist', () => {
+test('client half: closure id equals the package name and all six row config keys exist', () => {
   const source = readFileSync(join(ROOT, 'src/client.js'), 'utf8')
   assert.equal(source.includes(`id: '${PACKAGE_NAME}'`), true)
   for (const key of [
     `${PACKAGE_NAME}#${ENTRY_ID}`,
+    `dsh-better-dsh#${ENTRY_ID}`,
+    `@menghuan1918/dsh-better-subagent#${ENTRY_ID}`,
     `@menghuan1918/dsh-apollo#${ENTRY_ID}`,
     `dsh-apollo#${ENTRY_ID}`,
     `${ENTRY_ID}#${ENTRY_ID}`,

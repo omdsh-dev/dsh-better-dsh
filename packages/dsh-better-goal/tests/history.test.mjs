@@ -17,10 +17,10 @@ test('real registry restores completed and cleared goals and admitted round coun
   const projections = ctx.plugin(SessionProjectionRegistry)
   await Promise.all([store, projections])
   const history = createGoalHistoryDefinition(goalProjectionDefinition)
-  const unregister = ctx.sessionProjections.register(history)
+  const historyHandle = await ctx.sessionProjections.register(history)
   const goals = ctx.plugin(GoalService)
   await goals
-  context.after(async () => { unregister(); await goals.dispose(); await projections.dispose(); await store.dispose() })
+  context.after(async () => { await historyHandle.dispose(); await goals.dispose(); await projections.dispose(); await store.dispose() })
   const events = []
   ctx.on('session/event', (session, event) => { if (session.id === 'history-source') events.push(event) })
   const session = ctx.sessions.create('history-source', { meta: { cwd: '/tmp' } })
@@ -42,7 +42,7 @@ test('real registry restores completed and cleared goals and admitted round coun
   history.wire.viewSchema.parse(view)
   const restored = ctx.sessions.create('history-restored', { seed: events, meta: { cwd: '/tmp' } })
   assert.deepEqual(ctx.sessionProjections.snapshot(restored).values['better-goal-history'], view)
-  const state = ctx.sessionProjections.stateOf(restored, 'better-goal-history')
+  const state = historyHandle.stateOf(restored)
   history.stateSchema.parse(state)
   assert.equal(history.apply(state, { type: 'unrelated', seq: 99, data: {} }), state, 'unrelated events preserve the observable reference')
 })

@@ -62,7 +62,9 @@ export function buildChildGuardMessage(children) {
  */
 export async function collectRunningChildren(ctx, agent) {
   const running = []
-  for (const entry of await ctx.subagents.listChildren(agent.id)) {
+  // rc.2 removed listChildren; depth-one descendants are this Agent's direct
+  // children in the same stable catalog order.
+  for (const entry of (await ctx.subagents.listDescendants(agent.id)).filter((candidate) => candidate.depth === 1)) {
     if (ctx.agents.get(entry.id)?.status === 'running') running.push(entry)
   }
   return running

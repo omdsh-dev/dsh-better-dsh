@@ -1,15 +1,15 @@
 {
   "name": "dsh-better-goal",
-  "version": "0.2.1",
-  "description": "Independent DSH goal plugin: one goal tool, persistent continuation, hot settings and timed questions.",
+  "version": "0.4.3",
+  "description": "Independent DSH goal plugin: one goal tool, persistent continuation, hot settings and native-compatible history.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Menghuan1918/dsh-better-goal.git"
+    "url": "git+https://github.com/omdsh-dev/dsh-better-goal.git"
   },
   "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "type": "module",
   "main": "src/index.js",
@@ -19,8 +19,8 @@
     "./package.json": "./package.json"
   },
   "engines": {
-    "node": "^22.19.0 || >=24.0.0",
-    "dsh": ">=0.2.1-rc.2 <0.3.0"
+    "node": ">=24.9.0",
+    "dsh": "0.2.2-rc.2"
   },
   "scripts": {
     "test": "node --test",
@@ -35,23 +35,31 @@
     "third-party"
   ],
   "dependencies": {
-    "@deepseek-ai/schemastery": "~3.18.5",
+    "@deepseek-ai/schemastery": "~3.19.0",
     "zod": "4.4.3"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "~4.0.5",
-    "@deepseek-ai/dsh-agent": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-brand": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-llm": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-scope": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-session": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-session-projection": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-user-questions": ">=0.2.1-rc.2 <0.3.0",
+    "@deepseek-ai/cordis": "~4.1.0",
+    "@deepseek-ai/dsh-agent": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-brand": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-command-goal": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-goal": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-goal-round-driver": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-scope": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-session": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-session-projection": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-tool-goal": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-user-questions": "0.2.2-rc.2",
     "react": "^18.2.0"
   },
   "devDependencies": {
+    "@deepseek-ai/dsh-command-goal": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-goal": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-goal-round-driver": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-tool-goal": "0.2.2-rc.2",
     "js-yaml": "^4.2.0",
     "react": "18.3.1",
     "react-test-renderer": "18.3.1"
@@ -71,5 +79,9 @@
         "@deepseek-ai/dsh-client-ui-settings"
       ]
     }
+  },
+  "homepage": "https://github.com/omdsh-dev/dsh-better-goal#readme",
+  "bugs": {
+    "url": "https://github.com/omdsh-dev/dsh-better-goal/issues"
   }
 }

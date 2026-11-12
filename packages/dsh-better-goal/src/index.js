@@ -5,7 +5,6 @@ import { createGoalTool, LEGACY_GOAL_TOOLS } from './tool.js'
 import { registerGoalCommand } from './commands.js'
 import { apply as mountDriver } from './driver.js'
 import { mountSettings } from './settings.js'
-import { mountGoalListHints } from './list-hints.js'
 
 export { Config }
 export const name = 'dsh-better-goal'
@@ -36,7 +35,7 @@ export async function apply(ctx, config = {}) {
     ].map((name) => loader.import(`@deepseek-ai/${name}`)))
     native = { service: modules[0].GoalService, driver: modules[1], tool: modules[2], command: modules[3] }
   }
-  ctx.sessionProjections.register(createGoalHistoryDefinition(goalProjectionDefinition))
+  await ctx.sessionProjections.register(createGoalHistoryDefinition(goalProjectionDefinition))
   const current = () => snapshotConfig(config)
   const readConfig = () => ({
     ...current(),
@@ -64,7 +63,6 @@ export async function apply(ctx, config = {}) {
     defaultMaxGoalRounds: enhanced ? UNLIMITED_ROUNDS : loadedConfig.nativeDefaultMaxGoalRounds,
   })
   mountSettings(ctx, status)
-  mountGoalListHints(ctx)
   if (native) {
     ctx.inject(['goals'], (runtime) => {
       const controls = new Map()
@@ -141,22 +139,10 @@ function mountBetterRuntime(ctx, readConfig) {
       if (state) cleanup(state)
       states.delete(agent)
     })
-    // pre-step runs AFTER prompt assembly in DSH. Update both our registry
-    // definitions and their exact assembled schemas in the assembly waterfall.
-    runtime.on('system-prompt/assemble', (assembly, context, next) => {
-      const state = states.get(context.scope)
-      if (!state) return next()
-      refresh(state)
-      const schemas = new Map(state.actor.get('tools').schemas(state.agent).map((tool) => [tool.name, tool]))
-      assembly.tools = assembly.tools.flatMap((tool) => {
-        if (LEGACY_GOAL_TOOLS.includes(tool.name)) return []
-        if (tool.name === 'goal') {
-          const schema = schemas.get(tool.name)
-          return schema ? [schema] : []
-        }
-        return [tool]
-      })
-      return next()
+    // Next resolves step admission before prompt assembly; presentation waterfalls
+    // cannot rewrite provider-owned tool schemas. Refresh on the owning row's commit.
+    ctx.on('loader/volatile-update', () => {
+      for (const state of states.values()) refresh(state)
     })
     for (const agent of runtime.agents.list()) setup(agent)
     runtime.effect(() => () => {

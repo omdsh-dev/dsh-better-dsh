@@ -1,5 +1,5 @@
 /**
- * dsh-better-subagent (npm: @menghuan1918/dsh-better-subagent) —— 正式插件配置
+ * dsh-better-subagent (npm: @oh-my-dsh/dsh-better-subagent) —— 正式插件配置
  * （Config）与配置读取/规整。
  *
  * 这里是本包「设置」的唯一事实源。宿主行 `dsh-better-subagent` 由
@@ -8,12 +8,19 @@
  *
  *   - 标了 `.volatile()` 的字段在配置变更时**不重挂插件**——Loader 只把新值写回
  *     运行中 fiber 的稳定引用（`createVolatile` 协议 + `loader/volatile-update`），
- *     消费方每次读取都拿到最新值。子代理路由、等待工具、退出守卫、提示词段、
- *     HTTP 信任边界与设置表单都按次读取，因此配置无需重启或重挂即可即时生效。
+ *     消费方每次读取都拿到最新值。子代理路由、等待工具、退出守卫、提示词段与
+ *     设置表单都按次读取，因此这些开关无需重启或重挂即可即时生效。
+ *   - `trustedHosts` 同样标 volatile：HTTP 信任边界按请求重读活配置（见
+ *     `src/panel.js`），改完即时生效、不重挂。
  *
- * 所有 schema 配置均可编辑（volatile，即 dsh-settings 投影出的行配置表单字段）：
- * `childExitGuard`、`tiers.fast`、`tiers.quality`、`subagents.eng`、
- * `subagents.global`、`subagents.codex.*`、`subagents.claude.*`、`trustedHosts`。
+ * 可编辑范围（volatile，即 dsh-settings 投影出的行配置表单字段）：
+ * `childExitGuard`、`delegation.prompt`、`tiers.fast`、`tiers.quality`、
+ * `subagents.eng`、`subagents.global`、`subagents.codex.*`、`subagents.claude.*`、
+ * `trustedHosts`。
+ *
+ * `delegation.prompt` 只决定 `better-subagent:delegation` 提示词段是否渲染（默认
+ * 开启、对所有预设生效）；`subagents.eng/global` 只管 CLI 后端路由与 CLI 目录段，
+ * 两者互不影响。
  * 表单写入只能落在 volatile 路径上（dsh-settings 会拒绝其他路径）。
  *
  * 读取入口：
@@ -30,21 +37,23 @@ import z from '@deepseek-ai/schemastery'
 /** 本包在 profile roster 里的行 id；也是 dsh-settings 的命名空间（= Loader entry id）。 */
 export const ENTRY_ID = 'dsh-better-subagent'
 /** 包的 npm 名（scoped）。 */
-export const PACKAGE_NAME = '@menghuan1918/dsh-better-subagent'
+export const PACKAGE_NAME = '@oh-my-dsh/dsh-better-subagent'
 /**
- * Apollo 集成时可能出现的旧行/旧包名。只用于行配置 slot 兼容（浏览器半边并排
- * 注册旧键）与活配置查找的兜底；bundle 行、模块 specifier 与 client closure id
- * 一律用 PACKAGE_NAME。
+ * 旧包名/旧集成行名。只用于行配置 slot 兼容（浏览器半边并排注册旧键）与活配置
+ * 查找的兜底；bundle 行、模块 specifier 与 client closure id 一律用 PACKAGE_NAME。
  */
-export const LEGACY_PACKAGE_NAMES = Object.freeze(['@menghuan1918/dsh-apollo', 'dsh-apollo'])
+export const LEGACY_PACKAGE_NAMES = Object.freeze(['@menghuan1918/dsh-better-subagent', '@menghuan1918/dsh-apollo', 'dsh-apollo'])
 /** 浏览器半边注册 `plugins.row.config` 用的主键：`<包名>#<行 id>`。 */
 export const ROW_CONFIG_KEY = `${PACKAGE_NAME}#${ENTRY_ID}`
 /**
- * 兼容/集成键，全部指向同一行、同一份配置。`<行 id>#<行 id>` 是 Apollo 集成槽
- * 的短别名（没有作用域时也能被插件页匹配）；绝不因此产生第二份配置存储。
+ * 兼容/集成键，全部指向同一行、同一份配置。`dsh-better-dsh#<row>` 是 Better DSH
+ * 集成槽；旧 scoped/unscoped Apollo 键保留给旧 profile；`<行 id>#<行 id>` 是
+ * 无作用域短别名。绝不因此产生第二份配置存储。
  */
 export const ROW_CONFIG_KEYS = Object.freeze([
   ROW_CONFIG_KEY,
+  `dsh-better-dsh#${ENTRY_ID}`,
+  `@menghuan1918/dsh-better-subagent#${ENTRY_ID}`,
   `@menghuan1918/dsh-apollo#${ENTRY_ID}`,
   `dsh-apollo#${ENTRY_ID}`,
   `${ENTRY_ID}#${ENTRY_ID}`,
@@ -112,11 +121,17 @@ export const TIER_NAMES = Object.freeze(['fast', 'quality'])
 /**
  * 本插件行的正式配置 schema。
  *
- * 所有配置字段均由 volatile 路径覆盖，可通过宿主设置编辑，保存即生效、不重挂。
+ * `childExitGuard`、`delegation.prompt`、`subagents.{eng,global}`、
+ * `subagents.{codex,claude}`、`trustedHosts` 全部标 volatile（即时生效、不重挂）：信任边界按请求重读活配置。
  */
 export const Config = z.object({
   /** 运行中子代理退出拦截总开关（默认关闭，显式开启才拦回合结束）。 */
   childExitGuard: z.boolean().default(false).volatile(),
+  /** 委派提示词段（`better-subagent:delegation`）；与 CLI 路由范围 `subagents.*` 无关。 */
+  delegation: z.object({
+    /** 是否把委派纪律与模型分档渲染进系统提示词（默认开启，对所有预设生效）。 */
+    prompt: z.boolean().default(true).volatile(),
+  }),
   /** 子代理模型分档（工程模式提示词按此渲染；路由须在 allowedModels 白名单内）。 */
   tiers: z.object({
     fast: TierSchema,
@@ -243,15 +258,17 @@ function tierOf(value) {
  * 输入可以是 `entry.fiber.config`（volatile 字段是引用对象）、旧 JSON 文档、
  * 残缺对象或 `undefined`；返回值总是全新的、可安全改写的普通对象。
  * @param config - 任意配置值。
- * @returns `{ childExitGuard, tiers: { fast, quality }, subagents: { eng, global, codex, claude }, trustedHosts }`。
+ * @returns `{ childExitGuard, delegation: { prompt }, tiers: { fast, quality }, subagents: { eng, global, codex, claude }, trustedHosts }`。
  */
 export function normalizeConfig(config) {
   const projected = plain(config)
   const source = isRecord(projected) ? projected : {}
   const subagents = isRecord(source.subagents) ? source.subagents : {}
   const tiers = isRecord(source.tiers) ? source.tiers : {}
+  const delegation = isRecord(source.delegation) ? source.delegation : {}
   return {
     childExitGuard: booleanOf(source.childExitGuard, false),
+    delegation: { prompt: booleanOf(delegation.prompt, true) },
     tiers: { fast: tierOf(tiers.fast), quality: tierOf(tiers.quality) },
     subagents: {
       eng: booleanOf(subagents.eng, true),

@@ -1,22 +1,23 @@
 /**
- * Apollo 0.9.0 / DSH 0.2.2-rc.1 real-profile integration smoke.
+ * Apollo 0.9.0 / DSH 0.2.2-rc.2 real-profile integration smoke.
  *
  * Boots an isolated headless DSH profile from the installed runtime
- * (DSH_PACKAGE_ROOT), Apollo's shipped files and the three independent plugin
+ * (DSH_PACKAGE_ROOT), Apollo's shipped files and the five independent plugin
  * packages, with a scripted LLM adapter (no credentials, no real CLI):
  *
- *   apollo     — Apollo + both independent rows. One stable row each, real
+ *   apollo     — Apollo + all independent rows. One stable row each, real
  *                eng session turn, native subagent create/wait, manual
  *                /compact through dsh-better-compact's engine, HTTP inspect,
  *                old-Apollo config migration, save → requiresReload → profile
  *                restart → activeConfig update.
- *   standalone — the two independent bundles without Apollo.
+ *   standalone — the independent bundles without Apollo.
  *   both       — Apollo and the standalone bundles selected explicitly:
  *                Loader still activates one row each, but configEditor/
- *                settings cannot address the duplicated rows (DSH 0.2.2-rc.1
+ *                settings cannot address the duplicated rows (DSH 0.2.2-rc.2
  *                unaddressable/read-only limitation).
  *
- * Run: DSH_PACKAGE_ROOT=… node scripts/runtime-smoke.mjs <apollo|standalone|both|all>
+ * Run: DSH_PACKAGE_ROOT=… APOLLO_PLUGIN_SOURCE_ROOT=…/packages \
+ *      node scripts/runtime-smoke.mjs <apollo|standalone|both|all>
  */
 
 import assert from 'node:assert/strict'
@@ -334,8 +335,9 @@ async function scenarioApollo() {
     assert.ok(ctx.tools.get('wait_subagent', agent), 'the independent wait tool is visible')
     const activation = await call(ctx, agent, 'subagent', { description: 'smoke child', prompt: 'Reply once.' })
     assert.equal(activation.kind, 'activation')
-    const waited = await call(ctx, agent, 'wait_subagent', { subagent_id: [activation.subagentId] })
-    assert.match(waited, new RegExp(`subagent ${activation.subagentId} done \\(completed\\)`))
+    assert.equal(typeof activation.name, 'string', 'rc.2 native subagent returns the tree name')
+    const waited = await call(ctx, agent, 'wait_subagent', { subagent_id: [activation.name] })
+    assert.ok(waited.includes(`subagent ${activation.name} done (completed)`), waited)
     await agent.whenIdle()
     check('native-subagent-create-wait')
 
@@ -484,7 +486,7 @@ async function scenarioBoth() {
     for (const id of ['dsh-better-compact', 'dsh-better-compact-engine', 'dsh-better-subagent', 'apollo-skills']) assertOneRow(counts, id)
     check('both-one-row-each')
 
-    // DSH 0.2.2-rc.1 keeps the rows readable but cannot write a profile
+    // DSH 0.2.2-rc.2 keeps the rows readable but cannot write a profile
     // override for an id inserted by two explicit bundle sources: configEditor
     // rejects the write as overridden. That is the documented unaddressable /
     // read-only limitation (the Web row manager label itself is UI-only and is

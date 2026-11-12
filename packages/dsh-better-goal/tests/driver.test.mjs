@@ -5,6 +5,78 @@ import { DEFAULTS, UNLIMITED_ROUNDS } from '../src/config.js'
 
 const drain = async () => { for (let i = 0; i < 6; i++) await new Promise(setImmediate) }
 
+/**
+ * Run one goal turn whose measured duration is exactly `ms`.
+ *
+ * The driver measures turn length with `Date.now()`, so the clock is frozen for
+ * the duration of the turn and advanced by `ms` between turn/start and
+ * turn/end. Tests in one file run sequentially, so the global override cannot
+ * leak into a concurrent test.
+ * @param h - harness from `harness()`.
+ * @param ms - elapsed milliseconds the driver should observe.
+ * @param reason - the real turn/end reason (an aborted turn nests why).
+ */
+async function runTurn(h, ms, reason = { kind: 'completed' }) {
+  const realNow = Date.now
+  let clock = 1_000_000
+  Date.now = () => clock
+  try {
+    h.emit('session/event', h.agent.session, { type: 'turn/start', data: {} })
+    await h.admit()
+    clock += ms
+    h.emit('session/event', h.agent.session, { type: 'turn/end', data: { reason } })
+  } finally {
+    Date.now = realNow
+  }
+}
+
+/** The last queued round's prompt text. */
+const lastPrompt = (h) => h.queued.at(-1).content[0].text
+
+/**
+ * Fake `ctx.jobs` for one session.
+ *
+ * `settleAfter` is how many `wait` calls it takes for each job to reach a
+ * terminal state (0 = settle on the first wait, Infinity = never settle).
+ * The fake advances a fake clock so the driver's deadline arithmetic sees real
+ * elapsed time instead of finishing instantly.
+ */
+function fakeJobs({ jobs = [], settleAfter = 0, listError, waitError, clock } = {}) {
+  const state = jobs.map((job) => ({ status: 'running', ...job }))
+  const waits = []
+  return {
+    waits,
+    state,
+    list(caller) {
+      if (listError !== undefined) throw listError
+      return state.map((job) => ({ id: job.id, label: job.label, kind: job.kind, status: job.status }))
+    },
+    async wait(id, timeoutMs, caller) {
+      waits.push({ id, timeoutMs, caller })
+      if (waitError !== undefined) throw waitError
+      const job = state.find((entry) => entry.id === id)
+      job.waited = (job.waited ?? 0) + 1
+      // `settleAfter` is the 1-based wait on which the job finishes; Infinity never does.
+      if (job.waited >= settleAfter) {
+        job.status = 'completed'
+        return { id, status: job.status }
+      }
+      // Nothing settled: burn the whole remaining budget so this wait times out.
+      if (clock !== undefined) clock.now += timeoutMs
+      return { id, status: job.status }
+    },
+  }
+}
+
+/** Replace `Date.now` with a movable clock for the duration of one test. */
+function installClock(t, start = 1_000_000) {
+  const clock = { now: start }
+  const realNow = Date.now
+  Date.now = () => clock.now
+  t.after(() => { Date.now = realNow })
+  return clock
+}
+
 function harness(settings = {}, options = {}) {
   const handlers = new Map(), cleanups = [], agents = new Map(), queued = [], warnings = []
   const config = { ...DEFAULTS, ...settings }
@@ -13,7 +85,7 @@ function harness(settings = {}, options = {}) {
   const ctx = {
     fiber: { state: 2 },
     logger: { warn: (message) => warnings.push(message) },
-    get: () => undefined,
+    get: (service) => (service === 'jobs' ? options.jobs : undefined),
     on(name, fn) { const list = handlers.get(name) ?? []; list.push(fn); handlers.set(name, list) },
     effect(fn) { const generator = fn(); cleanups.push(generator.next().value) },
     agents: {
@@ -95,6 +167,30 @@ test('continuation prompt preserves scope, evidence audit, pause-for-user and no
   assert.doesNotMatch(prompt, /update_goal|create_goal|goal_id|current id\/revision|"fail"/)
 })
 
+test('every round states that goal rounds arrive with no delay and names the blocking waits', () => {
+  const prompt = renderGoalRoundPrompt({ objective: 'Ship it', maxGoalRounds: UNLIMITED_ROUNDS }, 1)[0].text
+  assert.match(prompt, /delivered immediately after your previous turn ended/)
+  assert.match(prompt, /no delay, and nothing runs in the background between them/)
+  // The three ways to block inside the turn, not by ending it.
+  assert.match(prompt, /a foreground command, job_output with wait: true, or wait_subagent/)
+  assert.match(prompt, /Ending the turn to wait for a notification only starts another round right away/)
+  // The warning is opt-in per round and absent from a normal round.
+  assert.doesNotMatch(prompt, /ended very quickly/)
+})
+
+test('the spin warning appears only when the previous goal turn ended quickly', () => {
+  const goal = { objective: 'Ship it', maxGoalRounds: UNLIMITED_ROUNDS }
+  const plain = renderGoalRoundPrompt(goal, 2, false)[0].text
+  const warned = renderGoalRoundPrompt(goal, 2, true)[0].text
+  assert.doesNotMatch(plain, /ended very quickly/)
+  assert.match(warned, /previous goal turn ended very quickly/)
+  assert.match(warned, /block until the result you need arrives, do substantive work, or call goal\(action: "pause"\)/)
+  // The warning is additive: every invariant still holds in the warned round.
+  for (const pattern of [/no delay/, /user-provided task data/, /goal\(action: "complete"\)/, /Use set only to replace the whole objective/]) {
+    assert.match(warned, pattern)
+  }
+})
+
 test('driver reserves exactly one round and requires its matching pre-step admission', async (t) => {
   const h = harness(); t.after(() => h.close())
   h.start(); await drain()
@@ -103,6 +199,161 @@ test('driver reserves exactly one round and requires its matching pre-step admis
   assert.equal((await h.admit()).kind, 'enter')
   h.goal.phase = 'complete'; h.goal.activation = 'disarmed'; h.idle(); await drain()
   assert.equal(h.queued.length, 1)
+})
+
+test('a goal turn shorter than the threshold makes the next round carry the spin warning', async (t) => {
+  const h = harness({ spinHintSeconds: 120 }); t.after(() => h.close())
+  h.start(); await drain()
+  assert.equal(h.queued.length, 1)
+  // First round has no history to judge; it never carries the warning.
+  assert.doesNotMatch(lastPrompt(h), /ended very quickly/)
+
+  await runTurn(h, 3_000)
+  h.idle(); await drain()
+  assert.equal(h.queued.length, 2, 'a fast turn is followed by exactly one new round')
+  assert.match(lastPrompt(h), /previous goal turn ended very quickly/)
+
+  // The warning is consumed: the following round is measured fresh, so a slow
+  // turn clears it instead of repeating it forever.
+  await runTurn(h, 10 * 60_000)
+  h.idle(); await drain()
+  assert.equal(h.queued.length, 3)
+  assert.doesNotMatch(lastPrompt(h), /ended very quickly/, 'a slow turn clears the warning')
+})
+
+test('a goal turn at or above the threshold, or with the switch off, never warns', async (t) => {
+  const slow = harness({ spinHintSeconds: 120 }); t.after(() => slow.close())
+  slow.start(); await drain()
+  await runTurn(slow, 120_000)  // exactly the threshold: not "shorter than"
+  slow.idle(); await drain()
+  assert.equal(slow.queued.length, 2)
+  assert.doesNotMatch(lastPrompt(slow), /ended very quickly/)
+
+  const off = harness({ spinHintSeconds: 0 }); t.after(() => off.close())
+  off.start(); await drain()
+  await runTurn(off, 1)
+  off.idle(); await drain()
+  assert.equal(off.queued.length, 2)
+  assert.doesNotMatch(lastPrompt(off), /ended very quickly/, '0 disables the warning')
+
+  const tuned = harness({ spinHintSeconds: 30 }); t.after(() => tuned.close())
+  tuned.start(); await drain()
+  await runTurn(tuned, 29_000)
+  tuned.idle(); await drain()
+  assert.match(lastPrompt(tuned), /ended very quickly/, 'a custom threshold applies to the next round')
+})
+
+test('an aborted or token-capped goal turn is not read as idling', async (t) => {
+  for (const reason of [{ kind: 'aborted', reason: { kind: 'user' } }, { kind: 'max-tokens' }]) {
+    const h = harness({ spinHintSeconds: 120 }); t.after(() => h.close())
+    h.start(); await drain()
+    await runTurn(h, 1_000, reason)
+    h.idle(); await drain()
+    // Neither reason is evidence about the model, so no round may carry the
+    // warning. (An aborted turn also disarms/pauses the goal, so assert on any
+    // round that did get queued.)
+    for (const message of h.queued.slice(1)) {
+      assert.doesNotMatch(message.content[0].text, /ended very quickly/, reason.kind + ' must not produce a spin warning')
+    }
+  }
+})
+
+test('a human ordinary turn between goal rounds does not arm the warning', async (t) => {
+  const h = harness({ spinHintSeconds: 120 }); t.after(() => h.close())
+  h.start(); await drain()
+  await runTurn(h, 10 * 60_000)
+  h.idle(); await drain()
+
+  // A human message opens its own turn; it is not a goal round.
+  h.emit('session/event', h.agent.session, { type: 'turn/start', data: {} })
+  h.emit('session/event', h.agent.session, { type: 'turn/end', data: { reason: { kind: 'completed' } } })
+  h.idle(); await drain()
+  for (const message of h.queued.slice(2)) {
+    assert.doesNotMatch(message.content[0].text, /ended very quickly/, 'only goal turns are measured')
+  }
+})
+
+test('the next round waits for background jobs and starts as soon as they settle', async (t) => {
+  const clock = installClock(t)
+  const jobs = fakeJobs({ jobs: [{ id: 'bash-1', label: 'npm test', kind: 'bash' }], settleAfter: 1, clock })
+  const h = harness({ jobWaitSeconds: 2400 }, { jobs })
+  t.after(() => h.close())
+  h.start(); await drain()
+  assert.equal(h.queued.length, 1, 'the first round is admitted without any wait')
+  await runTurn(h, 5_000)
+  h.idle(); await drain()
+  assert.equal(jobs.waits.length, 1, 'the driver joined the running job before the next round')
+  assert.equal(jobs.waits[0].caller, 'session', 'jobs are read through the owning session id')
+  assert.equal(jobs.waits[0].id, 'bash-1')
+  assert.ok(jobs.waits[0].timeoutMs > 0, 'the wait is bounded by a positive timeout')
+  // The job settled inside the window, so the round carries no job warning.
+  assert.equal(h.queued.length, 2)
+  assert.doesNotMatch(lastPrompt(h), /Still running:/)
+  assert.match(lastPrompt(h), /no delay, and nothing runs in the background between them/)
+})
+
+test('a job that outlasts the window is named in the next round and is not cancelled', async (t) => {
+  const clock = installClock(t)
+  const jobs = fakeJobs({ jobs: [{ id: 'bash-2', label: 'npm run build', kind: 'bash' }], settleAfter: Infinity, clock })
+  const h = harness({ jobWaitSeconds: 2400 }, { jobs })
+  t.after(() => h.close())
+  h.start(); await drain()
+  await runTurn(h, 5_000)
+  h.idle(); await drain()
+  assert.equal(h.queued.length, 2, 'the round still starts after the window closes')
+  const prompt = lastPrompt(h)
+  assert.match(prompt, /Still running:/)
+  assert.match(prompt, /background job bash-2 \(npm run build, bash\) — running/)
+  assert.match(prompt, /do not re-dispatch it/)
+  // The delivery sentence must not still claim nothing was waiting.
+  assert.doesNotMatch(prompt, /no delay, and nothing runs in the background between them/)
+  assert.equal(jobs.state[0].status, 'running', 'the driver never cancels work it waited on')
+  // The snapshot is use-once in the sense that each round re-measures after its
+  // own window; the job is still running, so the next round names it afresh.
+  await runTurn(h, 5_000); h.idle(); await drain()
+  assert.equal(h.queued.length, 3)
+  assert.match(lastPrompt(h), /Still running:/)
+  assert.ok(jobs.waits.length > 1, 'each round measures its own window')
+})
+
+test('the first round never waits for background jobs', async (t) => {
+  const clock = installClock(t)
+  const jobs = fakeJobs({ jobs: [{ id: 'bash-0', label: 'x', kind: 'bash' }], clock })
+  const h = harness({ jobWaitSeconds: 2400 }, { jobs })
+  t.after(() => h.close())
+  h.start(); await drain()
+  assert.equal(h.queued.length, 1, 'a fresh goal is admitted without waiting')
+  assert.equal(jobs.waits.length, 0, 'there is no previous turn whose work could have been cut short')
+  assert.equal(jobs.state[0].status, 'running', 'and the job was left alone')
+})
+
+test('jobWaitSeconds 0 skips the wait entirely', async (t) => {
+  const clock = installClock(t)
+  const jobs = fakeJobs({ jobs: [{ id: 'bash-3', label: 'x', kind: 'bash' }], clock })
+  const h = harness({ jobWaitSeconds: 0 }, { jobs })
+  t.after(() => h.close())
+  h.start(); await drain()
+  await runTurn(h, 5_000); h.idle(); await drain()
+  assert.equal(h.queued.length, 2, 'the round is admitted as before')
+  assert.equal(jobs.waits.length, 0, '0 disables the wait')
+})
+
+test('a missing or failing jobs service never blocks a round', async (t) => {
+  const clock = installClock(t)
+  const absent = harness({ jobWaitSeconds: 2400 })
+  t.after(() => absent.close())
+  absent.start(); await drain()
+  await runTurn(absent, 5_000); absent.idle(); await drain()
+  assert.equal(absent.queued.length, 2, 'no jobs service: the round is admitted as before')
+
+  for (const options of [{ listError: new Error('registry gone') }, { waitError: new Error('foreign job') }]) {
+    const failing = harness({ jobWaitSeconds: 2400 }, { jobs: fakeJobs({ jobs: [{ id: 'bash-4', kind: 'bash' }], clock, ...options }) })
+    t.after(() => failing.close())
+    failing.start(); await drain()
+    await runTurn(failing, 5_000); failing.idle(); await drain()
+    assert.equal(failing.queued.length, 2, 'a failing jobs service must not wedge the driver')
+    assert.ok(failing.warnings.some((line) => /background job wait skipped/.test(line)), 'the failure is logged')
+  }
 })
 
 test('Plan mode suppresses automatic work and leaving it admits the explicitly armed goal', async (t) => {
@@ -135,10 +386,22 @@ test('exhausted finite cap fails immediately while sentinel admits another round
 test('user abort disarms synchronously and pauses at idle without injecting a new round', async (t) => {
   const h = harness(); t.after(() => h.close())
   h.start(); await drain(); await h.admit()
-  h.emit('session/event', h.agent.session, { type: 'turn/end', data: { reason: { kind: 'aborted' } } })
+  h.emit('session/event', h.agent.session, { type: 'turn/end', data: { reason: { kind: 'aborted', reason: { kind: 'user' } } } })
   assert.equal(h.goal.activation, 'disarmed')
   h.idle(); await drain()
   assert.equal(h.goal.phase, 'paused')
+  assert.equal(h.queued.length, 1)
+})
+
+test('disposed turn disarms without persisting a user pause', async (t) => {
+  const h = harness(); t.after(() => h.close())
+  h.start(); await drain(); await h.admit()
+  const revision = h.goal.revision
+  h.emit('session/event', h.agent.session, { type: 'turn/end', data: { reason: { kind: 'aborted', reason: { kind: 'disposed' } } } })
+  assert.equal(h.goal.activation, 'disarmed')
+  h.idle(); await drain()
+  assert.equal(h.goal.phase, 'active')
+  assert.equal(h.goal.revision, revision)
   assert.equal(h.queued.length, 1)
 })
 

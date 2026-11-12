@@ -57,7 +57,13 @@ function makeCtx({ children = [], sessionQuery } = {}) {
     agentStatus,
     sessionQuery: logs,
     on: (event, fn) => { handlers.set(event, fn); return () => {} },
-    subagents: { listChildren: async () => children },
+    // rc.2 exposes only the recursive walk; direct-child rows are depth one.
+    // Names resolve to themselves in these fixtures; tests that use durable ids
+    // exercise the single-token fallback.
+    subagents: {
+      listDescendants: async () => children.map((child) => ({ depth: 1, ...child })),
+      resolveName: async (_parent, ref) => ref,
+    },
     agents: { get: (id) => agentStatus.get(id) },
     tools: { register: (definition) => { tool = definition; return () => {} } },
   }
@@ -136,6 +142,16 @@ test('already-finished child with a matching settlement → immediate done', asy
   ctx.agentStatus.set('child-1', { status: 'idle' })
   const out = await ctx.getTool().execute({ subagent_id: ['child-1'] }, makeExec())
   assert.equal(out, DONE('child-1'))
+})
+
+test('rc.2 name resolves to the durable id and is echoed in the done line', async () => {
+  const ctx = makeCtx({ children: [{ id: 'child-1', name: 'planner', path: 'planner' }] })
+  ctx.subagents.resolveName = async (_parent, ref) => ref === 'planner' ? 'child-1' : ref
+  fireStart(ctx, { id: 'child-1', runId: 'r1' })
+  fireEnd(ctx, { id: 'child-1', runId: 'r1', stopReason: 'completed' })
+  ctx.agentStatus.set('child-1', { status: 'idle' })
+  const out = await ctx.getTool().execute({ subagent_id: ['planner'] }, makeExec())
+  assert.equal(out, DONE('planner'))
 })
 
 test('CROSS-TURN REGRESSION: old end → new start + queued input while idle → running → new end', async () => {
@@ -526,10 +542,23 @@ test('matched end is terminal when no DSH session is readable and the child is n
   const ctx = makeCtx({ children: [{ id: 'child-1' }] })
   ctx.sessionQuery.observeSession = async () => { throw new Error('external child has no DSH session') }
   fireStart(ctx, { id: 'child-1', runId: 'run-ext' })
-  fireEnd(ctx, { id: 'child-1', runId: 'run-ext', stopReason: 'completed' })
+  fireEnd(ctx, { id: 'child-1', runId: 'run-ext', local: false, provider: 'external', stopReason: 'completed' })
   const out = await ctx.getTool().execute({ subagent_id: ['child-1'] }, makeExec())
   assert.equal(out, DONE('child-1'))
   assert.doesNotMatch(out, /could not be confirmed/)
+})
+
+test('local end without a live Agent still requires readable durable state', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'setTimeout', 'Date'] })
+  const ctx = makeCtx({ children: [{ id: 'child-1' }] })
+  ctx.sessionQuery.observeSession = async () => { throw new Error('local storage unavailable') }
+  fireStart(ctx, { id: 'child-1', runId: 'run-local', local: true, provider: 'spawn' })
+  fireEnd(ctx, { id: 'child-1', runId: 'run-local', local: true, provider: 'spawn', stopReason: 'completed' })
+  const pending = ctx.getTool().execute({ subagent_id: ['child-1'] }, makeExec())
+  await flushMicrotasks()
+  t.mock.timers.tick(START_GRACE_MS + 1000)
+  await flushMicrotasks()
+  assert.match(await pending, /could not be confirmed/)
 })
 
 test('timeout_ms below 15 minutes is raised to 15 minutes', async (t) => {

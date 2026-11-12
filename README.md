@@ -16,7 +16,7 @@
   <a href="https://www.npmjs.com/package/dsh-better-dsh"><img src="https://img.shields.io/npm/v/dsh-better-dsh.svg" alt="npm 版本"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/omdsh-dev/dsh-better-dsh?color=blue"></a>
   <a href="package.json"><img alt="Node &gt;=24.9.0" src="https://img.shields.io/badge/node-%3E%3D24.9.0-339933?logo=node.js&amp;logoColor=white"></a>
-  <a href="package.json"><img alt="DSH 0.2.2-rc.1" src="https://img.shields.io/badge/DSH-0.2.2--rc.1-4B32C3"></a>
+  <a href="package.json"><img alt="DSH 0.2.2-rc.2" src="https://img.shields.io/badge/DSH-0.2.2--rc.2-4B32C3"></a>
   <a href="https://github.com/omdsh-dev/dsh-better-dsh"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-omdsh--dev-181717?logo=github"></a>
 </p>
 
@@ -51,7 +51,7 @@
   </picture>
 </p>
 
-需要 Node.js `>=24.9.0`；验收基线是 DSH `0.2.2-rc.1`。
+需要 Node.js `>=24.9.0`；验收基线是 DSH `0.2.2-rc.2`。
 
 ```sh
 # npm
@@ -63,9 +63,11 @@ dsh plugin --profile <profile> add github:omdsh-dev/dsh-better-dsh#v0.11.3
 
 > 安装、升级或换包后必须**重启对应 profile**；只刷新网页不够。
 >
-> 不要同时显式添加 Better DSH 和独立插件 bundle：行实例仍只有一个，但 DSH 0.2.2-rc.1 会把同一 id 的配置写入拒绝为只读。只保留一个显式入口。
+> 不要同时显式添加 Better DSH 和独立插件 bundle：行实例仍只有一个，但 DSH 0.2.2-rc.2 会把同一 id 的配置写入拒绝为只读。只保留一个显式入口。
 
 本轮版本：**Better DSH `0.11.3`**，搭配 goal `0.4.3`、subagent `0.5.2`、compact `0.4.0`、ask-user `0.3.3`、ptc `0.2.0`。
+
+> 源码分支已完成 DSH `0.2.2-rc.2` 适配，但子包与根 bundle **尚未重新发布**。registry 上的 `0.11.3` 仍是 rc.1 验收构建；在子包新版本发布前，直接用 registry 安装在 rc.2 下会被 `engines.dsh` 门禁跳过。
 
 ## 架构
 
@@ -222,7 +224,7 @@ dsh plugin --profile <profile> add dsh-better-ask-user@0.3.3 dsh-better-ptc@0.2.
 |---|---|
 | 只有 Better DSH | 插入 goal / subagent / compact companion+engine / ask-user / ptc 行；工程预设内带 compact engine |
 | 只有独立 bundle | 各自插入同样的行；没有 Better DSH 的工程预设、技能或 job 守卫 |
-| Better DSH + 独立 bundle 同时显式选中 | Loader 仍按行 id 只激活一行实例，但 DSH 0.2.2-rc.1 会拒绝为同一 id 写入配置：行可读、配置只读 |
+| Better DSH + 独立 bundle 同时显式选中 | Loader 仍按行 id 只激活一行实例，但 DSH 0.2.2-rc.2 会拒绝为同一 id 写入配置：行可读、配置只读 |
 
 恢复方法：**只保留一个显式入口**，然后重启 profile。不要为了“多一层保险”同时安装两套入口。
 

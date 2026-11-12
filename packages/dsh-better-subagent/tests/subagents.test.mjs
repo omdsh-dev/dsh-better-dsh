@@ -14,7 +14,7 @@
  * - `ctx.workingDirectory.ensure(parent, signal)` 是父 Agent 当前目录的唯一权威
  *   （`…/dsh-working-directory/lib/types/index.d.ts`）；Session header 的 cwd
  *   只是原始项目目录，可能已过时。
- * - subagent 工具的成功输出在 0.2.1 起是 `{kind:'activation', subagentId}`。
+ * - subagent 工具的成功输出在 rc.2 起是 `{kind:'activation', name}`。
  *
  * 运行：node --test tests/subagents.test.mjs
  */
@@ -112,13 +112,15 @@ function makeCtx({ subagents = {}, agents = {}, subprocess = {}, workingDirector
   const handlersOf = new Map()
   const resolved = []
   const warnings = []
+  const disposed = []
   const ctx = {
     guards,
     handlers,
     handlersOf,
     resolved,
     warnings,
-    tools: { guard: (guard) => { guards.push(guard); return () => {} } },
+    disposed,
+    tools: { executable: () => ({}), guard: (guard) => { guards.push(guard); return () => {} } },
     on: (event, handler) => {
       handlers.set(event, handler)
       const list = handlersOf.get(event) ?? []
@@ -129,8 +131,7 @@ function makeCtx({ subagents = {}, agents = {}, subprocess = {}, workingDirector
     subagents: {
       resolveMaxDepth: () => undefined,
       // 真实契约（0.2.1）：manager 返回的 childId 就是调用方预留的 spec.childId。
-      startActivation: async (spec) => ({ childId: spec.childId, messageId: 'msg-1' }),
-      drainChildren: async () => {},
+      startActivation: async (spec) => ({ childId: spec.childId, name: 'agent-1', messageId: 'msg-1', dispose: async () => { disposed.push(spec.childId) } }),
       ...subagents,
     },
     workingDirectory,
@@ -190,10 +191,28 @@ test('ordinary：非子代理工具调用一律 next() 委托，不短路', asyn
   }
 })
 
+test('admission：未接纳的 subagent / model catalog 不进入 CLI bridge', async () => {
+  const ctx = makeCtx()
+  const sessions = makeSessions()
+  const lookups = []
+  ctx.tools.executable = (...args) => { lookups.push(args); return undefined }
+  installCliRouting(ctx, makeConfig(), sessions)
+  const [handler, next] = executeHandler(ctx)
+  const agent = makeAgent()
+  const toolSet = {}
+  for (const name of ['subagent', 'list_subagent_models']) {
+    await handler({ ...makeExec(agent), name, toolSet, arguments: { provider: 'codex', description: 'denied', prompt: 'denied' } }, next)
+    assert.deepEqual(lookups.at(-1), [name, agent, toolSet])
+  }
+  assert.equal(next.calls, 2)
+  assert.deepEqual(sessions.calls, [])
+  assert.deepEqual(ctx.resolved, [])
+})
+
 test('ordinary：subagent 不带 CLI provider 时 next() 委托（原有行为保持）', async () => {
   const ctx = makeCtx()
   installCliRouting(ctx, makeConfig(), makeSessions())
-  const delegated = { isError: false, value: { kind: 'activation', subagentId: 'native-1' }, content: [] }
+  const delegated = { isError: false, value: { kind: 'activation', name: 'native-1' }, content: [] }
   const [handler, next] = executeHandler(ctx, delegated)
   const out = await handler({ ...makeExec(makeAgent()), name: 'subagent', arguments: { description: 'd', prompt: 'p', provider: 'spawn' } }, next)
   assert.equal(next.calls, 1)
@@ -325,7 +344,7 @@ test('只后台：省略 run_in_background 时照常后台创建（输出 kind=a
   const sessions = makeSessions()
   const out = await startCliSubagent(ctx, makeConfig(), sessions, { provider: 'codex', description: 'd', prompt: 'p' }, { agent: makeAgent(), signal: new AbortController().signal })
   assert.equal(out.kind, 'activation')
-  assert.equal(out.subagentId, started[0].childId)
+  assert.equal(out.childId, started[0].childId)
   assert.equal(started.length, 1)
 })
 
@@ -399,17 +418,17 @@ test('白名单：模型不允许的 effort 被拒；允许的 effort 落到 age
     /effort/,
   )
   await startCliSubagent(ctx, makeConfig(), makeSessions(), { provider: 'codex', description: 'd', prompt: 'p', model: 'gpt-5-codex', reasoning_effort: 'high' }, { agent: makeAgent(), signal: new AbortController().signal })
-  assert.equal(started[0].request.agentOptions.reasoningEffort, 'high')
-  assert.equal(started[0].request.agentOptions.provider, 'apollo-cli-codex')
-  assert.equal(started[0].request.agentOptions.model, 'gpt-5-codex')
+  assert.equal(started[0].agentOptions.reasoningEffort, 'high')
+  assert.equal(started[0].agentOptions.provider, 'apollo-cli-codex')
+  assert.equal(started[0].agentOptions.model, 'gpt-5-codex')
 })
 
 test('白名单：省略 model/effort 时使用默认档', async () => {
   const started = []
   const ctx = makeCtx({ subagents: { startActivation: async (spec) => { started.push(spec); return { childId: spec.childId, messageId: 'm' } } } })
   await startCliSubagent(ctx, makeConfig(), makeSessions(), { provider: 'claude', description: 'd', prompt: 'p' }, { agent: makeAgent(), signal: new AbortController().signal })
-  assert.equal(started[0].request.agentOptions.model, 'sonnet')
-  assert.equal(started[0].request.agentOptions.reasoningEffort, 'low')
+  assert.equal(started[0].agentOptions.model, 'sonnet')
+  assert.equal(started[0].agentOptions.reasoningEffort, 'low')
 })
 
 test('cliCatalog：目录只列 enabled 的 backend，且模型清单来自白名单', () => {
@@ -439,14 +458,14 @@ test('稳定 ID：先落 KV 再 startActivation，childId 与记录 id 一致', 
   })
   const out = await startCliSubagent(ctx, makeConfig(), sessions, { provider: 'codex', description: 'desc', prompt: 'do it' }, { agent: makeAgent(), signal: new AbortController().signal })
   assert.deepEqual(order, [['start', true]], 'startActivation 时稳定 id 必须已在 KV')
-  assert.equal(sessions.has(out.subagentId), true)
-  const record = sessions.get(out.subagentId)
+  assert.equal(sessions.has(out.childId), true)
+  const record = sessions.get(out.childId)
   assert.equal(record.parentId, 'parent-1')
   assert.equal(record.cli, 'codex')
   assert.equal(record.cwd, '/tmp/better-subagent-work')
   assert.equal(record.started, false, '创建阶段不置 started')
   assert.deepEqual(record.delivered, [])
-  assert.match(out.subagentId, /^[a-zA-Z0-9_-]+$/)
+  assert.match(out.childId, /^[a-zA-Z0-9_-]+$/)
 })
 
 test('稳定 ID：两个子代理得到不同 id，互不覆盖', async () => {
@@ -454,8 +473,8 @@ test('稳定 ID：两个子代理得到不同 id，互不覆盖', async () => {
   const sessions = makeSessions()
   const a = await startCliSubagent(ctx, makeConfig(), sessions, { provider: 'codex', description: 'a', prompt: 'a' }, { agent: makeAgent(), signal: new AbortController().signal })
   const b = await startCliSubagent(ctx, makeConfig(), sessions, { provider: 'claude', description: 'b', prompt: 'b' }, { agent: makeAgent(), signal: new AbortController().signal })
-  assert.notEqual(a.subagentId, b.subagentId)
-  assert.equal(sessions.has(a.subagentId) && sessions.has(b.subagentId), true)
+  assert.notEqual(a.childId, b.childId)
+  assert.equal(sessions.has(a.childId) && sessions.has(b.childId), true)
 })
 
 test('原生 manager 参数：provider 恒为 spawn，prompt/label/maxDepth 逐项传递', async () => {
@@ -472,12 +491,11 @@ test('原生 manager 参数：provider 恒为 spawn，prompt/label/maxDepth 逐�
   assert.equal(spec.provider, 'spawn')
   assert.equal(spec.label, 'label-here')
   assert.equal(spec.delivery, 'parent', '结果必须送回父 Agent（0.2.1 的显式投递策略）')
-  assert.equal(spec.request.parent, agent)
-  assert.deepEqual(spec.request.prompt, [{ type: 'text', text: 'prompt-here' }])
-  assert.equal(spec.request.maxDepth, 3)
-  assert.equal(spec.request.cwd, '/tmp/better-subagent-work')
-  assert.equal(Object.hasOwn(spec.request, 'signal'), false, 'spec.request 不重复携带 signal')
-  assert.equal(Object.hasOwn(spec.request, 'label'), false, 'spec.request 不重复携带 label')
+  assert.equal(spec.parent, agent)
+  assert.deepEqual(spec.prompt, [{ type: 'text', text: 'prompt-here' }])
+  assert.equal(spec.maxDepth, 3)
+  assert.equal(spec.cwd, '/tmp/better-subagent-work')
+  assert.equal(Object.hasOwn(spec, 'request'), false, 'rc.2 activation spec is flat; there is no nested request')
   assert.equal(spec.signal instanceof AbortSignal, true)
 })
 
@@ -485,7 +503,7 @@ test('原生 manager 参数：resolveMaxDepth 返回 undefined 时不传 maxDept
   const started = []
   const ctx = makeCtx({ subagents: { startActivation: async (spec) => { started.push(spec); return { childId: spec.childId, messageId: 'm' } } } })
   await startCliSubagent(ctx, makeConfig(), makeSessions(), { provider: 'codex', description: 'd', prompt: 'p' }, { agent: makeAgent(), signal: new AbortController().signal })
-  assert.equal(Object.hasOwn(started[0].request, 'maxDepth'), false)
+  assert.equal(Object.hasOwn(started[0], 'maxDepth'), false)
 })
 
 test('cwd：父 Agent 当前目录取自 workingDirectory.ensure，与 header.cwd 不同时以它为准', async () => {
@@ -502,8 +520,8 @@ test('cwd：父 Agent 当前目录取自 workingDirectory.ensure，与 header.cw
   assert.equal(workingDirectory.ensured.length, 1, '必须向 working-directory 服务要当前目录')
   assert.equal(workingDirectory.ensured[0].agent, agent)
   assert.equal(workingDirectory.ensured[0].signal, signal)
-  assert.equal(sessions.get(out.subagentId).cwd, '/tmp/better-subagent-current', 'KV 记录当前目录，而不是过时的 header.cwd')
-  assert.equal(started[0].request.cwd, '/tmp/better-subagent-current', 'request.cwd 固定同一个绝对目录')
+  assert.equal(sessions.get(out.childId).cwd, '/tmp/better-subagent-current', 'KV 记录当前目录，而不是过时的 header.cwd')
+  assert.equal(started[0].cwd, '/tmp/better-subagent-current', 'request.cwd 固定同一个绝对目录')
 })
 
 test('cwd：绝对 args.cwd 直接使用，完全不去查父目录（不调用 ensure）', async () => {
@@ -516,8 +534,8 @@ test('cwd：绝对 args.cwd 直接使用，完全不去查父目录（不调用 
   const sessions = makeSessions()
   const out = await startCliSubagent(ctx, makeConfig(), sessions, { provider: 'codex', description: 'd', prompt: 'p', cwd: '/tmp/explicit-dir' }, { agent: makeAgent(), signal: new AbortController().signal })
   assert.deepEqual(workingDirectory.ensured, [], '显式绝对目录不需要 ensure')
-  assert.equal(sessions.get(out.subagentId).cwd, '/tmp/explicit-dir')
-  assert.equal(started[0].request.cwd, '/tmp/explicit-dir')
+  assert.equal(sessions.get(out.childId).cwd, '/tmp/explicit-dir')
+  assert.equal(started[0].cwd, '/tmp/explicit-dir')
 })
 
 test('cwd：相对 args.cwd 相对 workingDirectory 的当前目录解析（不相对 header.cwd）', async () => {
@@ -530,8 +548,8 @@ test('cwd：相对 args.cwd 相对 workingDirectory 的当前目录解析（不�
   const sessions = makeSessions()
   const out = await startCliSubagent(ctx, makeConfig(), sessions, { provider: 'codex', description: 'd', prompt: 'p', cwd: 'kid' }, { agent: makeAgent({ cwd: '/tmp/better-subagent-stale-header' }), signal: new AbortController().signal })
   assert.equal(workingDirectory.ensured.length, 1)
-  assert.equal(sessions.get(out.subagentId).cwd, '/tmp/better-subagent-current/kid')
-  assert.equal(started[0].request.cwd, '/tmp/better-subagent-current/kid', 'manager 收到的必须是解析后的绝对目录')
+  assert.equal(sessions.get(out.childId).cwd, '/tmp/better-subagent-current/kid')
+  assert.equal(started[0].cwd, '/tmp/better-subagent-current/kid', 'manager 收到的必须是解析后的绝对目录')
 })
 
 test('cwd：ensure 返回非绝对目录时拒绝且不落盘', async () => {
@@ -573,12 +591,10 @@ test('原生 manager 参数：未开启的 provider 名被拒（不落到 spawn�
 
 // ── F. 创建失败 / 取消的清理 ─────────────────────────────────────────────────
 
-test('清理：startActivation 失败 → drain 稳定 id + 删除记录 + 原样抛错', async () => {
-  const drained = []
+test('清理：startActivation 失败 → 删除记录 + 原样抛错（manager 负责回滚）', async () => {
   const ctx = makeCtx({
     subagents: {
       startActivation: async () => { throw new Error('spawn backend exploded') },
-      drainChildren: async (parent, ids) => { drained.push([parent, [...ids]]) },
     },
   })
   const sessions = makeSessions()
@@ -586,14 +602,12 @@ test('清理：startActivation 失败 → drain 稳定 id + 删除记录 + 原�
     () => startCliSubagent(ctx, makeConfig(), sessions, { provider: 'codex', description: 'd', prompt: 'p' }, { agent: makeAgent(), signal: new AbortController().signal }),
     /spawn backend exploded/,
   )
-  assert.equal(drained.length, 1)
-  assert.equal(drained[0][0].id, 'parent-1')
-  assert.equal(drained[0][1].length, 1)
-  assert.equal(sessions.has(drained[0][1][0]), false, '失败必须删掉预落的记录')
+  assert.deepEqual(ctx.disposed, [], '未发布 activation 不由插件重复释放')
+  assert.equal(sessions.records.size, 0, '失败必须删掉预落的记录')
 })
 
-test('清理：创建后立即中断 → drain created child 并抛 AbortError，记录被删', async () => {
-  const drained = []
+test('清理：创建后立即中断 → dispose created child 并抛 AbortError，记录被删', async () => {
+  const disposed = []
   const controller = new AbortController()
   let createdId
   const ctx = makeCtx({
@@ -601,9 +615,8 @@ test('清理：创建后立即中断 → drain created child 并抛 AbortError�
       startActivation: async (spec) => {
         createdId = spec.childId
         controller.abort(new Error('user interrupted'))
-        return { childId: spec.childId, messageId: 'm' }
+        return { childId: spec.childId, name: 'agent-1', messageId: 'm', dispose: async () => { disposed.push(spec.childId) } }
       },
-      drainChildren: async (parent, ids) => { drained.push([...ids]) },
     },
   })
   const sessions = makeSessions()
@@ -612,8 +625,7 @@ test('清理：创建后立即中断 → drain created child 并抛 AbortError�
     (error) => error.name === 'AbortError' || /interrupt/i.test(error.message),
   )
   assert.ok(createdId, 'startActivation 应已被调用')
-  assert.ok(drained.length >= 1, 'created child 必须被 drain')
-  for (const ids of drained) assert.deepEqual(ids, [createdId], 'drain 的必须是 startActivation 返回的 childId')
+  assert.deepEqual(disposed, [createdId], '已发布 activation 必须被 dispose')
   assert.equal(sessions.has(createdId), false, '中断后必须删掉预落的记录')
 })
 
@@ -801,102 +813,100 @@ function fireToolsResult(ctx, exec, result) {
   for (const listener of listeners) listener(exec, result)
 }
 
-test('回收：被策略阻止（isError）→ drain 未交付 child 并删记录', async () => {
-  const drained = []
-  const ctx = makeCtx({ subagents: { drainChildren: async (parent, ids) => { drained.push([...ids]) } } })
+test('回收：被策略阻止（isError）→ dispose 未交付 child 并删记录', async () => {
+  const ctx = makeCtx()
   const sessions = makeSessions()
   installCliRouting(ctx, makeConfig(), sessions)
   const [handler, next] = executeHandler(ctx)
   const exec = { ...makeExec(makeAgent()), name: 'subagent', token: 'tok-1', arguments: { provider: 'codex', description: 'd', prompt: 'p' } }
   const out = await handler(exec, next)
   assert.equal(out.value.kind, 'activation')
-  const id = out.value.subagentId
+  const id = [...sessions.records.keys()].at(-1)
   fireToolsResult(ctx, exec, { isError: true, error: { message: 'blocked' }, content: [] })
   await new Promise((resolve) => setImmediate(resolve))
-  assert.deepEqual(drained, [[id]])
+  assert.deepEqual(ctx.disposed, [id])
   assert.equal(sessions.has(id), false)
 })
 
 test('回收：结果被替换成别的 id → 也回收，且只回收一次（幂等）', async () => {
-  const drained = []
-  const ctx = makeCtx({ subagents: { drainChildren: async (parent, ids) => { drained.push([...ids]) } } })
+  const ctx = makeCtx()
   const sessions = makeSessions()
   installCliRouting(ctx, makeConfig(), sessions)
   const [handler, next] = executeHandler(ctx)
   const exec = { ...makeExec(makeAgent()), name: 'subagent', token: 'tok-2', arguments: { provider: 'codex', description: 'd', prompt: 'p' } }
   const out = await handler(exec, next)
-  const id = out.value.subagentId
-  fireToolsResult(ctx, exec, { isError: false, value: { kind: 'activation', subagentId: 'other-id' }, content: [] })
+  const id = [...sessions.records.keys()].at(-1)
+  fireToolsResult(ctx, exec, { isError: false, value: { kind: 'activation', name: 'other-id' }, content: [] })
   fireToolsResult(ctx, exec, { isError: true, error: { message: 'again' }, content: [] })
   await new Promise((resolve) => setImmediate(resolve))
-  assert.deepEqual(drained, [[id]], '替换 id 时回收一次；重复通知不得再回收')
+  assert.deepEqual(ctx.disposed, [id], '替换 id 时回收一次；重复通知不得再回收')
   assert.equal(sessions.has(id), false)
 })
 
 test('回收：成功的同 id 结果不回收（child 保留、记录保留）', async () => {
-  const drained = []
-  const ctx = makeCtx({ subagents: { drainChildren: async (parent, ids) => { drained.push([...ids]) } } })
+  const ctx = makeCtx()
   const sessions = makeSessions()
   installCliRouting(ctx, makeConfig(), sessions)
   const [handler, next] = executeHandler(ctx)
   const exec = { ...makeExec(makeAgent()), name: 'subagent', token: 'tok-3', arguments: { provider: 'codex', description: 'd', prompt: 'p' } }
   const out = await handler(exec, next)
-  const id = out.value.subagentId
-  fireToolsResult(ctx, exec, { isError: false, value: { kind: 'activation', subagentId: id }, content: [] })
+  const id = [...sessions.records.keys()].at(-1)
+  fireToolsResult(ctx, exec, { isError: false, value: out.value, content: [] })
   await new Promise((resolve) => setImmediate(resolve))
-  assert.deepEqual(drained, [], '成功接收 id 必须保留 child')
+  assert.deepEqual(ctx.disposed, [], '成功接收 id 必须保留 child')
   assert.equal(sessions.has(id), true)
 })
 
 test('回收：与本次创建无关的 tools/result 不影响在册 child', async () => {
-  const drained = []
-  const ctx = makeCtx({ subagents: { drainChildren: async (parent, ids) => { drained.push([...ids]) } } })
+  const ctx = makeCtx()
   const sessions = makeSessions()
   installCliRouting(ctx, makeConfig(), sessions)
   const [handler, next] = executeHandler(ctx)
   const exec = { ...makeExec(makeAgent()), name: 'subagent', token: 'tok-4', arguments: { provider: 'codex', description: 'd', prompt: 'p' } }
-  const out = await handler(exec, next)
+  await handler(exec, next)
+  const id = [...sessions.records.keys()][0]
   fireToolsResult(ctx, { token: 'unrelated' }, { isError: true, error: { message: 'x' }, content: [] })
   await new Promise((resolve) => setImmediate(resolve))
-  assert.deepEqual(drained, [])
-  assert.equal(sessions.has(out.value.subagentId), true)
+  assert.deepEqual(ctx.disposed, [])
+  assert.equal(sessions.has(id), true, '无关结果不能回收 child')
 })
 
 test('回收：只回收未被接收的那个 child，不误停 sibling', async () => {
-  const drained = []
-  const ctx = makeCtx({ subagents: { drainChildren: async (parent, ids) => { drained.push([...ids]) } } })
+  const ctx = makeCtx()
   const sessions = makeSessions()
   const stop = installCliRouting(ctx, makeConfig(), sessions)
   const [handler, next] = executeHandler(ctx)
   const first = { ...makeExec(makeAgent()), name: 'subagent', token: 'tok-s1', arguments: { provider: 'codex', description: 'a', prompt: 'a' } }
   const second = { ...makeExec(makeAgent()), name: 'subagent', token: 'tok-s2', arguments: { provider: 'codex', description: 'b', prompt: 'b' } }
-  const one = (await handler(first, next)).value.subagentId
-  const two = (await handler(second, next)).value.subagentId
+  await handler(first, next)
+  const one = [...sessions.records.keys()][0]
+  await handler(second, next)
+  const two = [...sessions.records.keys()].find((id) => id !== one)
   assert.notEqual(one, two)
   fireToolsResult(ctx, first, { isError: true, error: { message: 'blocked' }, content: [] })
   await new Promise((resolve) => setImmediate(resolve))
-  assert.deepEqual(drained, [[one]], '只回收被拒绝的那一个 child')
+  assert.deepEqual(ctx.disposed, [one], '只回收被拒绝的那一个 child')
   assert.equal(sessions.has(one), false)
   assert.equal(sessions.has(two), true, 'sibling 记录必须保留')
   await stop()
-  assert.deepEqual(drained, [[one], [two]], '卸载时只补收另一个未交付 child')
+  assert.deepEqual(ctx.disposed, [one, two], '卸载时只补收另一个未交付 child')
   assert.equal(sessions.has(two), false)
 })
 
 test('卸载：stopRouting 是 async，收尾时回收所有未收到结果的 child', async () => {
-  const drained = []
-  const ctx = makeCtx({ subagents: { drainChildren: async (parent, ids) => { drained.push([...ids]) } } })
+  const ctx = makeCtx()
   const sessions = makeSessions()
   const stopRouting = installCliRouting(ctx, makeConfig(), sessions)
   assert.equal(typeof stopRouting, 'function')
   const [handler, next] = executeHandler(ctx)
   const exec = { ...makeExec(makeAgent()), name: 'subagent', token: 'tok-5', arguments: { provider: 'codex', description: 'd', prompt: 'p' } }
-  const out = await handler(exec, next)
+  await handler(exec, next)
+  const id = [...sessions.records.keys()][0]
   const stop = stopRouting()
   assert.equal(typeof stop?.then, 'function', 'stopRouting 必须返回可 await 的 promise')
   await stop
-  assert.deepEqual(drained, [[out.value.subagentId]])
-  assert.equal(sessions.has(out.value.subagentId), false)
+  assert.deepEqual(ctx.disposed, [id])
+  assert.equal(sessions.has(id), false)
 })
 
 test('卸载：等待在途创建回滚，且之后拒绝新创建', async () => {

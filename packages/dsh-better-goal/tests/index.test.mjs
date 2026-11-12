@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
+import { AgentRegistry } from '@deepseek-ai/dsh-agent'
 import { SessionStore } from '@deepseek-ai/dsh-session'
 import { SessionProjectionRegistry } from '@deepseek-ai/dsh-session-projection'
 import { SystemPrompt } from '@deepseek-ai/dsh-system-prompt'
@@ -23,10 +24,11 @@ async function harness(t, config = {}, loader) {
   const agents = new Map()
   const queue = []
   const routes = new Map()
-  let initiator
+  let initiator, boundaryReader
   ctx.provide('agents', {
     get: (id) => agents.get(id), list: () => [...agents.values()], roots: () => [...agents.values()],
     currentInitiator: () => initiator,
+    turnBoundaryOf: (session) => boundaryReader(session),
     withoutInitiator: (fn) => Promise.resolve().then(fn),
   })
   ctx.provide('connection', { requestRejection: () => undefined })
@@ -55,7 +57,7 @@ async function harness(t, config = {}, loader) {
     ctx.emit('agent/created', { agent })
     return agent
   }
-  return { ctx, fiber, live, agents, queue, routes, addAgent, setInitiator(agent) { initiator = agent } }
+  return { ctx, fiber, live, agents, queue, routes, addAgent, setInitiator(agent) { initiator = agent }, setBoundaryReader(reader) { boundaryReader = reader } }
 }
 
 async function hostLoader() {
@@ -110,6 +112,23 @@ test('better backend owns one service, one tool and one continuation; saves do n
   assert.equal(h.ctx.get('goals'), undefined)
   assert.equal(h.ctx.tools.get('goal', agent), undefined)
   assert.equal(h.routes.has(CONFIG_PATH), false)
+})
+
+test('owning row volatile commits refresh goal schema without touching question ownership', async (t) => {
+  const h = await harness(t)
+  const agent = h.addAgent()
+  const before = h.ctx.tools.get('goal', agent)
+  assert.ok('max_goal_rounds' in before.parameters.properties)
+  h.live.roundLimitMode = 'fixed'
+  h.live.questionTimeoutSeconds = 1
+  h.fiber.ctx.emit('loader/volatile-update', [['roundLimitMode'], ['questionTimeoutSeconds']])
+  const fixed = h.ctx.tools.get('goal', agent)
+  assert.equal('max_goal_rounds' in fixed.parameters.properties, false)
+  assert.equal(h.ctx.tools.get('ask_user_question', agent), undefined)
+  assert.equal(h.ctx.get('betterGoalConfig').status().capabilities.questionTimeout, false)
+  h.live.roundLimitMode = 'agent'
+  h.fiber.ctx.emit('loader/volatile-update', [['roundLimitMode']])
+  assert.ok('max_goal_rounds' in h.ctx.tools.get('goal', agent).parameters.properties)
 })
 
 test('configuration endpoint uses host fence, GET only, current snapshots and no cache', async (t) => {
@@ -190,8 +209,12 @@ nativeTest('native parameters retain their load snapshot and enforce the configu
   const h = await harness(t, {
     implementation: 'native', nativeDefaultMaxGoalRounds: 23, nativeBlockedAfterConsecutiveRounds: 2,
   }, host.loader)
-  const { turnBoundaryProjectionDefinition } = await host.loader.import('@deepseek-ai/dsh-agent-loop')
-  h.ctx.sessionProjections.register(turnBoundaryProjectionDefinition)
+  const boundaries = new Context()
+  t.after(() => boundaries.fiber.dispose())
+  await boundaries.plugin(SessionStore)
+  await boundaries.plugin(SessionProjectionRegistry)
+  await boundaries.plugin(AgentRegistry)
+  h.setBoundaryReader((session) => boundaries.agents.turnBoundaryOf(session))
   const { createUserMessage } = await host.loader.import('@deepseek-ai/dsh-llm')
   const agent = h.addAgent()
   h.setInitiator(agent)
@@ -249,7 +272,8 @@ nativeTest('isolated real profile switches both backends and preserves the same 
   const require = createRequire(pathToFileURL(hostRoot + '/package.json'))
   const A = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')))
   const profile = A.resolveProfileDir('native-test', home)
-  A.initProfile(profile, [...A.PROFILE_TEMPLATES.headless.bundles, 'dsh-better-goal'])
+  const { PROFILE_TEMPLATES } = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-official-bundles')))
+  A.initProfile(profile, [...PROFILE_TEMPLATES.headless.bundles, 'dsh-better-goal'])
   const modules = join(profile, 'node_modules')
   const plugin = join(modules, 'dsh-better-goal')
   await mkdir(plugin, { recursive: true })
@@ -267,6 +291,7 @@ nativeTest('isolated real profile switches both backends and preserves the same 
   const patch = [
     ...A.loadOverlayPatches('native-test', join(dirname(hostRoot), 'dsh-web-app/presets/standard.patch.yml')),
     { id: 'headless-startup', disabled: true }, { id: 'headless-runner', disabled: true },
+    { id: 'sandbox-policy', inject: [], config: { mode: 'workspace-write', workspaceRoot: home, additionalWritableRoots: [] } },
     { id: 'credentials', disabled: false, config: { watch: false } },
     { id: 'dsh-better-goal', config: { implementation: 'native', nativeDefaultMaxGoalRounds: 17, nativeBlockedAfterConsecutiveRounds: 2 } },
     { insert: [
@@ -282,51 +307,14 @@ nativeTest('isolated real profile switches both backends and preserves the same 
   ]
   await writeFile(patchPath, JSON.stringify(patch))
   const { runProfile } = await import(pathToFileURL(join(hostRoot, 'lib/profile-boot.js')))
-  const { SessionController } = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-api-session-controller')))
-  const signal = new AbortController().signal
-  async function checkListBoundary(ctx, expectedKind, expectedGoal, detail = false) {
-    // Read the actual host list before the plugin boundary; no fabricated rows.
-    const source = await Reflect.apply(SessionController.prototype.list, ctx.sessionController, [{}, signal])
-    const sourceRow = source.items.find((item) => item.sessionId === 'native-profile-session')
-    assert.ok(sourceRow)
-    assert.equal(sourceRow.projections.kind, expectedKind)
-    assert.equal(Object.hasOwn(sourceRow.projections.values, 'goal'), true)
-    assert.equal(Object.hasOwn(sourceRow.projections.values, 'better-goal-history'), true)
-    if (expectedKind === 'sequenced') {
-      assert.equal(sourceRow.projections.values.goal.goal.objective, expectedGoal.objective)
-      assert.equal(sourceRow.projections.values['better-goal-history'].entries[0].objective, expectedGoal.objective)
-    }
-    const before = structuredClone(sourceRow)
-    const rows = await ctx.sessionController.list({}, signal)
-    const row = rows.items.find((item) => item.sessionId === 'native-profile-session')
-    assert.ok(row)
-    assert.equal(Object.hasOwn(row.projections.values, 'goal'), false, 'list must omit the whole goal key without lazy-session-list')
-    assert.equal(Object.hasOwn(row.projections.values, 'better-goal-history'), false)
-    assert.deepEqual({ ...row, projections: sourceRow.projections }, sourceRow)
-    assert.equal(row.projections.kind, expectedKind)
-    assert.equal(row.projections.asOfSeq, sourceRow.projections.asOfSeq)
-    const otherKeys = Object.keys(sourceRow.projections.values).filter((key) => !['goal', 'better-goal-history'].includes(key))
-    assert.deepEqual(Object.keys(row.projections.values), otherKeys)
-    for (const key of otherKeys) assert.deepEqual(row.projections.values[key], sourceRow.projections.values[key])
-    assert.deepEqual(sourceRow, before, 'host source remains complete after list filtering')
-    if (!detail) return
-    const exact = await ctx.sessionController.projections({ sessionId: 'native-profile-session' }, signal)
-    assert.equal(exact.values.goal.goal.objective, expectedGoal.objective)
-    assert.equal(exact.values['better-goal-history'].entries[0].objective, expectedGoal.objective)
-    const control = ctx.sessionController.control(signal)
-    try {
-      const frame = (await control.next()).value
-      assert.equal(frame.type, 'baseline')
-      assert.deepEqual(frame.value.projections['native-profile-session'].values, exact.values)
-    } finally { await control.return() }
-    const history = ctx.sessionController.follow({ address: { kind: 'session', sessionId: 'native-profile-session' } }, signal)
-    try {
-      const frame = (await history.next()).value
-      assert.equal(frame.type, 'snapshot')
-      assert.deepEqual(frame.projections.values, exact.values)
-    } finally { await history.return() }
+  const boot = async () => {
+    const resolved = A.loadProfile('native-test', 'native-test', manifestPath, home)
+    assert.deepEqual(resolved.skippedBundles, [])
+    assert.equal(resolved.layers.find((layer) => layer.packageName === 'dsh-better-goal').packageDir, plugin)
+    const booted = await runProfile({ profile: 'native-test', resolvedProfile: { profile: resolved, installAnchor: manifestPath }, patchFiles: [], args: [], environment: A.loadLayeredEnv('dsh') })
+    assert.equal((await booted.ctx.loader.import('dsh-better-goal')).apply.toString(), apply.toString())
+    return booted
   }
-  const boot = () => runProfile({ profile: 'native-test', patchFiles: [], args: [], environment: A.loadLayeredEnv('dsh') })
   const first = await boot()
   const dispose = (ctx) => ctx.fiber.dispose()
   let firstOpen = true
@@ -347,7 +335,6 @@ nativeTest('isolated real profile switches both backends and preserves the same 
   const goal = ctx.goals.create(agent, { objective: 'Preserve native session data' })
   assert.equal(goal.maxGoalRounds, 17, 'existing canonical native default passes through the real profile Loader')
   const paused = ctx.goals.pause(agent, { id: goal.id, revision: goal.revision })
-  await checkListBoundary(ctx, 'sequenced', paused, true)
   await ctx.sessions.flush(agent.session)
   await dispose(ctx)
   firstOpen = false
@@ -356,7 +343,6 @@ nativeTest('isolated real profile switches both backends and preserves the same 
   const second = await boot()
   let secondOpen = true
   t.after(async () => { if (secondOpen) await dispose(second.ctx) })
-  await checkListBoundary(second.ctx, 'cached', paused)
   const reopened = await second.ctx.agents.resume({
     resumeSessionId: 'native-profile-session', agentOptions: { provider: 'test-native', model: 'test' },
     setup: async (agentCtx) => { await second.ctx.agentPresets.mount(agentCtx, 'standard') },
@@ -370,7 +356,6 @@ nativeTest('isolated real profile switches both backends and preserves the same 
   assert.equal(restored.roundsStarted, paused.roundsStarted)
   assert.equal(restored.phase, 'paused')
   assert.equal(restored.activation, 'disarmed')
-  await checkListBoundary(second.ctx, 'sequenced', restored, true)
   assert.ok(second.ctx.tools.get('goal', reopened.agent))
   for (const name of ['get_goal', 'create_goal', 'update_goal']) assert.equal(second.ctx.tools.get(name, reopened.agent), undefined)
   const edited = second.ctx.goals.edit(reopened.agent, { id: restored.id, revision: restored.revision }, { objective: 'Preserve better edits when returning to native' })
@@ -383,7 +368,6 @@ nativeTest('isolated real profile switches both backends and preserves the same 
   await writeFile(patchPath, JSON.stringify(patch))
   const third = await boot()
   t.after(() => dispose(third.ctx))
-  await checkListBoundary(third.ctx, 'cached', edited)
   const nativeAgain = await third.ctx.agents.resume({
     resumeSessionId: 'native-profile-session', agentOptions: { provider: 'test-native', model: 'test' },
     setup: async (agentCtx) => { await third.ctx.agentPresets.mount(agentCtx, 'standard') },

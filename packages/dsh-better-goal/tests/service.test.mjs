@@ -113,7 +113,7 @@ async function createHarness(options = {}) {
   }
 
   const storeFork = ctx.plugin(SessionStore);
-  const projectionFork = ctx.plugin(SessionProjectionRegistry);
+  const projectionFork = ctx.plugin(options.projectionRegistry ?? SessionProjectionRegistry);
   await Promise.all([storeFork, projectionFork]);
 
   const goalConfig =
@@ -184,6 +184,19 @@ async function createHarness(options = {}) {
     close,
   };
 }
+
+test("ready goal service reads only its awaited projection handle", async (t) => {
+  class HandleOnlyRegistry extends SessionProjectionRegistry {
+    stateOf() { throw new Error("deprecated key lookup must not be used"); }
+  }
+  const h = await createHarness({ projectionRegistry: HandleOnlyRegistry });
+  t.after(() => h.close());
+  const agent = h.addAgent(h.newSession());
+  const goal = h.goals.create(agent, { objective: "Read through the registered handle" });
+  assert.equal(h.goals.get(agent).id, goal.id);
+  assert.equal(h.goals.disarm(agent).activation, "disarmed");
+  assert.equal(h.goals.get(agent).phase, "active");
+});
 
 test("strict goal/change v1 decoder accepts native snapshots and rejects malformed data", () => {
   assert.equal(GOAL_CHANGE_VERSION, 1);

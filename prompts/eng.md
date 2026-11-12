@@ -2,7 +2,7 @@
 
 # `eng` system prompt
 
-Assembled by a headless DSH 0.2.2-rc.1 host for model `example-model`. Per-request runtime context (time, working directory) and tool schemas are omitted; web-only sections of the Web GUI host are not included. Sections in order: `harness:identity`, `deployment:persona-prefix`, `eng:mode-instructions`, `better-subagent:delegation`, `context:file-reference`, `tool:bash`, `tool:read`, `tool:write`, `tool:edit`, `tool:glob`, `tool:grep`, `tool:jobs`, `tool:web_fetch`, `tool:goal`, `tool:workflow`, `tool:subagent`.
+Assembled by a headless DSH 0.2.2-rc.2 host for model `example-model`. Per-request runtime context (time, working directory) and tool schemas are omitted; web-only sections of the Web GUI host are not included. Sections in order: `harness:identity`, `deployment:persona-prefix`, `eng:mode-instructions`, `better-subagent:delegation`, `context:file-reference`, `tool:bash`, `tool:read`, `tool:write`, `tool:edit`, `tool:glob`, `tool:grep`, `tool:jobs`, `tool:web_fetch`, `tool:goal`, `tool:workflow`, `tool:subagent`.
 
 Apollo / dsh-better-subagent / dsh-better-ask-user settings used:
 
@@ -33,7 +33,7 @@ Apollo / dsh-better-subagent / dsh-better-ask-user settings used:
 }
 ```
 
-Visible tools (25): `ask_user_question`, `bash`, `edit`, `glob`, `goal`, `grep`, `interrupt_agent`, `job_kill`, `job_list`, `job_output`, `list_agents`, `list_subagent_models`, `present`, `read`, `read_image`, `send_message`, `skill`, `subagent`, `subagent_fork`, `todo_write`, `wait_subagent`, `web_fetch`, `workflow`, `working_directory`, `write`
+Visible tools (25): `ask_user_question`, `bash`, `edit`, `glob`, `goal`, `grep`, `job_kill`, `job_list`, `job_output`, `list_agents`, `list_subagent_models`, `present`, `read`, `read_image`, `send_message`, `skill`, `subagent`, `subagent_fork`, `todo_write`, `wait_agent`, `wait_subagent`, `web_fetch`, `workflow`, `working_directory`, `write`
 
 ## Prompt
 
@@ -87,7 +87,8 @@ For coding and infrastructure work. These are defaults; explicit user instructio
 - Opening reconnaissance: when starting non-trivial work in an unfamiliar or large codebase, immediately dispatch fast-tier scouts in parallel (structure, relevant modules, conventions, test entry points), all in one message; the main agent reads only the instruction files that define the task. A scout prompt needs only goal, boundaries, and deliverable.
 - Delegate read-only, parallelizable, stateless investigation by default instead of trying it in the main thread first; when a new unknown appears mid-task and 1–2 rounds of digging do not converge, delegate it.
 - Implementation chunks with non-overlapping write scopes can run in parallel; keep linear work, tightly coupled changes, and debugging that needs live state in the main thread.
-- Waiting is done with wait_subagent only: do independent work first, then pass every id you need to a single wait_subagent call and let it block. Do not end the turn to wait for a notification unless nothing else is left to do.
+- Waiting for delegated subagents is done with wait_subagent only: do independent work first, then pass every subagent name (or durable id) you need to a single wait_subagent call and let it block. Do not end the turn to wait for a notification unless nothing else is left to do.
+- list_agents shows the tree with names; send_message targets a name, and wait_subagent accepts the name returned by subagent.
 - send_message is for new information or a correction, never for asking about progress, nudging, or checking in. Do not poll list_agents in place of waiting, and do not interrupt_agent a normally running subagent; intervene only for substantive new information, a clear failure or blockage, or a user request to stop.
 - A wait_subagent timeout while a subagent is still running is not a failure: wait again or do independent work. Do not re-dispatch or take over solely because it is taking a long time.
 - The main agent owns integration, review, and final verification. Subagent reports are leads, not evidence: check the actual changes yourself.
@@ -102,7 +103,7 @@ Tokens prefixed with @ are paths the user explicitly referenced. Relative paths 
 
 Check the [exit code: N] marker on every bash result; investigate failures before moving on.
 
-Use the read tool — not shell commands like cat — to inspect text files. Use offset and limit to continue reading large files.
+Use the read tool — not shell commands like cat, sed, head, or tail — to inspect text files. Use offset and limit to read a line range or continue a large file.
 
 Read an existing file before overwriting it with write and prefer edit for targeted changes.
 
@@ -120,5 +121,7 @@ Use goal for the persistent overall objective and todo_write for steps. Actions:
 
 Use the workflow tool ONLY when the user explicitly asks for a workflow or for large multi-agent orchestration: you write a JavaScript script (the tool description documents the exact format) that fans work out across many subagents with phases and structured results. For one or two delegations, prefer plain subagent calls.
 
-Start independent delegations with `subagent` or `subagent_fork` together in one assistant message and continue useful work while they run. When only waiting for their results remains, end your turn instead of sleeping or polling; the next result starts a new turn.
+Start independent delegations with `subagent` or `subagent_fork` together in one assistant message and continue useful work while they run. When only waiting for their results remains, end your turn instead of sleeping or polling; the next result starts a new turn. Collect the subagent results required to complete the task before giving the user a final answer.
+
+Bash, formatters, code generators, and scripts can overwrite concurrent edits without conflict detection; coordinate their changes explicitly. The agent integrating the work must review the final diff and run relevant tests.
 `````

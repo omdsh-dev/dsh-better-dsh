@@ -2,18 +2,17 @@
  * 正式配置（src/config.js）单元测试。
  *
  * 覆盖四件事：
- *   1. `Config` schema 的**形状契约**（默认值、所有配置均在 volatile 路径内）；
+ *   1. `Config` schema 的**形状契约**（默认值、volatile 位置——全部字段都可热编辑）；
  *   2. `normalizeConfig` 的 EXACT 默认形状、volatile 引用展开、非法值回退、
  *      去重/裁剪规则，以及「返回全新普通对象」；
  *   3. `currentConfig` / `liveConfigEntry` 经 configEditor 读活 fiber 配置；
- *   4. 与 dsh-settings 的投影契约：可编辑字段集合必须恰好是 volatile 集合，
- *      所有 schema 配置（含 `trustedHosts`）必须包含在表单内。宿主包只导出
- *      SettingsForms/错误类，
- *      volatileForm/projectForm/isVolatilePath 是内部纯函数（0.2.1-rc.2 的
- *      `@deepseek-ai/dsh-settings/lib/index.js` 未从入口导出），无法在不构造
- *      完整 settings 服务的情况下直接 import；这里保留行为等价的本地纯函数断言
- *      形状，并由 `scripts/runtime-smoke.mjs` 在真实宿主 settings 上断言实际
- *      投影（schema/value 含 childExitGuard 与 trustedHosts、保存后即时生效）。
+ *   4. 与 dsh-settings 的投影契约：可编辑字段集合必须恰好是 volatile 集合
+ *      （`trustedHosts` 也在表单内——信任边界按请求重读活配置）。宿主包只导出
+ *      SettingsForms/错误类，volatileForm/projectForm/isVolatilePath 是内部纯
+ *      函数（0.2.1-rc.2 的 `@deepseek-ai/dsh-settings/lib/index.js` 未从入口
+ *      导出），无法在不构造完整 settings 服务的情况下直接 import；这里保留行为
+ *      等价的本地纯函数断言形状，并由 `scripts/runtime-smoke.mjs` 在真实宿主
+ *      settings 上断言实际投影与热更新生效。
  */
 
 import { test } from 'node:test'
@@ -39,6 +38,7 @@ import {
 const EMPTY_TIER = { provider: '', model: '', reasoningEffort: '' }
 const EXPECTED_DEFAULT = {
   childExitGuard: false,
+  delegation: { prompt: true },
   tiers: { fast: EMPTY_TIER, quality: EMPTY_TIER },
   subagents: {
     eng: true,
@@ -126,12 +126,14 @@ const liveSchema = new z(Config.toJSON())
 
 // ── 形状契约 ────────────────────────────────────────────────────────────────
 
-test('标识常量：行 id / scoped 包名 / 四个行配置键（同一行）', () => {
+test('标识常量：行 id / scoped 包名 / 六个行配置键（同一行）', () => {
   assert.equal(ENTRY_ID, 'dsh-better-subagent')
-  assert.equal(PACKAGE_NAME, '@menghuan1918/dsh-better-subagent')
-  assert.deepEqual([...LEGACY_PACKAGE_NAMES], ['@menghuan1918/dsh-apollo', 'dsh-apollo'])
-  assert.equal(ROW_CONFIG_KEY, '@menghuan1918/dsh-better-subagent#dsh-better-subagent')
+  assert.equal(PACKAGE_NAME, '@oh-my-dsh/dsh-better-subagent')
+  assert.deepEqual([...LEGACY_PACKAGE_NAMES], ['@menghuan1918/dsh-better-subagent', '@menghuan1918/dsh-apollo', 'dsh-apollo'])
+  assert.equal(ROW_CONFIG_KEY, '@oh-my-dsh/dsh-better-subagent#dsh-better-subagent')
   assert.deepEqual([...ROW_CONFIG_KEYS], [
+    '@oh-my-dsh/dsh-better-subagent#dsh-better-subagent',
+    'dsh-better-dsh#dsh-better-subagent',
     '@menghuan1918/dsh-better-subagent#dsh-better-subagent',
     '@menghuan1918/dsh-apollo#dsh-better-subagent',
     'dsh-apollo#dsh-better-subagent',
@@ -195,6 +197,7 @@ test('volatile 路径恰好是设置页可编辑集合', () => {
   walk(liveSchema, [])
   assert.deepEqual(paths.sort(), [
     'childExitGuard',
+    'delegation.prompt',
     'subagents.claude',
     'subagents.codex',
     'subagents.eng',
@@ -203,6 +206,7 @@ test('volatile 路径恰好是设置页可编辑集合', () => {
     'tiers.quality',
     'trustedHosts',
   ])
+  // trustedHosts 也是 volatile：HTTP 信任边界按请求重读活配置，改完即时生效。
   assert.equal(isVolatilePath(liveSchema, ['trustedHosts']), true)
 })
 
@@ -242,6 +246,7 @@ test('normalizeConfig：展开 volatile 引用（含嵌套）', () => {
   }
   assert.deepEqual(normalizeConfig(config), {
     childExitGuard: true,
+    delegation: { prompt: true },
     tiers: { fast: EMPTY_TIER, quality: EMPTY_TIER },
     subagents: {
       eng: false,
@@ -354,11 +359,10 @@ test('normalizeConfig：返回全新普通对象（可安全改写、两次调�
 
 // ── 与 dsh-settings 的投影契约 ──────────────────────────────────────────────
 
-test('dsh-settings 投影：所有 schema 配置均可编辑，含 trustedHosts', () => {
+test('dsh-settings 投影：表单字段恰好是 volatile 集合（全部字段可编辑）', () => {
   const form = volatileForm(liveSchema)
   assert.equal(form?.type, 'object')
-  assert.deepEqual(projectForm(form, plainConfig(Config({}))), plainConfig(Config({})))
-  assert.deepEqual(Object.keys(form.dict).sort(), ['childExitGuard', 'subagents', 'tiers', 'trustedHosts'])
+  assert.deepEqual(Object.keys(form.dict).sort(), ['childExitGuard', 'delegation', 'subagents', 'tiers', 'trustedHosts'])
   const resolved = Config({
     childExitGuard: true,
     trustedHosts: ['dsh.example.com'],
@@ -367,6 +371,8 @@ test('dsh-settings 投影：所有 schema 配置均可编辑，含 trustedHosts'
   const value = projectForm(form, plainConfig(resolved))
   assert.deepEqual(value, {
     childExitGuard: true,
+    delegation: { prompt: true },
+    trustedHosts: ['dsh.example.com'],
     tiers: { fast: EMPTY_TIER, quality: EMPTY_TIER },
     subagents: {
       eng: true,
@@ -381,9 +387,8 @@ test('dsh-settings 投影：所有 schema 配置均可编辑，含 trustedHosts'
       },
       claude: { enabled: false, executable: 'claude', permissionMode: 'plan', defaultModel: '', models: [] },
     },
-    trustedHosts: ['dsh.example.com'],
   })
-  // 嵌套字段和 trustedHosts 数组条目也在可写路径内。
+  // 表单写入只允许落在 volatile 路径上（本包全部字段均可编辑）。
   assert.equal(isVolatilePath(liveSchema, ['subagents', 'codex', 'models', '0', 'id']), true)
   assert.equal(isVolatilePath(liveSchema, ['subagents', 'eng']), true)
   assert.equal(isVolatilePath(liveSchema, ['tiers', 'fast']), true)

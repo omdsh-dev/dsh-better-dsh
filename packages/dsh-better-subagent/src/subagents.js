@@ -122,24 +122,28 @@ export async function startCliSubagent(ctx, config, sessions, args, exec) {
     model: selected.model, effort: selected.effort, delivered: [], started: false,
   }
   await sessions.put(record)
+  let created
   try {
     exec.signal.throwIfAborted()
     const maxDepth = ctx.subagents.resolveMaxDepth()
-    const created = await ctx.subagents.startActivation({
+    created = await ctx.subagents.startActivation({
       provider: 'spawn', label: args.description, childId: id, signal: exec.signal,
       delivery: 'parent',
-      request: {
-        parent, prompt: [{ type: 'text', text: args.prompt }], cwd,
-        agentOptions: { provider: CLI_ROUTES[cli], model: selected.model, reasoningEffort: selected.effort },
-        ...(maxDepth === undefined ? {} : { maxDepth }),
-      },
+      parent, prompt: [{ type: 'text', text: args.prompt }], cwd,
+      agentOptions: { provider: CLI_ROUTES[cli], model: selected.model, reasoningEffort: selected.effort },
+      ...(maxDepth === undefined ? {} : { maxDepth }),
     })
     exec.signal.throwIfAborted()
-    return { kind: 'activation', subagentId: created.childId }
+    // rc.2's native subagent tool returns the tree name, not the durable id.
+    return { kind: 'activation', name: created.name ?? created.childId, childId: created.childId, activation: created }
   } catch (error) {
-    // The manager rolls back pre-admission failure; drain also covers the final
-    // acceptance/cancellation race before this tool could hand the id back.
-    await ctx.subagents.drainChildren(parent, [id])
+    // rc.2 rolls back pre-admission failures in the manager. A published
+    // activation still needs explicit disposal for the post-admission abort race.
+    if (created !== undefined) {
+      try { await created.dispose() } catch (disposeError) {
+        ctx.logger?.warn?.(`Better Subagent could not dispose canceled CLI child ${id}: ${disposeError.message}`)
+      }
+    }
     await sessions.delete(id)
     throw error
   }
@@ -154,8 +158,7 @@ export function installCliRouting(ctx, config, sessions) {
   const reclaim = (entry) => {
     if (entry.cleanup) return entry.cleanup
     const task = (async () => {
-      await ctx.subagents.drainChildren(entry.parent, [entry.id])
-      await sessions.delete(entry.id)
+      try { await entry.activation?.dispose() } finally { await sessions.delete(entry.id) }
     })()
     entry.cleanup = task
     cleanups.add(task)
@@ -168,7 +171,7 @@ export function installCliRouting(ctx, config, sessions) {
     const entry = unpublished.get(key)
     if (!entry) return
     unpublished.delete(key)
-    if (!result.isError && result.value?.kind === 'activation' && result.value.subagentId === entry.id) return
+    if (!result.isError && result.value?.kind === 'activation' && result.value.name === entry.name) return
     void reclaim(entry)
   })
   ctx.tools.guard((exec) => {
@@ -184,11 +187,16 @@ export function installCliRouting(ctx, config, sessions) {
   ctx.on('tools/execute', async (exec, next) => {
     const args = exec.arguments ?? {}
     if (!enabledIn(config, exec.agent)) return next()
+    if (!['subagent', 'list_subagent_models'].includes(exec.name)) return next()
+    // Around-dispatch runs before the native lookup: do not create a CLI child
+    // (or publish its catalog) when this step did not admit the original tool.
+    if (!ctx.tools.executable(exec.name, exec.agent, exec.toolSet)) return next()
     if (exec.name === 'subagent' && cliName(args.provider)) {
       const signal = AbortSignal.any([exec.signal, lifetime.signal])
       const creation = (async () => {
-        const value = await startCliSubagent(ctx, config, sessions, args, { ...exec, signal })
-        unpublished.set(exec.token ?? exec, { parent: exec.agent, id: value.subagentId })
+        const created = await startCliSubagent(ctx, config, sessions, args, { ...exec, signal })
+        const { activation, childId, ...value } = created
+        unpublished.set(exec.token ?? exec, { parent: exec.agent, id: childId, name: value.name, activation })
         return success(value)
       })()
       creating.add(creation)

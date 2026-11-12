@@ -11,14 +11,14 @@
 | `packages/dsh-better-compact` | 压缩 companion + engine + 设置页 |
 | `packages/dsh-better-goal` | goal 域 |
 | `packages/dsh-better-ptc` | PTC deadline 豁免单例 |
-| `packages/dsh-better-subagent` | 子代理 CLI/等待/child guard/分档（本地包名仍为 `@menghuan1918/...`） |
+| `packages/dsh-better-subagent` | 子代理 CLI/等待/child guard/分档（`@oh-my-dsh/dsh-better-subagent`） |
 | `packages/dsh-lazy-session-list` | 惰性 session list 实验包 |
 | `plugins/` | 迁移前的子包源码归档，已被 gitignore，**不要修改** |
 | `.agents/worktrees/` | 本地隔离 worktree，已被 gitignore |
 
 ## 工具链
 
-- Node `>=24.9.0`，pnpm `11.7.0`，DSH 精确 `0.2.2-rc.1`。
+- Node `>=24.9.0`，pnpm `11.7.0`，DSH 精确 `0.2.2-rc.2`。
 - 根目录：
   - `pnpm install --frozen-lockfile`
   - `pnpm test`：只跑根 bundle 的 `tests/*.test.mjs`
@@ -33,9 +33,9 @@
 ## 依赖与版本
 
 - 根 `dependencies` 目前固定已发布的精确版本（ask-user `0.3.3`、compact `0.4.0`、goal `0.4.3`、subagent `0.5.2`、ptc `0.2.0`）。
-- **不要**在没有对齐版本/名称前把根依赖切成 `workspace:*`：本地子包版本普遍落后于已发布版本，subagent 还是 `@menghuan1918/` 而 bundle 使用 `@oh-my-dsh/`；强行链接会静默把发布依赖降级。
-- 本地 `packages/*` 是后续源码真相，但只有 ask-user 已同步到已发布的 `0.3.3`；其余包仍是迁移快照，更新它们要单独对齐版本、依赖和测试。
-- 发布前先确认子包版本在 `https://registry.npmjs.org/` 可取得；不要提交 `file:`/`link:`/`git:` 依赖。
+- **不要**把根依赖切成 `workspace:*` 或未发布版本：本地子包已同步到已发布 tag 并完成 DSH rc.2 适配，但版本号仍等于 registry 上的旧构建；根依赖必须继续指向可安装的精确 npm 版本，直到新子包发布。
+- 本地 `packages/*` 是后续源码真相：ask-user 已同步到 `0.3.3`，compact / goal / ptc / subagent 已同步到 `0.4.0` / `0.4.3` / `0.2.0` / `0.5.2` 并完成 rc.2 适配；这些适配尚未发布。
+- 发布前先确认子包版本在 `https://registry.npmjs.org/` 可取得；不要提交 `file:`/`link:`/`git:` 依赖。发布新子包后，再统一 bump 版本并更新根依赖。
 
 ## 发布
 
@@ -45,7 +45,7 @@
 
 ## 测试已知限制
 
-- `dsh-lazy-session-list` 的 `tests/session-list.test.mjs` 需要 DSH 0.2.x 的 `@deepseek-ai/dsh-skill` / `@deepseek-ai/dsh-native-command`，npm 上只有不兼容的 `0.0.1-rc.1`；因此 `pnpm test:packages` 排除该包。仅在有匹配 DSH host 时单独跑 `pnpm test:lazy-session-list`。
+- `dsh-lazy-session-list` 不在本轮适配范围；DSH rc.2 已提供匹配的 `@deepseek-ai/dsh-skill` / `@deepseek-ai/dsh-native-command`，但该包尚未适配，`pnpm test:packages` 仍排除它。需要时用匹配的 DSH host 单独跑 `pnpm test:lazy-session-list`。
 - 需要真实 DSH 安装的漂移/迁移测试：设置 `DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh` 后跑 `pnpm test`。
 - 浏览器/客户端测试使用 esbuild + `react-test-renderer`；不要用 jsdom 替代真实渲染边界。
 

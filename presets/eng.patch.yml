@@ -139,6 +139,9 @@
           # carries whatever the deployment registered globally (repository plugins).
           - id: skill-filesystem
             name: '@deepseek-ai/dsh-skill-filesystem'
+            config:
+              customSkillDirs:
+                - !!js process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@deepseek-ai/dsh-agent-preset/package.json')), 'skills')
 
           - id: tool-skill
             name: '@deepseek-ai/dsh-tool-skill'
@@ -243,6 +246,8 @@
             config:
               - id: tool-subagent-control
                 name: '@deepseek-ai/dsh-tool-subagent-control'
+                config:
+                  interrupt: false
 
               - id: tool-subagent
                 name: '@deepseek-ai/dsh-tool-subagent'
@@ -295,6 +300,9 @@
           # preset gains rows that eng never picked up.
           - id: present
             name: '@deepseek-ai/dsh-tool-present'
+
+          - id: tool-office
+            name: '@deepseek-ai/dsh-tool-office'
 
           # 0.2.1 ships both plugin surfaces disabled by default; enable either only in a
           # copy of this plugins block (edits saved from the Web editor override

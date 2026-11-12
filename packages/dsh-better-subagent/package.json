@@ -1,11 +1,11 @@
 {
-  "name": "@menghuan1918/dsh-better-subagent",
-  "version": "0.2.0",
+  "name": "@oh-my-dsh/dsh-better-subagent",
+  "version": "0.5.2",
   "description": "Standalone DSH plugin: Codex/Claude continuable CLI subagents, wait_subagent, child exit guard and model tiers. Pure ESM, no build step.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Menghuan1918/dsh-better-subagent.git"
+    "url": "git+https://github.com/omdsh-dev/dsh-better-subagent.git"
   },
   "type": "module",
   "main": "src/index.js",
@@ -15,8 +15,8 @@
     "./package.json": "./package.json"
   },
   "engines": {
-    "node": "^22.19.0 || >=24.0.0",
-    "dsh": ">=0.2.1-rc.2 <0.3.0"
+    "node": ">=24.9.0",
+    "dsh": "0.2.2-rc.2"
   },
   "scripts": {
     "test": "node --test",
@@ -45,24 +45,24 @@
     "access": "public"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "~3.18.5",
-    "dsh-better-ptc": "0.1.0"
+    "@deepseek-ai/schemastery": "~3.19.0",
+    "dsh-better-ptc": "0.2.0"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "~4.0.5",
-    "@deepseek-ai/dsh-agent": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-agent-preset-registry": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-llm": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-session": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-session-projection": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-session-query": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-storage": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-storage-json": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-subagent": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-subprocess": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-system-prompt": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.2 <0.3.0",
-    "@deepseek-ai/dsh-working-directory": ">=0.2.1-rc.2 <0.3.0",
+    "@deepseek-ai/cordis": "~4.1.0",
+    "@deepseek-ai/dsh-agent": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-agent-preset-registry": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-session": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-session-projection": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-session-query": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-storage": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-storage-json": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-subagent": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-subprocess": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-working-directory": "0.2.2-rc.2",
     "react": "^18.2.0"
   },
   "devDependencies": {
@@ -77,10 +77,15 @@
     "client": {
       "platform": "web",
       "inject": [
-        "@deepseek-ai/dsh-client-runtime",
         "@deepseek-ai/dsh-client-connection",
-        "@deepseek-ai/dsh-client-ui-settings"
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-locale"
       ]
     }
+  },
+  "homepage": "https://github.com/omdsh-dev/dsh-better-subagent#readme",
+  "bugs": {
+    "url": "https://github.com/omdsh-dev/dsh-better-subagent/issues"
   }
 }

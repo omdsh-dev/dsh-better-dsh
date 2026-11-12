@@ -1,6 +1,5 @@
 /**
- * Structured prompt construction for the goal and handoff enhanced modes,
- * plus the fully user-authored custom mode.
+ * Structured prompt construction for the goal and handoff enhanced modes.
  *
  * The text here is new (informed by the design references; no source copied).
  * It is appended as the final user message after the replayed conversation

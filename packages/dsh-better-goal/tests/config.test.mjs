@@ -41,6 +41,8 @@ function resolved(value) {
     nativeBlockedAfterConsecutiveRounds: config.nativeBlockedAfterConsecutiveRounds.get(),
     roundLimitMode: config.roundLimitMode.get(),
     roundLimit: config.roundLimit.get(),
+    spinHintSeconds: config.spinHintSeconds.get(),
+    jobWaitSeconds: config.jobWaitSeconds.get(),
     questionTimeoutSeconds: config.questionTimeoutSeconds.get(),
   }
 }
@@ -58,6 +60,8 @@ test('DEFAULTS is the exact frozen JSON shape', () => {
     nativeBlockedAfterConsecutiveRounds: 3,
     roundLimitMode: 'agent',
     roundLimit: 256,
+    spinHintSeconds: 120,
+    jobWaitSeconds: 2400,
     questionTimeoutSeconds: 120,
   })
   assert.equal(Object.isFrozen(DEFAULTS), true)
@@ -77,22 +81,20 @@ test('Config({}) resolves the documented defaults through volatile references', 
   assert.equal(typeof config.roundLimitMode.get, 'function')
   assert.equal(typeof config.roundLimit.get, 'function')
   assert.equal(typeof config.questionTimeoutSeconds.get, 'function')
+  assert.equal(typeof config.spinHintSeconds.get, 'function')
+  assert.equal(typeof config.jobWaitSeconds.get, 'function')
   assert.deepEqual(resolved({}), DEFAULTS)
 })
 
 test('Config accepts the boundary values of each field', () => {
   assert.deepEqual(resolved({ roundLimitMode: 'fixed', roundLimit: 1, questionTimeoutSeconds: -1 }), {
-    implementation: 'enhanced',
-    nativeDefaultMaxGoalRounds: 256,
-    nativeBlockedAfterConsecutiveRounds: 3,
+    ...DEFAULTS,
     roundLimitMode: 'fixed',
     roundLimit: 1,
     questionTimeoutSeconds: -1,
   })
   assert.deepEqual(resolved({ roundLimitMode: 'unlimited', roundLimit: UNLIMITED_ROUNDS, questionTimeoutSeconds: 2147483 }), {
-    implementation: 'enhanced',
-    nativeDefaultMaxGoalRounds: 256,
-    nativeBlockedAfterConsecutiveRounds: 3,
+    ...DEFAULTS,
     roundLimitMode: 'unlimited',
     roundLimit: UNLIMITED_ROUNDS,
     questionTimeoutSeconds: 2147483,
@@ -117,6 +119,29 @@ test('Config rejects zero, fractional, oversized, and non-number question timeou
   assert.equal(resolved({ questionTimeoutSeconds: 1 }).questionTimeoutSeconds, 1)
 })
 
+test('spinHintSeconds: 0 disables the warning, 1..3600 accepted, everything else rejected', () => {
+  assert.equal(resolved({ spinHintSeconds: 0 }).spinHintSeconds, 0)
+  assert.equal(resolved({ spinHintSeconds: 1 }).spinHintSeconds, 1)
+  assert.equal(resolved({ spinHintSeconds: 3600 }).spinHintSeconds, 3600)
+  for (const spinHintSeconds of [-1, 1.5, 3601, '120', Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.throws(() => Config({ spinHintSeconds }), undefined, `spinHintSeconds ${String(spinHintSeconds)} should be rejected`)
+    assert.throws(() => readConfig({ spinHintSeconds }), undefined, `readConfig spinHintSeconds ${String(spinHintSeconds)} should be rejected`)
+  }
+  // 0 is the documented off switch, not a fallback to the default.
+  assert.equal(readConfig({ spinHintSeconds: 0 }).spinHintSeconds, 0)
+})
+
+test('jobWaitSeconds: 0 never waits, 1..86400 accepted, everything else rejected', () => {
+  assert.equal(resolved({ jobWaitSeconds: 0 }).jobWaitSeconds, 0)
+  assert.equal(resolved({ jobWaitSeconds: 1 }).jobWaitSeconds, 1)
+  assert.equal(resolved({ jobWaitSeconds: 86400 }).jobWaitSeconds, 86400)
+  for (const jobWaitSeconds of [-1, 1.5, 86401, '2400', Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.throws(() => Config({ jobWaitSeconds }), undefined, `jobWaitSeconds ${String(jobWaitSeconds)} should be rejected`)
+    assert.throws(() => readConfig({ jobWaitSeconds }), undefined, `readConfig jobWaitSeconds ${String(jobWaitSeconds)} should be rejected`)
+  }
+  assert.equal(readConfig({ jobWaitSeconds: 0 }).jobWaitSeconds, 0)
+})
+
 test('every schema field is volatile and no other field exists', () => {
   const liveSchema = new z(Config.toJSON())
   assert.deepEqual(Object.keys(liveSchema.dict ?? {}).sort(), [
@@ -126,7 +151,9 @@ test('every schema field is volatile and no other field exists', () => {
     'questionTimeoutSeconds',
     'roundLimit',
     'roundLimitMode',
-  ])
+    'spinHintSeconds',
+    'jobWaitSeconds',
+  ].sort())
   const paths = []
   const walk = (node, path) => {
     if (node.meta?.volatile === true) paths.push(path.join('.'))
@@ -135,7 +162,7 @@ test('every schema field is volatile and no other field exists', () => {
     for (const child of node.list ?? []) walk(child, [...path, '|'])
   }
   walk(liveSchema, [])
-  assert.deepEqual(paths.sort(), ['implementation', 'nativeBlockedAfterConsecutiveRounds', 'nativeDefaultMaxGoalRounds', 'questionTimeoutSeconds', 'roundLimit', 'roundLimitMode'])
+  assert.deepEqual(paths.sort(), Object.keys(DEFAULTS).sort())
 })
 
 test('resolveRoundLimit: agent mode prefers supplied, then current, then sentinel', () => {
@@ -161,25 +188,16 @@ test('resolveRoundLimit: unlimited and fixed override stale caller values', () =
 
 test('resolveRoundLimit: volatile config references are unwrapped', () => {
   assert.equal(resolveRoundLimit({
-    implementation: 'enhanced',
-    nativeDefaultMaxGoalRounds: 256,
-    nativeBlockedAfterConsecutiveRounds: 3,
     roundLimitMode: volatileRef('fixed'),
     roundLimit: volatileRef(33),
     questionTimeoutSeconds: volatileRef(-1),
   }, 8, 9), 33)
   assert.equal(resolveRoundLimit({
-    implementation: 'enhanced',
-    nativeDefaultMaxGoalRounds: 256,
-    nativeBlockedAfterConsecutiveRounds: 3,
     roundLimitMode: volatileRef('unlimited'),
     roundLimit: volatileRef(33),
     questionTimeoutSeconds: volatileRef(-1),
   }, 8), UNLIMITED_ROUNDS)
   assert.equal(resolveRoundLimit({
-    implementation: 'enhanced',
-    nativeDefaultMaxGoalRounds: 256,
-    nativeBlockedAfterConsecutiveRounds: 3,
     roundLimitMode: volatileRef('agent'),
     roundLimit: volatileRef(33),
     questionTimeoutSeconds: volatileRef(-1),
@@ -219,9 +237,6 @@ test('readConfig: missing or null fields take the documented defaults', () => {
   }
   assert.deepEqual(readConfig({ roundLimitMode: 'unlimited' }), {
     ...DEFAULTS,
-    implementation: 'enhanced',
-    nativeDefaultMaxGoalRounds: 256,
-    nativeBlockedAfterConsecutiveRounds: 3,
     roundLimitMode: 'unlimited',
   })
 })
@@ -235,9 +250,6 @@ test('readConfig: volatile fields unwrap and hot updates are read on the next ca
     [VOLATILE_WRITE]: () => {},
   })
   const config = {
-    implementation: 'enhanced',
-    nativeDefaultMaxGoalRounds: 256,
-    nativeBlockedAfterConsecutiveRounds: 3,
     roundLimitMode: liveRef(() => mode),
     roundLimit: liveRef(() => limit),
     questionTimeoutSeconds: liveRef(() => timeout),
@@ -249,9 +261,7 @@ test('readConfig: volatile fields unwrap and hot updates are read on the next ca
   timeout = -1
   const hot = readConfig(config)
   assert.deepEqual(hot, {
-    implementation: 'enhanced',
-    nativeDefaultMaxGoalRounds: 256,
-    nativeBlockedAfterConsecutiveRounds: 3,
+    ...DEFAULTS,
     roundLimitMode: 'fixed',
     roundLimit: 1024,
     questionTimeoutSeconds: -1,
@@ -260,6 +270,20 @@ test('readConfig: volatile fields unwrap and hot updates are read on the next ca
   hot.roundLimit = 5
   assert.equal(readConfig(config).roundLimit, 1024)
   assert.notEqual(readConfig(config), readConfig(config))
+})
+
+test('implementation and native policy are validated and read from volatile fields', () => {
+  const value = { implementation: 'native', nativeDefaultMaxGoalRounds: 8, nativeBlockedAfterConsecutiveRounds: 2 }
+  assert.deepEqual(resolved(value), { ...DEFAULTS, ...value })
+  assert.deepEqual(readConfig({
+    implementation: volatileRef('native'),
+    nativeDefaultMaxGoalRounds: volatileRef(8),
+    nativeBlockedAfterConsecutiveRounds: volatileRef(2),
+  }), { ...DEFAULTS, ...value })
+  for (const invalid of [{ implementation: 'both' }, { nativeDefaultMaxGoalRounds: 0 }, { nativeBlockedAfterConsecutiveRounds: 1.5 }]) {
+    assert.throws(() => Config(invalid))
+    assert.throws(() => readConfig(invalid))
+  }
 })
 
 test('readConfig: present values must satisfy the schema boundaries', () => {

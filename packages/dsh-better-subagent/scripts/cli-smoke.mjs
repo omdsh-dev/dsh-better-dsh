@@ -47,8 +47,9 @@ process.env.DSH_HOME = home
 process.env.DSH_TELEMETRY_DISABLED = '1'
 
 const A = await import(pathToFileURL(join(dirname(dsh), 'dsh-app-boot/lib/index.js')))
+const { PROFILE_TEMPLATES } = await import(pathToFileURL(join(dirname(dsh), 'dsh-official-bundles/lib/index.js')))
 const dir = A.resolveProfileDir('it', home)
-A.initProfile(dir, [...A.PROFILE_TEMPLATES.headless.bundles, packageName])
+A.initProfile(dir, [...PROFILE_TEMPLATES.headless.bundles, packageName])
 const packageFile = join(dir, 'package.json')
 const manifest = JSON.parse(await readFile(packageFile, 'utf8'))
 const modules = join(dir, 'node_modules')
@@ -59,6 +60,8 @@ for (const name of ['package.json', 'src', 'docs', 'cordis.patch.yml', 'LICENSE'
   await cp(join(root, name), join(plugin, name), { recursive: true })
 }
 await symlink(dirname(dsh), join(modules, '@deepseek-ai'))
+const ptcRoot = dirname(fileURLToPath(import.meta.resolve('dsh-better-ptc/package.json')))
+await symlink(ptcRoot, join(modules, 'dsh-better-ptc'))
 manifest.dependencies[packageName] = `file:${plugin}`
 await writeFile(packageFile, JSON.stringify(manifest, null, 2))
 
@@ -69,6 +72,7 @@ const backend = cli === 'claude'
 await writeFile(join(dir, 'cordis.patch.yml'), JSON.stringify([
   { id: 'headless-startup', disabled: true },
   { id: 'headless-runner', disabled: true },
+  { id: 'sandbox-policy', inject: [], config: { mode: 'workspace-write', workspaceRoot: home, additionalWritableRoots: [] } },
   { id: 'credentials', disabled: false, config: { watch: false } },
   { id: 'dsh-better-subagent', config: { subagents: { global: true, [cli]: backend } } },
 ]))
@@ -96,13 +100,27 @@ let ctx
 let agent
 const call = async (name, args) => {
   assert.ok(ctx.tools.get(name, agent), `${name} must be visible`)
-  const result = await ctx.tools.execute({ name, arguments: args, agent, signal: new AbortController().signal, callId: randomUUID() })
+  const signal = new AbortController().signal
+  const toolSet = await ctx.tools.resolve({ agent, modelSelection: agent.model.current(), signal })
+  let result
+  try {
+    const batch = await ctx.tools.execute({
+      calls: [{ type: 'tool-call', id: randomUUID(), name, arguments: JSON.stringify(args) }],
+      agent, signal, toolSet,
+    })
+    result = batch.results[0].result
+  } finally { toolSet.dispose() }
   assert.equal(result.isError, false, `${name} failed: ${JSON.stringify(result.error ?? result.content)}`)
   return result.value
 }
 
 async function boot() {
-  const booted = await runProfile({ profile: 'it', patchFiles: [], args: [], environment: A.loadLayeredEnv('dsh') })
+  const resolvedProfile = A.loadProfile('dsh', 'it', join(dir, 'package.json'), home)
+  assert.deepEqual(resolvedProfile.skippedBundles, [])
+  assert.equal(resolvedProfile.layers.find((layer) => layer.packageName === packageName)?.packageDir, plugin, 'load the isolated copied plugin, never an ancestor checkout')
+  assert.equal(JSON.parse(await readFile(join(plugin, 'package.json'), 'utf8')).version, '0.4.0')
+  assert.equal(JSON.parse(await readFile(join(dsh, 'package.json'), 'utf8')).version, '0.2.2-rc.2')
+  const booted = await runProfile({ profile: 'it', resolvedProfile, patchFiles: [], args: [], environment: A.loadLayeredEnv('dsh') })
   ctx = booted.ctx
   ctx.llm.registerAdapter(['it-noop'], parentAdapter)
 }

@@ -7,11 +7,10 @@ commits, docs, or the npm package.
 
 ## Status and compatibility
 
-- Package version: `0.1.1`.
-- Verified DSH build: `0.2.1-rc.2`; `engines.dsh` is
-  `>=0.2.1-rc.2 <0.3.0`. That range admits later RCs but is not a per-version
-  verification promise.
-- Node.js `^22.19.0 || >=24.0.0`.
+- Package version: `0.3.0`.
+- Verified DSH build: `0.2.2-rc.2`; `engines.dsh` is
+  exactly `0.2.2-rc.2`; other builds are not supported by this release.
+- Node.js `>=24.9.0`.
 - Pure ESM, no build step, no generated assets.
 - The visual settings page is implemented as the zero-build browser half and
   covered by `react-test-renderer` component tests with a fake Host form. A
@@ -29,14 +28,14 @@ commits, docs, or the npm package.
 | [src/engine.js](../src/engine.js) | `BetterCompactEngine extends BasicCompactionEngine`: enhanced `summarize()`, preset-supersede guard, manual handoff continuation, failure classification. |
 | [src/config.js](../src/config.js) | Single source of truth for defaults, schema, normalization, native projection, row keys. |
 | [src/budget.js](../src/budget.js) | Clearly marked adapter re-implementing the native capacity/retention/selection formulas and fixed-prefix pricing. |
-| [src/prompts.js](../src/prompts.js) | Goal/handoff instructions, custom-mode variable expansion/instruction, authoritative-state rendering, output structure checks, mode detection, conservative redaction, handoff document/continuation text. |
+| [src/prompts.js](../src/prompts.js) | Goal/handoff instructions, authoritative-state rendering, output structure check, mode detection, conservative redaction, handoff document/continuation text. |
 | [src/state.js](../src/state.js) | Read-only goal/todo/question/job/child collection and continuation blockers. |
 | [src/handoff.js](../src/handoff.js) | Per-attempt temp directory/path, owner-only write, permission stat, byte-for-byte read-back. |
 | [src/live.js](../src/live.js) | Process-local "summary in flight", classified-failure, and handoff-continuation outcome observations for inspect only; no durable claim. |
 | [src/identity.js](../src/identity.js) | Unwraps cordis service proxies (`symbols.original`) so preset-owned engines can be compared and recognized. |
 | [src/inspect.js](../src/inspect.js) | Live/cold session inspection, budget/preview construction, `lastCompaction` projection, inspect error taxonomy. |
 | [src/models.js](../src/models.js) | Read-only projection of the host's allowed summary-model candidates and their advertised efforts. |
-| [src/client.js](../src/client.js) | Zero-build visual settings page: capacity bar with drag handles, a 选择 | 示意图 strategy layout with four compact choices and one SVG process drawing, model/effort, custom-prompt editor with ten variable chips and goal-default prefill, cache, rare advanced options, native status, session picker, Host-form save. Registers the stable row-config keys. |
+| [src/client.js](../src/client.js) | Zero-build visual settings page: three strategy diagrams, model/effort, budget/retention, cache, advanced options, native status, session picker, Host-form save. Registers the stable row-config keys. |
 | [scripts/runtime-smoke.mjs](../scripts/runtime-smoke.mjs) | Four-boot real-profile smoke with a temp DSH home and scripted adapter. |
 | [tests/](../tests) | `node:test` unit/component tests; no browser build. |
 | [third-party/](../third-party) | MIT notice/license for adapted DSH material. |
@@ -78,8 +77,12 @@ installed build:
 3. **Host-plane engine guard.** The standalone bundle also inserts a host-plane
    engine for headless/TUI. Agent events are delivered to untagged root
    listeners, so in Web the host engine would otherwise see every preset agent.
-   `compactIfNeeded` compares `ctx.agentPresets.serviceFor(agent,'compaction')`
-   with itself and returns `null` when a preset owns the engine. Cordis wraps
+   Native automatic listeners are registered through an extended public context
+   that gates `agent/pre-step`, `agent/request`, and `agent/request-error` by
+   `ctx.agentPresets.serviceFor(agent,'compaction')`. In rc.2 the request-model
+   switch path bypasses `compactIfNeeded`, so that method's existing guard alone
+   is insufficient. Native callbacks still own proposed-header pricing and
+   durable transactions; no upstream private methods are overridden. Cordis wraps
    services in proxies, so identity is compared through
    `symbols.original`; a raw `!==` check wrongly treats a preset engine as
    "another" engine.
@@ -89,7 +92,7 @@ installed build:
    value with the snapshot and returns `requiresReload`.
 5. **Only `summarize()` is subclassed.** Selection, retention, pricing, locking,
    the bracket transaction, flush, overflow recovery, and retry loops stay in
-   the inherited engine. Enhanced modes (goal, handoff, custom) re-implement only the auxiliary
+   the inherited engine. Enhanced modes re-implement only the auxiliary
    LLM request shape (adapted from `summarizeWithLlm`, MIT) so they can change
    the instruction, add authoritative state, pass an explicit reasoning effort,
    and validate output before installation.
@@ -174,7 +177,7 @@ installed build:
   failure, fence ordering before model work, GET-only 405, no-store JSON, and
   both routes being registered only with webserver+fence.
 - `client.test.mjs` — module identity, alias keys, slot registration, summary
-  copy, section order, choice|diagram columns, one shared SVG process drawing, radiogroup/keyboard/disabled
+  copy, section order, three distinct diagrams, radiogroup/keyboard/disabled
   semantics, pending active-mode flags, native "not applicable" controls,
   model/effort incompatibility and pair clearing, unknown capability,
   retention switching, save ops/revision, success/reload copy, conflict,
@@ -347,9 +350,12 @@ The read-only payload is the shared contract the visual settings page renders; t
    preset identity/metadata and the compaction group engine row. The package
    test compares it against the installed standard preset while
    `DSH_PACKAGE_ROOT` points at that install.
-3. Re-check the Web composition: which rows are preset-owned/disabled and
+3. Read authoritative todo/question wire views with one complete
+   `sessionProjections.snapshot(session, new Set(['todos', 'userQuestions']))`;
+   do not use the deprecated `stateOf` or partial `cachedSnapshot` reads.
+4. Re-check the Web composition: which rows are preset-owned/disabled and
    whether the preset group still isolates `compaction`/`toolResultPruner`.
-4. Re-run unit tests and the smoke; then check the current GUI/URL only as part
+5. Re-run unit tests and the smoke; then check the current GUI/URL only as part
    of the S4 integration task.
 
 ## Known unverified areas

@@ -1,5 +1,5 @@
 /**
- * Opt-in installed-runtime suite: DSH_PACKAGE_ROOT points to exact rc.1;
+ * Opt-in installed-runtime suite: DSH_PACKAGE_ROOT points to exact rc.2;
  * DSH_CLIENT_TEST_ROOT points to npm-installed shell seeds/DOM dependencies
  * (defaults to the isolated sibling client-test project). Plugin source root
  * follows APOLLO_PLUGIN_SOURCE_ROOT, defaulting to sibling checkouts.
@@ -11,7 +11,7 @@ import { rm, readFile } from 'node:fs/promises'
 import { prepareProfile, bootProfile, waitUntil } from '../scripts/lib/profile.mjs'
 import { createRuntime, enabled, VERSION, importHost, json, hostRequire } from './fixtures/client-runtime.mjs'
 
-const options = { skip: enabled ? false : 'Set DSH_PACKAGE_ROOT to the installed 0.2.2-rc.1 host', timeout: 60000 }
+const options = { skip: enabled ? false : 'Set DSH_PACKAGE_ROOT to the installed 0.2.2-rc.2 host', timeout: 60000 }
 const APOLLO = 'dsh-better-dsh'
 const ROW = APOLLO + '#apollo-skills'
 

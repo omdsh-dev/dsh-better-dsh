@@ -1,26 +1,28 @@
 /**
- * dsh-better-subagent (npm: @menghuan1918/dsh-better-subagent) — 浏览器半边：
+ * dsh-better-subagent (npm: @oh-my-dsh/dsh-better-subagent) — 浏览器半边：
  * 官方 Plugins 页的行配置表单。
  *
  * 宿主行导出正式 volatile Config，dsh-settings 把它投影成行配置表单；本文件注册
- * `plugins.row.config`（主键 `@menghuan1918/dsh-better-subagent#dsh-better-subagent`，
- * 与 src/config.js 的 ROW_CONFIG_KEYS 同步；Apollo 集成键并排注册同一页面），
+ * `plugins.row.config`（主键 `@oh-my-dsh/dsh-better-subagent#dsh-better-subagent`，
+ * 与 src/config.js 的 ROW_CONFIG_KEYS 同步；Better DSH / Apollo 兼容键并排注册同一页面），
  * 自画紧凑表单并只在保存时一次提交全部改动。零构建：
  * closure factory，只 require('react')，不 import 任何 DSH client 包；样式随组件
  * 树内一个 <style> 渲染（不写 DOM）。注册 id 必须等于 npm 包名（client closure id）。
  */
 
 window.__ModuleLoader__.load({
-	id: '@menghuan1918/dsh-better-subagent',
+	id: '@oh-my-dsh/dsh-better-subagent',
 	factory: (require) => {
 		var module = { exports: {} };
 		var exports = module.exports;
 		const { createElement: h, cloneElement, isValidElement, useEffect, useId, useRef, useState } = require('react');
 
 		const NS = 'better-subagent';
-		// Primary key first, then the Apollo-integration compatibility keys. All
-		// four render the same page over the one row config; no second store.
+		// Primary key first, then the Better DSH / Apollo compatibility keys. All
+		// six render the same page over the one row config; no second store.
 		const ROW_KEYS = [
+			'@oh-my-dsh/dsh-better-subagent#dsh-better-subagent',
+			'dsh-better-dsh#dsh-better-subagent',
 			'@menghuan1918/dsh-better-subagent#dsh-better-subagent',
 			'@menghuan1918/dsh-apollo#dsh-better-subagent',
 			'dsh-apollo#dsh-better-subagent',
@@ -73,10 +75,10 @@ window.__ModuleLoader__.load({
 			modelsEmptyTitle: '配置第一个模型',
 			effortsFirst: "先填写可选思考强度",
 			trustedCount: '{count} 个主机',
-			behaviorTitle: '运行行为',
+			behaviorTitle: '行为',
 			defaults: "默认",
 			customized: "已修改 {count} 项",
-			readonlyDiagnostics: "连接诊断 · 只读",
+			readonlyDiagnostics: "诊断",
 			draftPreview: "草稿预览",
 			changeCount: "{count} 项改动",
 			resetConfirm: "再次点击放弃",
@@ -135,6 +137,8 @@ window.__ModuleLoader__.load({
 			readonly: "当前连接仅供查看，无法保存设置。",
 			childExitGuardLabel: "等待子代理完成",
 			childExitGuardHint: "子代理仍在运行时继续等待；按 Esc 仍可中断。",
+			delegationPromptLabel: "委派提示词",
+			delegationPromptHint: "把委派纪律与模型分档写进系统提示词，对所有预设生效；与 CLI 接入范围无关。",
 			tiersTitle: "子代理模型选择",
 			tiersIntro: "为工程预设推荐子代理模型；实际调用仍需符合允许使用的模型范围。",
 			tierFast: '快速档',
@@ -234,10 +238,10 @@ window.__ModuleLoader__.load({
 			modelsEmptyTitle: 'Set up your first model',
 			effortsFirst: "Add effort options first",
 			trustedCount: '{count} hosts',
-			behaviorTitle: 'Run behavior',
+			behaviorTitle: 'Behavior',
 			defaults: "Default",
 			customized: "{count} customized",
-			readonlyDiagnostics: "Connection diagnostics · Read-only",
+			readonlyDiagnostics: "Diagnostics",
 			draftPreview: "Draft preview",
 			changeCount: "{count} changes",
 			resetConfirm: "Click again to discard",
@@ -296,6 +300,8 @@ window.__ModuleLoader__.load({
 			readonly: "This connection is view-only. Settings cannot be saved.",
 			childExitGuardLabel: "Wait for subagents to finish",
 			childExitGuardHint: "Keep waiting while subagents run. You can still interrupt with Esc.",
+			delegationPromptLabel: "Delegation prompt",
+			delegationPromptHint: "Adds the delegation rules and model tiers to the system prompt for every preset; independent of the CLI scope.",
 			tiersTitle: "Subagent model selection",
 			tiersIntro: "Recommend subagent models in engineering presets; calls must still use a permitted model.",
 			tierFast: 'Fast tier',
@@ -398,7 +404,7 @@ window.__ModuleLoader__.load({
 
 		// ── 样式（组件树内的 <style>；复用 DSH 设计令牌，与官方设置页同观感）──────────
 
-		const STYLE_ID = '@menghuan1918/dsh-better-subagent/settings.css';
+		const STYLE_ID = '@oh-my-dsh/dsh-better-subagent/settings.css';
 		const CSS = `.bs-root{--cfg-accent:var(--dsw-alias-state-business-primary,#4176e6);--cfg-accent-solid:var(--dsw-alias-button-primary-fill,#0f1115);--cfg-accent-fg:var(--dsw-alias-label-primary-foreground,#fff);--cfg-accent-text:color-mix(in srgb,var(--cfg-accent) 72%,var(--cfg-ink));--cfg-accent-hover:color-mix(in srgb,var(--cfg-accent-solid) 88%,var(--cfg-bg));--cfg-accent-soft:color-mix(in srgb,var(--cfg-accent) 10%,transparent);--cfg-bg:var(--dsw-alias-bg-layer-1);--cfg-raised:var(--dsw-alias-bg-layer-2);--cfg-overlay:var(--dsw-alias-bg-layer-3);--cfg-sunken:color-mix(in srgb,var(--dsw-alias-label-primary) 4%,var(--dsw-alias-bg-layer-1));--cfg-ink:var(--dsw-alias-label-primary);--cfg-muted:var(--dsw-alias-label-secondary);--cfg-dim:color-mix(in srgb,var(--dsw-alias-label-tertiary) 80%,var(--cfg-ink));--cfg-line:var(--dsw-alias-border-l2);--cfg-line-strong:var(--dsw-alias-border-l3);--cfg-hover:var(--dsw-alias-interactive-bg-hover);--cfg-danger:var(--dsw-alias-state-error-primary);--cfg-warn:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 60%,var(--cfg-ink));--cfg-success:color-mix(in srgb,var(--dsw-alias-state-success-primary) 60%,var(--cfg-ink));--cfg-mono:var(--dsw-font-family-mono,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);color:var(--cfg-ink);font:inherit;font-size:13px;line-height:20px;font-variant-numeric:tabular-nums;min-width:0;width:100%;--bs-action-size:32px;container:bs-settings / inline-size}
 .bs-root *{box-sizing:border-box}
 .bs-root [hidden]{display:none!important}
@@ -601,6 +607,7 @@ window.__ModuleLoader__.load({
 			const tiers = isRecord(source.tiers) ? source.tiers : {};
 			const result = {
 				childExitGuard: source.childExitGuard === true,
+				delegationPrompt: !isRecord(source.delegation) || source.delegation.prompt !== false,
 				trustedHosts: Array.isArray(source.trustedHosts) ? [...new Set(source.trustedHosts.filter((item) => typeof item === 'string').map((item) => item.trim()).filter(Boolean))] : [],
 				tiers: {},
 				subagents: {
@@ -632,6 +639,9 @@ window.__ModuleLoader__.load({
 			}
 			if (host.childExitGuard !== current.childExitGuard) {
 				ops.push({ op: 'set', path: ['childExitGuard'], value: current.childExitGuard });
+			}
+			if (host.delegationPrompt !== current.delegationPrompt) {
+				ops.push({ op: 'set', path: ['delegation', 'prompt'], value: current.delegationPrompt });
 			}
 			for (const tier of TIERS) {
 				if (JSON.stringify(host.tiers[tier]) === JSON.stringify(current.tiers[tier])) continue;
@@ -1460,6 +1470,8 @@ window.__ModuleLoader__.load({
 						!scopeActive ? h('p', { className: 'bs-note', 'data-tone': 'warn' }, translate('scopeNone')) : null),
 					h('section', { className: 'bs-section' },
 						h('div', { className: 'bs-sectionHead' }, h('h3', { className: 'bs-sectionTitle' }, translate('behaviorTitle'))),
+						h(SwitchRow, { id: 'bs-delegation-prompt', label: translate('delegationPromptLabel'), hint: translate('delegationPromptHint'),
+							checked: live.delegationPrompt, disabled: !writable || busy, onChange: (delegationPrompt) => edit((current) => ({ ...current, delegationPrompt })) }),
 						h(SwitchRow, { id: 'bs-child-exit-guard', label: translate('childExitGuardLabel'), hint: translate('childExitGuardHint'),
 							checked: live.childExitGuard, disabled: !writable || busy, onChange: (childExitGuard) => edit((current) => ({ ...current, childExitGuard })) })),
 					h('section', { className: 'bs-section', 'aria-label': translate('readonlyDiagnostics') },
@@ -1510,7 +1522,7 @@ window.__ModuleLoader__.load({
 			try {
 				const dispose = ctx.locale.register(NS, { zh, en });
 				t = ctx.locale.bind(NS);
-				ctx.effect(() => dispose, '@menghuan1918/dsh-better-subagent: dictionaries');
+				ctx.effect(() => dispose, '@oh-my-dsh/dsh-better-subagent: dictionaries');
 			} catch {
 				// locale 服务缺失时保持中文默认。
 			}
@@ -1531,7 +1543,7 @@ window.__ModuleLoader__.load({
 				return () => {
 					for (const dispose of disposers) dispose();
 				};
-			}), '@menghuan1918/dsh-better-subagent: row config page');
+			}), '@oh-my-dsh/dsh-better-subagent: row config page');
 		}
 
 		exports.inject = inject;

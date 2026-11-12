@@ -23,7 +23,8 @@ function makeCtx({ children = [], agentStatus = new Map(), onSteer } = {}) {
     handlers,
     warnings,
     on: (event, fn) => { handlers.set(event, fn); return () => {} },
-    subagents: { listChildren: async () => children },
+    // rc.2 exposes only the recursive walk; direct-child rows are depth one.
+    subagents: { listDescendants: async () => children.map((child) => ({ depth: 1, ...child })) },
     agents: { get: (id) => agentStatus.get(id) },
     get: (serviceName) => serviceName === 'configEditor'
       ? { entries: () => [{ options: { id: 'dsh-better-subagent' }, fiber: { config: liveConfig } }] }
@@ -150,10 +151,10 @@ test('signal.aborted → no steer (user interrupt is the escape hatch)', async (
   })
 })
 
-test('listChildren throws → fail open: no steer, one warning', async () => {
+test('listDescendants throws → fail open: no steer, one warning', async () => {
   await withConfig(ENABLED, async () => {
     const ctx = makeCtx()
-    ctx.subagents.listChildren = async () => { throw new Error('boom') }
+    ctx.subagents.listDescendants = async () => { throw new Error('boom') }
     assert.deepEqual(await fireTurnStopping(ctx, { ...PARENT }), [])
     assert.equal(ctx.warnings.length, 1)
     assert.match(ctx.warnings[0], /boom/)

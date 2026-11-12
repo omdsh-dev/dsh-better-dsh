@@ -1,6 +1,6 @@
 # dsh-better-subagent bundle patch: inserts the one host-plane row this package
 # needs into the profile roster. Applied as a profile bundle layer; activate
-# with `dsh plugin --profile <name> add @menghuan1918/dsh-better-subagent` (or
+# with `dsh plugin --profile <name> add @oh-my-dsh/dsh-better-subagent` (or
 # `link:<path>` during development).
 #
 # The row name must be this package's scoped npm name: the Loader resolves a
@@ -18,8 +18,8 @@
 #     aliases) consumed by the row config page.
 #
 # Volatile row config (applies without reloading the row): childExitGuard,
-# tiers.{fast,quality}, subagents.{eng,global}, subagents.{codex,claude}.*,
-# trustedHosts. All schema settings are editable in the row configuration UI.
+# tiers.{fast,quality}, subagents.{eng,global}, subagents.{codex,claude}.*.
+# Deployment flag, hand-written only: trustedHosts.
 - insert:
     # Singleton PTC deadline-exemption row. The ask-user bundle inserts the
     # same id/name; the Loader deduplicates so both plugins share one service
@@ -28,4 +28,4 @@
       name: dsh-better-ptc
 
     - id: dsh-better-subagent
-      name: '@menghuan1918/dsh-better-subagent'
+      name: '@oh-my-dsh/dsh-better-subagent'

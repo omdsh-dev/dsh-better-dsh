@@ -30,6 +30,8 @@ export const ENTRY_ID = 'dsh-better-compact'
 export const ENGINE_ENTRY_ID = 'dsh-better-compact-engine'
 /** Canonical `plugins.row.config` slot key. */
 export const ROW_CONFIG_KEY = `${PACKAGE_NAME}#${ENTRY_ID}`
+/** Better DSH declares the same stable row. */
+export const BETTER_DSH_ROW_CONFIG_KEY = `dsh-better-dsh#${ENTRY_ID}`
 /** Apollo's published scoped package name declares the same stable row. */
 export const APOLLO_ROW_CONFIG_KEY = `@menghuan1918/dsh-apollo#${ENTRY_ID}`
 /** Historical unscoped Apollo row key. */
@@ -37,6 +39,7 @@ export const APOLLO_LEGACY_ROW_CONFIG_KEY = `dsh-apollo#${ENTRY_ID}`
 /** Every assembly's `plugins.row.config` key, in dispatch order. */
 export const ROW_CONFIG_KEYS = Object.freeze([
   ROW_CONFIG_KEY,
+  BETTER_DSH_ROW_CONFIG_KEY,
   APOLLO_ROW_CONFIG_KEY,
   APOLLO_LEGACY_ROW_CONFIG_KEY,
 ])
@@ -44,10 +47,7 @@ export const ROW_CONFIG_KEYS = Object.freeze([
 /** Supported compaction modes. */
 export const MODES = Object.freeze(['native', 'goal', 'handoff', 'custom'])
 
-/**
- * Maximum characters accepted for a custom-mode instruction. The Web editor
- * and the runtime prompt builder use the same bound; keep them in sync.
- */
+/** Maximum characters accepted for a custom-mode instruction. */
 export const MAX_CUSTOM_PROMPT_CHARS = 8000
 
 /** Native keys accepted by `BasicCompactionEngine` (native semantics/units). */
@@ -102,7 +102,6 @@ export const DEFAULTS = Object.freeze({
   summarizationProvider: '',
   summarizationModel: '',
   reasoningEffort: '',
-  /** Extra instruction used only by the custom mode; the three built-ins ignore it. */
   customPrompt: '',
   cachePriority: true,
   maxTokens: null,
@@ -405,15 +404,9 @@ export function readConfig(config) {
   }
 
   const customPrompt = fieldOf(source, 'customPrompt') ?? DEFAULTS.customPrompt
-  if (typeof customPrompt !== 'string') {
-    throw new TypeError('customPrompt must be a string (empty unless mode is custom)')
-  }
-  if (customPrompt.length > MAX_CUSTOM_PROMPT_CHARS) {
-    throw new TypeError(`customPrompt must be at most ${MAX_CUSTOM_PROMPT_CHARS} characters, got ${customPrompt.length}`)
-  }
-  if (mode === 'custom' && customPrompt.trim().length === 0) {
-    throw new TypeError('customPrompt is required when mode is custom; write an instruction or choose another mode')
-  }
+  if (typeof customPrompt !== 'string') throw new TypeError('customPrompt must be a string (empty unless mode is custom)')
+  if (customPrompt.length > MAX_CUSTOM_PROMPT_CHARS) throw new TypeError(`customPrompt must be at most ${MAX_CUSTOM_PROMPT_CHARS} characters, got ${customPrompt.length}`)
+  if (mode === 'custom' && customPrompt.trim().length === 0) throw new TypeError('customPrompt is required when mode is custom; write an instruction or choose another mode')
 
   const cachePriority = fieldOf(source, 'cachePriority') ?? DEFAULTS.cachePriority
   if (typeof cachePriority !== 'boolean') throw new TypeError(`cachePriority must be a boolean, got ${String(cachePriority)}`)

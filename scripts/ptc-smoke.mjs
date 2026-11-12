@@ -175,12 +175,12 @@ try {
   })
 
   const child = await modelRun('subagent and delayed wait through PTC',
-    'const child = await tools.subagent({ description: "PTC smoke real child", prompt: "PTC_SMOKE_DELAYED_CHILD: reply once", provider: ' + JSON.stringify(PROVIDER) + ', model: ' + JSON.stringify(MODEL) + ' }); const started = Date.now(); const waited = await tools.wait_subagent({ subagent_id: [child.subagentId] }); return { child, waited, waitMs: Date.now() - started };')
+    'const child = await tools.subagent({ description: "PTC smoke real child", prompt: "PTC_SMOKE_DELAYED_CHILD: reply once", provider: ' + JSON.stringify(PROVIDER) + ', model: ' + JSON.stringify(MODEL) + ' }); const started = Date.now(); const waited = await tools.wait_subagent({ subagent_id: [child.name] }); return { child, waited, waitMs: Date.now() - started };')
   assert.equal(child.value.child.kind, 'activation')
-  assert.ok(child.value.waited.includes('subagent ' + child.value.child.subagentId + ' done (completed)'), child.text)
+  assert.ok(child.value.waited.includes('subagent ' + child.value.child.name + ' done (completed)'), child.text)
   assert.ok(child.value.waitMs >= WAIT - 100, child.text)
   assert.ok(state.children.some(item => item.finishedAt - item.startedAt >= WAIT - 100))
-  pass('model-run_code-real-subagent-wait-exceeds-budget', { waitMs: child.value.waitMs, childId: child.value.child.subagentId })
+  pass('model-run_code-real-subagent-wait-exceeds-budget', { waitMs: child.value.waitMs, subagentName: child.value.child.name })
 
   const answer = await modelRun('delayed question answer through PTC', askCode('answered'))
   assert.deepEqual(answer.value.answers, [{ id: 'answered', selected: ['smoke-answer'] }])

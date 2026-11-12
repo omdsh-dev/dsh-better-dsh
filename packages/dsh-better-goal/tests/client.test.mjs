@@ -27,6 +27,8 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
 const SESSION_ID = 'session-1'
 const UNLIMITED = UNLIMITED_ROUNDS
+/** The row-config key the Plugins page derives for Better DSH's declaring bundle. */
+const BETTER_DSH_ROW_CONFIG_KEY = 'dsh-better-dsh#dsh-better-goal'
 /** The row-config key the Plugins page derives for Apollo's declaring bundle. */
 const APOLLO_ROW_CONFIG_KEY = 'dsh-apollo#dsh-better-goal'
 /** The row-config key for Apollo's published scoped package. */
@@ -296,14 +298,14 @@ test('closure id, injected services, dictionaries, and every slot registration',
   assert.equal(PACKAGE_NAME, 'dsh-better-goal')
   assert.deepEqual(
     rows.map((entry) => entry.options.key).sort(),
-    [APOLLO_ROW_CONFIG_KEY, ROW_CONFIG_KEY, SCOPED_APOLLO_ROW_CONFIG_KEY].sort(),
+    [BETTER_DSH_ROW_CONFIG_KEY, APOLLO_ROW_CONFIG_KEY, ROW_CONFIG_KEY, SCOPED_APOLLO_ROW_CONFIG_KEY].sort(),
   )
   assert.equal(new Set(rows.map((entry) => entry.options.key)).size, rows.length, 'one entry per exact key')
   for (const row of rows) {
     assert.equal(row.component, rows[0].component, 'one entry component serves every key')
     assert.equal(row.options.locale, 'better-goal')
   }
-  assert.equal(setup.slots.registrations.length, 4)
+  assert.equal(setup.slots.registrations.length, 5)
 })
 
 // ── GoalBar ────────────────────────────────────────────────────────────────
@@ -366,12 +368,10 @@ test('active GoalBar renders the projection, unlimited rounds, and pauses throug
   assert.match(text, /Ship the independent goal/)
   assert.match(text, /meta\.rounds/)
   assert.match(text, /cap\.unlimited/)
-  const style = bar.renderer.root.find((node) => isHost(node) && node.type === 'style' && node.props?.['data-plugin-css'] === 'dsh-better-goal/goal.css')
-  assert.ok(style)
-  const css = style.children.join('')
-  assert.match(css, /\.dbg-bar\{[^}]*min-height:40px/)
-  assert.match(css, /\.dbg-progressTrack\{[^}]*height:2px/)
-  assert.doesNotMatch(css, /\.dbg-historyList>li\+li\{border-top/)
+  assert.equal(
+    bar.renderer.root.findAll((node) => isHost(node) && node.type === 'style' && node.props?.['data-plugin-css'] === 'dsh-better-goal/goal.css').length,
+    1,
+  )
   assert.equal(byLabel(bar.renderer, 'action.resume'), undefined)
   assert.ok(byLabel(bar.renderer, 'action.pause'))
 
@@ -603,14 +603,14 @@ async function mountConfigEntry(record, controller) {
   }
 }
 
-test('three exact row-config keys are unique and each dispatches one shared entry', () => {
+test('four exact row-config keys are unique and each dispatches one shared entry', () => {
   const setup = install()
   setup.declare('plugins.row.config')
-  const expected = [ROW_CONFIG_KEY, APOLLO_ROW_CONFIG_KEY, SCOPED_APOLLO_ROW_CONFIG_KEY]
+  const expected = [ROW_CONFIG_KEY, BETTER_DSH_ROW_CONFIG_KEY, APOLLO_ROW_CONFIG_KEY, SCOPED_APOLLO_ROW_CONFIG_KEY]
   const rows = rowConfigEntries(setup)
-  assert.equal(rows.length, 3, 'each assembly variant registers one row-config entry')
+  assert.equal(rows.length, 4, 'each assembly variant registers one row-config entry')
   assert.deepEqual(rows.map((entry) => entry.options.key).sort(), [...expected].sort())
-  assert.equal(new Set(rows.map((entry) => entry.options.key)).size, 3, 'the three keys never collide')
+  assert.equal(new Set(rows.map((entry) => entry.options.key)).size, 4, 'the four keys never collide')
   for (const key of expected) {
     const entry = dispatchRowConfig(setup, key)
     assert.equal(entry.options.locale, 'better-goal')
@@ -618,10 +618,10 @@ test('three exact row-config keys are unique and each dispatches one shared entr
   }
 })
 
-test('standalone, legacy Apollo, and scoped Apollo keys dispatch the same page over one config store', async () => {
+test('standalone, Better DSH, legacy Apollo, and scoped Apollo keys dispatch the same page over one config store', async () => {
   const setup = install()
   setup.declare('plugins.row.config')
-  const keys = [ROW_CONFIG_KEY, APOLLO_ROW_CONFIG_KEY, SCOPED_APOLLO_ROW_CONFIG_KEY]
+  const keys = [ROW_CONFIG_KEY, BETTER_DSH_ROW_CONFIG_KEY, APOLLO_ROW_CONFIG_KEY, SCOPED_APOLLO_ROW_CONFIG_KEY]
   const entries = keys.map((key) => dispatchRowConfig(setup, key))
   assert.equal(new Set(entries.map((entry) => entry.component)).size, 1)
 
@@ -677,35 +677,17 @@ test('settings page exposes defaults, fixed mode input, validation, and atomic s
   assert.equal(page.renderer.root.findAll((node) => isHost(node) && node.type === 'h3' && node.props.className === 'dbg-title').length, 1)
   assert.match(pageText(page.renderer), /settingsTitle/)
   assert.match(pageText(page.renderer), /settingsIntro/)
-  assert.match(pageText(page.renderer), /runtimeActive|runtimeLoading|runtimeUnavailable/)
   assert.equal(selectedChoice(page.renderer, 'dsh-better-goal-round-limit-mode'), 'agent')
   assert.equal(byId(page.renderer, 'dsh-better-goal-round-limit'), undefined)
-  const cardText = () => page.renderer.root.findAll((node) => isHost(node) && node.props.className === 'dbg-modeCard').map(allText).join(' ')
-  assert.match(pageText(page.renderer), /roundDefinition/)
-  assert.match(cardText(), /modeAgentStop/)
-  assert.match(cardText(), /modeUnlimitedStop/)
-  assert.match(cardText(), /modeFixedStop/)
-  assert.match(cardText(), /modeAgentFlow/)
-  assert.match(cardText(), /modeUnlimitedFlow/)
-  assert.match(cardText(), /modeFixedFlow/)
-  assert.equal(page.renderer.root.findAll((node) => isHost(node) && (node.props.className === 'dbg-advanced' || node.props.className === 'dbg-diagnostics')).length, 0)
   assert.equal(
     page.renderer.root.findAll((node) => isHost(node) && node.type === 'style' && node.props?.['data-plugin-css'] === 'dsh-better-goal/settings.css').length,
     1,
   )
   assert.equal(primaryButton(page.renderer), undefined, 'unchanged settings have no save bar')
 
-  await act(async () => { byId(page.renderer, 'dsh-better-goal-round-limit-mode-unlimited').props.onChange() })
-  assert.equal(selectedChoice(page.renderer, 'dsh-better-goal-round-limit-mode'), 'unlimited')
-  assert.equal(byId(page.renderer, 'dsh-better-goal-round-limit'), undefined)
-  assert.equal(page.renderer.root.findAll((node) => isHost(node) && node.props.className === 'dbg-roundSpan').length, 0)
   await act(async () => { byId(page.renderer, 'dsh-better-goal-round-limit-mode-fixed').props.onChange() })
-  assert.equal(selectedChoice(page.renderer, 'dsh-better-goal-round-limit-mode'), 'fixed')
   const limit = byId(page.renderer, 'dsh-better-goal-round-limit')
   assert.equal(limit.props.value, '256')
-  const marker = page.renderer.root.find((node) => isHost(node) && node.props?.className === 'dbg-roundSpan')
-  assert.match(allText(marker), /roundSpan/)
-  assert.match(allText(marker), /256/)
 
   await act(async () => { limit.props.onChange({ target: { value: '0' } }) })
   assert.match(pageText(page.renderer), /invalidRoundLimit/)
@@ -786,47 +768,6 @@ test('implementation choices swap the section, write native ops, and ask for rel
   assert.match(pageText(page.renderer), /reloadRequired/)
 })
 
-test('implementation and round-policy cards form keyboard radiogroups', async () => {
-  const page = await mountSettings({
-    value: { implementation: 'enhanced', roundLimitMode: 'agent', roundLimit: 256 },
-  })
-  const group = (label) => page.renderer.root.find((node) => isHost(node) && node.props?.role === 'radiogroup' && node.props?.['aria-label'] === label)
-  const press = async (label, key, value) => {
-    let prevented = 0
-    await act(async () => {
-      group(label).props.onKeyDown({
-        key,
-        target: { value, disabled: false },
-        nativeEvent: { isComposing: false },
-        preventDefault() { prevented++ },
-      })
-    })
-    return prevented
-  }
-
-  assert.equal(await press('implementation', 'ArrowRight', 'enhanced'), 1)
-  assert.equal(selectedChoice(page.renderer, 'dsh-better-goal-implementation'), 'native')
-  await press('implementation', 'ArrowLeft', 'native')
-  assert.equal(selectedChoice(page.renderer, 'dsh-better-goal-implementation'), 'enhanced')
-  await press('implementation', 'End', 'enhanced')
-  assert.equal(selectedChoice(page.renderer, 'dsh-better-goal-implementation'), 'native')
-  await press('implementation', 'Home', 'native')
-  assert.equal(selectedChoice(page.renderer, 'dsh-better-goal-implementation'), 'enhanced')
-  await press('implementation', ' ', 'native')
-  assert.equal(selectedChoice(page.renderer, 'dsh-better-goal-implementation'), 'native')
-  await press('implementation', 'Enter', 'enhanced')
-  assert.equal(selectedChoice(page.renderer, 'dsh-better-goal-implementation'), 'enhanced')
-
-  assert.equal(await press('modeLabel', 'ArrowRight', 'agent'), 1)
-  assert.equal(selectedChoice(page.renderer, 'dsh-better-goal-round-limit-mode'), 'unlimited')
-  await press('modeLabel', 'End', 'unlimited')
-  assert.equal(selectedChoice(page.renderer, 'dsh-better-goal-round-limit-mode'), 'fixed')
-  assert.ok(page.renderer.root.find((node) => isHost(node) && node.props?.className === 'dbg-roundSpan'))
-  await press('modeLabel', 'Home', 'fixed')
-  assert.equal(selectedChoice(page.renderer, 'dsh-better-goal-round-limit-mode'), 'agent')
-  assert.equal(page.controller.calls.length, 0, 'keyboard card navigation stays a local draft')
-})
-
 test('settings summary view and unavailable/read-only states', async () => {
   const setup = install()
   const record = setup.declare('plugins.row.config')
@@ -858,19 +799,41 @@ test('exported form helpers normalize defaults and validate drafts strictly', ()
     nativeBlockedAfterConsecutiveRounds: 3,
     roundLimitMode: 'fixed',
     roundLimit: UNLIMITED,
+    spinHintSeconds: 120,
+    jobWaitSeconds: 2400,
   })
-  assert.deepEqual(parseDraft({ implementation: 'enhanced', roundLimitMode: 'fixed', roundLimit: '1.5', questionTimeoutSeconds: '120' }, roundDefaults), {
+  // 0 is the off switch and must survive normalization; out-of-range falls back.
+  assert.equal(shapeConfig({ spinHintSeconds: 0 }).spinHintSeconds, 0)
+  assert.equal(shapeConfig({ spinHintSeconds: 3600 }).spinHintSeconds, 3600)
+  assert.equal(shapeConfig({ spinHintSeconds: 3601 }).spinHintSeconds, 120)
+  assert.equal(shapeConfig({ spinHintSeconds: -1 }).spinHintSeconds, 120)
+  // jobWaitSeconds: 0 means "never wait" and must also survive normalization.
+  assert.equal(shapeConfig({ jobWaitSeconds: 0 }).jobWaitSeconds, 0)
+  assert.equal(shapeConfig({ jobWaitSeconds: 86400 }).jobWaitSeconds, 86400)
+  assert.equal(shapeConfig({ jobWaitSeconds: 86401 }).jobWaitSeconds, 2400)
+  assert.equal(shapeConfig({ jobWaitSeconds: -1 }).jobWaitSeconds, 2400)
+  for (const bad of ['-1', '1.5', '86401', '', 'abc']) {
+    assert.deepEqual(parseDraft({ implementation: 'enhanced', roundLimitMode: 'agent', spinHintSeconds: '120', jobWaitSeconds: bad }, roundDefaults), { error: 'invalidJobWait' })
+  }
+  assert.equal(parseDraft({ implementation: 'enhanced', roundLimitMode: 'agent', spinHintSeconds: '120', jobWaitSeconds: '0' }, roundDefaults).value.jobWaitSeconds, 0)
+  assert.deepEqual(parseDraft({ implementation: 'enhanced', roundLimitMode: 'fixed', roundLimit: '1.5', spinHintSeconds: '120', questionTimeoutSeconds: '120' }, roundDefaults), {
     error: 'invalidRoundLimit',
   })
-  assert.deepEqual(parseDraft({ implementation: 'enhanced', roundLimitMode: 'agent', roundLimit: 'ignored', questionTimeoutSeconds: '-1' }, roundDefaults), {
+  for (const bad of ['-1', '1.5', '3601', '', 'abc']) {
+    assert.deepEqual(parseDraft({ implementation: 'enhanced', roundLimitMode: 'agent', spinHintSeconds: bad }, roundDefaults), { error: 'invalidSpinHint' })
+  }
+  assert.equal(parseDraft({ implementation: 'enhanced', roundLimitMode: 'agent', spinHintSeconds: '0', jobWaitSeconds: '2400' }, roundDefaults).value.spinHintSeconds, 0)
+  assert.deepEqual(parseDraft({ implementation: 'enhanced', roundLimitMode: 'agent', roundLimit: 'ignored', spinHintSeconds: '120', jobWaitSeconds: '2400', questionTimeoutSeconds: '-1' }, roundDefaults), {
     value: roundDefaults,
   })
   assert.deepEqual(diffOps(
-    { roundLimitMode: 'agent', roundLimit: 256, questionTimeoutSeconds: 120 },
-    { roundLimitMode: 'fixed', roundLimit: 10, questionTimeoutSeconds: 120 },
+    { roundLimitMode: 'agent', roundLimit: 256, spinHintSeconds: 120, jobWaitSeconds: 2400, questionTimeoutSeconds: 120 },
+    { roundLimitMode: 'fixed', roundLimit: 10, spinHintSeconds: 0, jobWaitSeconds: 600, questionTimeoutSeconds: 120 },
   ), [
     { op: 'set', path: ['roundLimitMode'], value: 'fixed' },
     { op: 'set', path: ['roundLimit'], value: 10 },
+    { op: 'set', path: ['spinHintSeconds'], value: 0 },
+    { op: 'set', path: ['jobWaitSeconds'], value: 600 },
   ])
 })
 
@@ -1000,6 +963,32 @@ test('settings dirty guard includes invalid input, ignores equivalent numbers, a
   assert.equal(input().props.value, '13', 'accepted draft stays visible')
 })
 
+test('idle-spin threshold renders in every mode, takes 0 as off, and rejects out-of-range input', async () => {
+  // The threshold belongs to the enhanced driver, so it renders for every round
+  // policy mode there, and is absent when the native driver owns continuation.
+  for (const value of [{ roundLimitMode: 'fixed', roundLimit: 12 }, { roundLimitMode: 'agent' }, { roundLimitMode: 'unlimited' }]) {
+    const page = await mountSettings({ value })
+    const input = byId(page.renderer, 'dsh-better-goal-spin-hint')
+    assert.equal(input.props.value, '120', 'the documented default is shown')
+    assert.equal(primaryButton(page.renderer), undefined, 'an untouched default is not a change')
+  }
+  const nativePage = await mountSettings({ value: { implementation: 'native' } })
+  assert.equal(byId(nativePage.renderer, 'dsh-better-goal-spin-hint'), undefined, 'the native driver ignores the threshold')
+
+  const page = await mountSettings({ value: { roundLimitMode: 'fixed', roundLimit: 12 } })
+  const root = () => page.renderer.root.find((node) => isHost(node) && node.props.className === 'dbg-cfg')
+  const input = () => byId(page.renderer, 'dsh-better-goal-spin-hint')
+  await act(async () => { input().props.onChange({ target: { value: '3601' } }) })
+  assert.equal(root().props['data-settings-dirty'], true)
+  assert.equal(primaryButton(page.renderer).props.disabled, true)
+  assert.equal(input().props['aria-describedby'], 'dsh-better-goal-spin-hint-error')
+  await act(async () => { input().props.onChange({ target: { value: '0' } }) })
+  assert.equal(root().props['data-settings-dirty'], true, '0 is a real change, not an empty value')
+  assert.equal(primaryButton(page.renderer).props.disabled, false)
+  await act(async () => { primaryButton(page.renderer).props.onClick() })
+  assert.deepEqual(page.controller.calls.at(-1).ops, [{ op: 'set', path: ['spinHintSeconds'], value: 0 }])
+})
+
 test('failed save preserves the draft and inline recovery controls', async () => {
   const controller = makeConfigForm({ value: { roundLimitMode: 'fixed', roundLimit: 12 } })
   controller.mutate = async () => { throw new Error('offline') }
@@ -1069,22 +1058,18 @@ test('runtime diagnosis can retry without disabling configuration or writing it'
   const page = await mountSettings({ value: { implementation: 'native', nativeBlockedAfterConsecutiveRounds: 5 } })
   assert.match(pageText(page.renderer), /runtimeUnavailable/)
   assert.equal(byId(page.renderer, 'dsh-better-goal-nativeDefaultMaxGoalRounds').props.disabled, false)
-  assert.equal(byId(page.renderer, 'dsh-better-goal-nativeBlockedAfterConsecutiveRounds').props.value, '5')
-  assert.match(pageText(page.renderer), /nativeBlockedHint/)
-  const refresh = byLabel(page.renderer, 'refreshRuntime')
-  assert.ok(refresh, 'the runtime refresh control is always visible')
-  await act(async () => { refresh.props.onClick(); await Promise.resolve() })
+  const retry = page.renderer.root.find((node) => isHost(node) && node.type === 'button' && String(node.props.className).includes('dbg-runtimeRefresh'))
+  await act(async () => { retry.props.onClick(); await Promise.resolve() })
   assert.equal(requests, 2)
   assert.match(pageText(page.renderer), /runtimeActive.*runtimeNative/)
   assert.equal(page.controller.calls.length, 0)
   assert.equal(primaryButton(page.renderer), undefined)
-  assert.equal(page.renderer.root.findAll((node) => isHost(node) && (node.props.className === 'dbg-advanced' || node.props.className === 'dbg-diagnostics')).length, 0)
-  assert.equal(byId(page.renderer, 'dsh-better-goal-nativeBlockedAfterConsecutiveRounds').props.value, '5', 'native settings stay directly editable after a runtime refresh')
+  assert.equal(page.renderer.root.findAll((node) => isHost(node) && node.props.className === 'dbg-advanced').length, 0)
 })
 
 test('Escape closes expanded field help before reaching the host modal', async () => {
   const page = await mountSettings({ value: { implementation: 'native' } })
-  const help = page.renderer.root.findAll((node) => isHost(node) && node.props.className === 'dbg-help dbg-helpText')[0]
+  const help = page.renderer.root.findAll((node) => isHost(node) && String(node.props.className).includes('dbg-help'))[0]
   let focused = false
   let prevented = false
   let stopped = false
@@ -1100,8 +1085,8 @@ test('Escape closes expanded field help before reaching the host modal', async (
 test('inactive policy drafts preserve existing canonical parameters without validating hidden input', () => {
   const { shapeConfig, parseDraft } = install().exports
   const host = shapeConfig({ implementation: 'native', nativeDefaultMaxGoalRounds: 17, nativeBlockedAfterConsecutiveRounds: 5, roundLimitMode: 'fixed', roundLimit: 99 })
-  const enhanced = parseDraft({ implementation: 'enhanced', nativeDefaultMaxGoalRounds: 'invalid', nativeBlockedAfterConsecutiveRounds: '0', roundLimitMode: 'agent', roundLimit: 'ignored' }, host)
+  const enhanced = parseDraft({ implementation: 'enhanced', nativeDefaultMaxGoalRounds: 'invalid', nativeBlockedAfterConsecutiveRounds: '0', roundLimitMode: 'agent', roundLimit: 'ignored', spinHintSeconds: '120', jobWaitSeconds: '2400' }, host)
   assert.deepEqual(enhanced.value, { ...host, implementation: 'enhanced', roundLimitMode: 'agent' })
-  const native = parseDraft({ implementation: 'native', nativeDefaultMaxGoalRounds: '17', nativeBlockedAfterConsecutiveRounds: '5', roundLimitMode: 'fixed', roundLimit: 'invalid' }, host)
+  const native = parseDraft({ implementation: 'native', nativeDefaultMaxGoalRounds: '17', nativeBlockedAfterConsecutiveRounds: '5', roundLimitMode: 'fixed', roundLimit: 'invalid', spinHintSeconds: '120', jobWaitSeconds: '2400' }, host)
   assert.deepEqual(native.value, host)
 })

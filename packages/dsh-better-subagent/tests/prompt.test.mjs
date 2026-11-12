@@ -16,7 +16,6 @@ import {
   renderCliCatalog,
   renderDelegation,
   renderTier,
-  scopeEnabled,
 } from '../src/prompt.js'
 import { normalizeConfig } from '../src/config.js'
 
@@ -93,25 +92,55 @@ test('sections: unique names, delegation < guard < catalog, non-interpolating re
   })
 })
 
-test('scope: eng preset or global=true; explicit eng=false wins for non-eng presets', async () => {
-  await withConfig('{"subagents":{"eng":true,"global":false}}', undefined, async () => {
-    const ctx = makeCtx()
-    const eng = ctx.create({ preset: 'eng' })
-    const ptc = ctx.create({ preset: 'eng-ptc' })
-    const standard = ctx.create({ preset: 'standard' })
-    assert.match(textOf(eng, 'better-subagent:delegation'), /## Delegation/)
-    assert.match(textOf(ptc, 'better-subagent:delegation'), /## Delegation/)
-    assert.equal(textOf(standard, 'better-subagent:delegation'), '')
-  })
-  await withConfig('{"subagents":{"eng":false,"global":true}}', undefined, async () => {
-    const ctx = makeCtx()
-    const standard = ctx.create({ preset: 'standard' })
-    assert.match(textOf(standard, 'better-subagent:delegation'), /## Delegation/)
-  })
+test('delegation prompt renders for every preset by default, independent of the CLI scope', async () => {
   await withConfig('{"subagents":{"eng":false,"global":false}}', undefined, async () => {
     const ctx = makeCtx()
-    const eng = ctx.create({ preset: 'eng' })
-    assert.equal(textOf(eng, 'better-subagent:delegation'), '')
+    // The CLI scope is fully closed, yet the delegation section still renders:
+    // it is gated by delegation.prompt, not by subagents.eng/global.
+    for (const preset of ['eng', 'eng-ptc', 'standard', undefined]) {
+      assert.match(textOf(ctx.create({ preset }), 'better-subagent:delegation'), /## Delegation/)
+    }
+  })
+})
+
+test('delegation.prompt: false removes the section everywhere and defaults back on', async () => {
+  await withConfig(undefined, undefined, async () => {
+    const ctx = makeCtx()
+    const agent = ctx.create({ preset: 'eng' })
+    assert.match(textOf(agent, 'better-subagent:delegation'), /## Delegation/)
+    // Hot switch, no re-registration: the same section renders empty.
+    liveConfig.delegation = { prompt: false }
+    assert.equal(textOf(agent, 'better-subagent:delegation'), '')
+    liveConfig.delegation = { prompt: true }
+    assert.match(textOf(agent, 'better-subagent:delegation'), /## Delegation/)
+    // An explicit non-boolean falls back to the documented default (on).
+    liveConfig.delegation = { prompt: 'off' }
+    assert.match(textOf(agent, 'better-subagent:delegation'), /## Delegation/)
+  })
+})
+
+test('waiting discipline: wait_subagent blocks, send_message never nudges, timeouts are not failures', async () => {
+  await withConfig(undefined, undefined, async () => {
+    const ctx = makeCtx()
+    for (const preset of ['eng', 'eng-ptc', 'standard']) {
+      const text = textOf(ctx.create({ preset }), 'better-subagent:delegation')
+      // Waiting is the wait tool's job, and it must block rather than poll.
+      assert.match(text, /Waiting for delegated subagents is done with wait_subagent only/)
+      assert.match(text, /single wait_subagent call and let it block/)
+      assert.match(text, /Do not end the turn to wait for a notification/)
+      // send_message is for new information only.
+      assert.match(text, /send_message is for new information or a correction/)
+      assert.match(text, /never for asking about progress, nudging, or checking in/)
+      assert.match(text, /Do not poll list_agents in place of waiting/)
+      assert.match(text, /do not interrupt_agent a normally running subagent/)
+      // A timeout is not a failure signal.
+      assert.match(text, /wait_subagent timeout[^:\n]*still running[^:\n]*not a failure/)
+      assert.match(text, /wait again or do independent work/)
+      assert.match(text, /Do not re-dispatch or take over solely because[^.\n]*long time/)
+      // The old polling-permission wording must be gone.
+      assert.doesNotMatch(text, /Do not repeatedly prod/)
+      assert.doesNotMatch(text, /poll list_agents frequently/)
+    }
   })
 })
 
@@ -208,6 +237,4 @@ test('render helpers expose the exact contract', () => {
   assert.match(renderCliCatalog(withBackend), /codex — Codex CLI/)
   assert.equal(renderCliCatalog(normalizeConfig({})), '')
   assert.match(renderDelegation(normalizeConfig({}), { ptc: true }), /run_code/)
-  assert.equal(scopeEnabled(normalizeConfig({}), { id: 'a' }, 'eng'), true)
-  assert.equal(scopeEnabled(normalizeConfig({}), { id: 'a' }, 'standard'), false)
 })

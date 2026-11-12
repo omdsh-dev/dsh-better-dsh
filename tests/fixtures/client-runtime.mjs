@@ -1,4 +1,4 @@
-/** Real rc.1 client machinery. Only the RPC carrier and page owner are test-owned. */
+/** Real rc.2 client machinery. Only the RPC carrier and page owner are test-owned. */
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createRequire, registerHooks } from 'node:module'
@@ -6,7 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import vm from 'node:vm'
 
-export const VERSION = '0.2.2-rc.1'
+export const VERSION = '0.2.2-rc.2'
 export const root = fileURLToPath(new URL('../../', import.meta.url))
 export const hostRoot = process.env.DSH_PACKAGE_ROOT
 export const enabled = !!hostRoot

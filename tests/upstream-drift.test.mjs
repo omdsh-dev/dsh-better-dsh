@@ -192,6 +192,10 @@ test('eng-ptc 恰为 eng + PTC 呈现 + 禁用 workflow', () => {
   const expected = structuredClone(rowsOf(ENG))
   for (const row of flatten(expected)) {
     if (row.id === 'workflow-ptc' || row.id === 'tool-workflow') row.disabled = true
+    // rc.2 upstream standard adds the agent-preset skill directory; upstream ptc
+    // does not. eng-ptc mirrors ptc, so this one key is the known upstream
+    // standard/ptc difference rather than an Apollo preset difference.
+    if (row.id === 'skill-filesystem') delete row.config
   }
   expected.splice(expected.findIndex((row) => row.id === 'present'), 0, {
     id: 'tool-executor-ptc', name: '@deepseek-ai/dsh-tool-executor-ptc',
@@ -214,6 +218,6 @@ test('engines.dsh 只声明已验证的 next 候选版', (t) => {
   if (!layout) return
   const range = manifest().engines.dsh
   assert.equal(layout.semver.satisfies(layout.version, range), true)
-  assert.equal(range, '0.2.2-rc.1')
-  for (const version of ['0.2.1-rc.2', '0.2.1-rc.5', '0.2.2-alpha.3', '0.2.2', '0.3.0']) assert.equal(layout.semver.satisfies(version, range), false, version)
+  assert.equal(range, '0.2.2-rc.2')
+  for (const version of ['0.2.2-rc.1', '0.2.1-rc.5', '0.2.2-alpha.3', '0.2.2', '0.3.0']) assert.equal(layout.semver.satisfies(version, range), false, version)
 })

@@ -16,7 +16,7 @@ const { createElement } = React
 const act = TestRenderer.act ?? TestRenderer.default?.act
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
-const SOURCE = readFileSync(process.env.DSH_SUBAGENT_SETTINGS_BUNDLE ?? new URL('../src/client.js', import.meta.url), 'utf8')
+const SOURCE = readFileSync(new URL('../src/client.js', import.meta.url), 'utf8')
 const NS = 'better-subagent'
 /** 假 t：键名 + 参数（断言不依赖文案）。 */
 const t = (key, params) => (params === undefined ? key : key + '(' + JSON.stringify(params) + ')')
@@ -157,7 +157,7 @@ function install() {
     loaded,
     declare() {
       const disposers = slots.declare('plugins.row.config')
-      assert.equal(slots.registrations.length, process.env.DSH_SUBAGENT_SETTINGS_BUNDLE ? 6 : 4)
+      assert.equal(slots.registrations.length, 6)
       return { disposers, component: slots.registrations[0].component }
     },
   }
@@ -226,19 +226,21 @@ useFetch(async () => ({ ok: true, status: 200, json: async () => ({ ok: true, va
 
 test('装载与 slot 注册：声明才注册、新键与旧键并排、塌缩回收、summary 只回一行', async () => {
   const { slots, effects, dicts, loaded, declare } = install()
-  assert.equal(loaded.entry.id, '@menghuan1918/dsh-better-subagent')
+  assert.equal(loaded.entry.id, '@oh-my-dsh/dsh-better-subagent')
   assert.deepEqual(loaded.exports.inject, ['slots', 'locale'])
   assert.equal(SOURCE.includes('document.'), false)
 
   // 页面未打开（槽未声明）：只挂等待，不注册。
   assert.deepEqual(slots.injected, ['plugins.row.config'])
   assert.equal(slots.registrations.length, 0)
-  assert.deepEqual(effects.map((effect) => effect.label), ['@menghuan1918/dsh-better-subagent: dictionaries', '@menghuan1918/dsh-better-subagent: row config page'])
+  assert.deepEqual(effects.map((effect) => effect.label), ['@oh-my-dsh/dsh-better-subagent: dictionaries', '@oh-my-dsh/dsh-better-subagent: row config page'])
   assert.deepEqual(dicts.map((entry) => entry.ns), [NS])
   assert.deepEqual(Object.keys(dicts[0].dictionaries.zh).sort(), Object.keys(dicts[0].dictionaries.en).sort())
 
   const declared = declare()
   assert.deepEqual(slots.registrations.map((entry) => entry.options), [
+    { name: 'plugins.row.config', key: '@oh-my-dsh/dsh-better-subagent#dsh-better-subagent', locale: NS },
+    { name: 'plugins.row.config', key: 'dsh-better-dsh#dsh-better-subagent', locale: NS },
     { name: 'plugins.row.config', key: '@menghuan1918/dsh-better-subagent#dsh-better-subagent', locale: NS },
     { name: 'plugins.row.config', key: '@menghuan1918/dsh-apollo#dsh-better-subagent', locale: NS },
     { name: 'plugins.row.config', key: 'dsh-apollo#dsh-better-subagent', locale: NS },
@@ -268,38 +270,20 @@ test('ready：真实渲染表单 + 唯一 <style>，权限档与 src/config.js �
   const styles = byType(renderer, 'style')
   assert.equal(styles.length, 1)
   assert.match(styles[0].children[0], /\.bs-switch/)
-  assert.match(styles[0].children[0], /--cfg-accent:var\(--dsw-alias-state-business-primary/)
-  assert.match(styles[0].children[0], /--cfg-accent-solid:var\(--dsw-alias-button-primary-fill/)
-  assert.match(styles[0].children[0], /--cfg-accent-fg:var\(--dsw-alias-label-primary-foreground/)
+  assert.match(styles[0].children[0], /--cfg-accent:var\(--dsw-alias-state-business-primary,#4176e6\)/)
+  assert.match(styles[0].children[0], /--cfg-accent-solid:var\(--dsw-alias-button-primary-fill,#0f1115\)/)
+  assert.match(styles[0].children[0], /--cfg-accent-text:color-mix\(in srgb,var\(--cfg-accent\) 72%,var\(--cfg-ink\)\)/)
   assert.equal(renderer.root.findAll((node) => String(node.props.className ?? '').includes('bs-root')).length, 1)
 
-  // 单一页面标题；模型选择与设置后果就地可见，不再逐行显示信息图标。
+  // 单一页面标题；字段提示保留为无障碍描述，不再逐行显示信息图标。
   const titles = renderer.root.findAll((node) => host(node) && node.type === 'h2' && node.props.className === 'bs-title')
   assert.equal(titles.length, 1)
   assert.equal(textOf(titles[0].props.children), 'title')
   const header = renderer.root.findAll((node) => host(node) && node.props.className === 'bs-header')[0]
   assert.equal(header.findAllByType('p').length, 0, 'header has no generic subtitle')
-  for (const key of ['executableHint', 'profileHint', 'permissionHint', 'scopeEngHint', 'scopeGlobalHint', 'childExitGuardHint', 'modelRecommendations']) {
-    const hint = byType(renderer, 'p').find((node) => textOf(node) === key)
-    assert.ok(hint, key + ' explains the choice next to the control')
-    assert.equal(hint.props.className, 'bs-hint', key + ' is visible')
-  }
-  assert.equal(byType(renderer, 'button').filter((node) => textOf(node).includes('chooseModel')).length, 2, 'both model recommendations offer a clear edit action')
-  const routingRows = renderer.root.findAll((node) => host(node) && node.props.className === 'bs-routing')
-  assert.equal(routingRows.length, 2)
-  for (const [index, hintKey] of ['tierFastHint', 'tierQualityHint'].entries()) {
-    const row = routingRows[index]
-    const hint = row.findAll((node) => host(node) && node.props.className === 'bs-overviewMeta')[0]
-    assert.equal(textOf(hint), hintKey, 'task recommendations are visible within the overview row')
-    assert.equal(byId(renderer, 'bs-settings-panel-general').props.hidden, false)
-    await page.run(async () => row.findByType('button').props.onClick())
-    assert.equal(byId(renderer, 'bs-settings-panel-tiers').props.hidden, false, 'model action opens the editable model selection page')
-    assert.ok(byId(renderer, index === 0 ? 'bs-tier-fast-route' : 'bs-tier-quality-route'))
-    await page.run(async () => byId(renderer, 'bs-settings-tab-general').props.onClick())
-  }
-  assert.match(textOf(byId(renderer, 'bs-routing-source')), /mainAgent/, 'the diagram starts at the main agent')
-  assert.equal(byType(renderer, 'p').filter((node) => textOf(node) === 'routingNote').length, 1, 'recommendation vs enforcement is stated once')
-  assert.equal(page.controller.calls.length, 0, 'model navigation does not save settings')
+  const routineHints = byType(renderer, 'p').filter((node) => /executableHint|profileHint/.test(textOf(node)))
+  assert.ok(routineHints.length > 0, 'supplementary help remains available')
+  assert.ok(routineHints.every((hint) => String(hint.props.className).includes('bs-hint')), 'routine descriptions are visible in the form')
   assert.ok(byType(renderer, 'details').every((node) => node.props.className === 'bs-advanced'), 'only task-level advanced disclosures remain')
   const described = renderer.root.findAll((node) => host(node) && typeof node.props['aria-describedby'] === 'string')
   assert.ok(described.length >= 2, 'retained hints associate with their controls')
@@ -346,6 +330,7 @@ test('同一 act 内连续编辑 → 单次 mutate（真实 hooks 状态队列�
   await act(async () => {
     byId(renderer, 'bs-child-exit-guard').props.onClick()
     byId(renderer, 'bs-scope-global').props.onClick()
+    byId(renderer, 'bs-delegation-prompt').props.onClick()
     setControlValue(byId(renderer, 'bs-codex-permission'), 'workspace-write')
     setControlValue(byLabel(renderer, 'modelIdPlaceholder 1'), 'gpt-5.1')
   })
@@ -353,6 +338,7 @@ test('同一 act 内连续编辑 → 单次 mutate（真实 hooks 状态队列�
   assert.deepEqual(page.controller.calls, [])
   assert.equal(byId(renderer, 'bs-child-exit-guard').props['aria-checked'], true)
   assert.equal(byId(renderer, 'bs-scope-global').props['aria-checked'], true)
+  assert.equal(byId(renderer, 'bs-delegation-prompt').props['aria-checked'], false)
   assert.equal(saveButton(renderer).props.disabled, false)
 
   await page.run(async () => { saveButton(renderer).props.onClick() })
@@ -360,6 +346,7 @@ test('同一 act 内连续编辑 → 单次 mutate（真实 hooks 状态队列�
   assert.equal(page.controller.calls[0].revision, 1)
   assert.deepEqual(page.controller.calls[0].ops, [
     { op: 'set', path: ['childExitGuard'], value: true },
+    { op: 'set', path: ['delegation', 'prompt'], value: false },
     { op: 'set', path: ['subagents', 'global'], value: true },
     { op: 'set', path: ['subagents', 'codex', 'permissionMode'], value: 'workspace-write' },
     { op: 'set', path: ['subagents', 'codex', 'defaultModel'], value: 'gpt-5.1' },
@@ -368,6 +355,26 @@ test('同一 act 内连续编辑 → 单次 mutate（真实 hooks 状态队列�
   await page.update()
   assert.match(pageText(renderer), /saved/)
   assert.equal(saveButton(renderer), undefined)
+})
+
+test('委派提示词开关：缺省即开启、显式 false 才渲染为关、只在变化时写入', async () => {
+  // 宿主快照完全没有 delegation 键（旧 profile）：默认开启，不产生任何写入。
+  const plain = await mountPage()
+  assert.equal(byId(plain.renderer, 'bs-delegation-prompt').props['aria-checked'], true)
+  assert.equal(saveButton(plain.renderer), undefined)
+
+  // 显式 false 渲染为关，切回开启写出一个 set 操作。
+  const off = await mountPage({ form: { value: { ...READY, delegation: { prompt: false } } } })
+  const renderer = off.renderer
+  assert.equal(byId(renderer, 'bs-delegation-prompt').props['aria-checked'], false)
+  await off.run(async () => { byId(renderer, 'bs-delegation-prompt').props.onClick() })
+  assert.equal(byId(renderer, 'bs-delegation-prompt').props['aria-checked'], true)
+  await off.run(async () => { await saveButton(renderer).props.onClick() })
+  assert.deepEqual(off.controller.calls[0].ops, [{ op: 'set', path: ['delegation', 'prompt'], value: true }])
+
+  // 非布尔垃圾值同样按默认（开启）渲染，不显示为关闭。
+  const junk = await mountPage({ form: { value: { ...READY, delegation: { prompt: 'off' } } } })
+  assert.equal(byId(junk.renderer, 'bs-delegation-prompt').props['aria-checked'], true)
 })
 
 test('saving 与 conflict：挂起态、false 回退宿主值、抛错保留草稿', async () => {
@@ -658,7 +665,7 @@ test('模型分档：候选来自白名单，effort 有列表时下拉、否则�
     const renderer = page.renderer
     await page.run(async () => {})
     assert.deepEqual(requests, ['/better-subagent/api/routes'])
-    assert.match(pageText(renderer), /tiersTitle/)
+    assert.match(pageText(renderer), /tierFast|tierQuality/)
     assert.doesNotMatch(pageText(renderer), /tiersInactive|routesError/)
 
     const fast = byId(renderer, 'bs-tier-fast-route')
@@ -1029,7 +1036,7 @@ test('高级与依赖：默认折叠并给出非默认摘要，停用CLI保留�
   const advanced = byType(renderer, 'details').filter((node) => node.props.className === 'bs-advanced')
   assert.equal(advanced.length, 2)
   assert.ok(advanced.every((node) => node.props.open !== true))
-  assert.match(textOf(advanced[0].findByType('summary')), /expertSettings.*expertCurrent.*codex.*work/, 'expert disclosure summary names the actual launch command and Codex profile')
+  assert.match(textOf(advanced[0].findByType('summary')), /expertSettings.*expertCurrent/)
   let restoredFocus = false
   const target = { open: true, querySelector: () => ({ focus() { restoredFocus = true } }) }
   const escape = { ...keyEvent('Escape'), currentTarget: target }
@@ -1055,50 +1062,6 @@ test('高级与依赖：默认折叠并给出非默认摘要，停用CLI保留�
   assert.equal(overview.type, 'button')
   assert.match(textOf(overview), /modelCount.*1.*gpt-5/)
   assert.ok(overview.findByProps({ className: 'bs-overviewGlyph' }))
-})
-
-test('结构：路由图示、可见模型列表、分档卡片与连接分区各就各位', async () => {
-  const page = await mountPage()
-  const renderer = page.renderer
-  await page.run(async () => { await Promise.resolve() })
-  const details = byType(renderer, 'details')
-  const holds = (node, id) => node.findAll((child) => host(child) && child.props.id === id).length > 0
-  // 概览：主代理 → 快速/质量两档，说明与动作都在明面。
-  const source = byId(renderer, 'bs-routing-source')
-  assert.match(textOf(source), /mainAgent/)
-  const notes = byType(renderer, 'p').filter((node) => textOf(node) === 'routingNote')
-  assert.equal(notes.length, 1, 'tiers are labeled recommendations, not enforcement')
-  assert.equal(notes[0].props.className, 'bs-hint bs-routingNote')
-  // 模型列表不再藏在折叠区；添加模型追加可见行，且不展开任何折叠区。
-  const models = byId(renderer, 'bs-codex-models')
-  assert.ok(models)
-  assert.ok(details.every((node) => !holds(node, 'bs-codex-models')), 'model rows are directly visible')
-  assert.ok(details.some((node) => holds(node, 'bs-codex-executable')), 'expert settings stay folded')
-  await page.run(async () => byId(renderer, 'bs-codex-add-model').props.onClick())
-  assert.equal(byLabel(renderer, 'modelIdPlaceholder 2').props.value, '', 'new model row is visible and empty')
-  assert.ok(details.every((node) => node.props.open !== true), 'adding a row does not force the disclosure open')
-  // 模型选择：两张可见分档卡，用途与控件都在卡内，没有折叠区。
-  const cards = renderer.root.findAll((node) => host(node) && typeof node.props.className === 'string' && node.props.className.split(' ').includes('bs-tierCard'))
-  assert.equal(cards.length, 2)
-  for (const card of cards) {
-    assert.equal(card.findAllByType('details').length, 0)
-    assert.ok(card.findAll((node) => host(node) && node.props.className === 'bs-hint').length >= 1, 'tier purpose is visible')
-  }
-  // 连接：范围开关、等待行为、只读诊断都在明面，只有反向代理信任主机折叠。
-  const connection = byId(renderer, 'bs-settings-panel-connection')
-  for (const id of ['bs-scope-eng', 'bs-scope-global', 'bs-child-exit-guard', 'bs-refresh', 'bs-trusted-hosts']) {
-    assert.ok(holds(connection, id), id + ' lives on the connection page')
-  }
-  const folded = connection.findAllByType('details')
-  assert.equal(folded.length, 1)
-  assert.ok(holds(folded[0], 'bs-trusted-hosts'), 'only reverse-proxy hosts stay folded')
-  assert.equal(holds(connection, 'bs-codex-executable'), false)
-  // 样式契约：960px 内容轴、32px 页签、平面无阴影/渐变。
-  const css = byType(renderer, 'style')[0].children[0]
-  assert.match(css, /max-width:960px/)
-  assert.match(css, /\.bs-tab\{[^}]*height:32px/)
-  assert.match(css, /font-variant-numeric:tabular-nums/)
-  assert.doesNotMatch(css, /box-shadow|gradient/)
 })
 
 test('放弃大量改动：需要第二次点击，继续编辑后确认复位', async () => {

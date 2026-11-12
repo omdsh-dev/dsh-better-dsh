@@ -80,7 +80,7 @@ export function installWaitTool(ctx) {
   const offEnd = ctx.on('subagent/end', (info) => {
     const id = info && info.id
     if (typeof id !== 'string') return
-    settled.set(id, { runId: info.runId, stopReason: info.stopReason })
+    settled.set(id, { runId: info.runId, local: info.local, stopReason: info.stopReason })
     notify(id)
   })
 
@@ -178,7 +178,9 @@ export function installWaitTool(ctx) {
         if (turns.pending) return { kind: 'pending-input' }
         return { kind: 'settled', info: end }
       }
-      return statusOf(id) === 'ready'
+      // Native `local` distinguishes an external run from an unloaded local
+      // Agent: only the external run may lack a readable durable Session.
+      return end.local === false
         ? { kind: 'settled', info: end }
         : { kind: 'unconfirmed', reason: 'state-unreadable' }
     }
@@ -199,7 +201,7 @@ export function installWaitTool(ctx) {
           type: 'array',
           items: { type: 'string' },
           minItems: 1,
-          description: 'Durable ids returned by subagent or subagent_fork.',
+          description: 'Names returned by subagent/list_agents, or durable ids.',
         },
         timeout_ms: {
           type: 'integer',
@@ -216,43 +218,67 @@ export function installWaitTool(ctx) {
     async execute(args, exec) {
       // Dedupe preserving input order; the schema already enforces a
       // non-empty array, the guard below only covers malformed direct calls.
-      const ids = [...new Set(Array.isArray(args.subagent_id) ? args.subagent_id : [])]
-      if (ids.length === 0) return 'subagent_id must be a non-empty array of subagent ids.'
+      const refs = [...new Set(Array.isArray(args.subagent_id) ? args.subagent_id : [])]
+      if (refs.length === 0) return 'subagent_id must be a non-empty array of subagent names or ids.'
       const parent = exec.agent
       if (parent === undefined) throw new Error('wait_subagent requires a calling agent (exec.agent was undefined)')
 
-      // Verify every id is one of this agent's direct children — fail fast,
-      // waiting for nobody (the contract the single-id version had).
+      // Verify every reference resolves to one of this agent's direct children —
+      // fail fast, waiting for nobody (the contract the single-id version had).
       let entries
       try {
-        entries = await ctx.subagents.listChildren(parent.id, exec.signal)
+        // rc.2 removed listChildren; a depth-one slice of the descendant walk
+        // is the same direct-child catalog without loading child Agents.
+        entries = (await ctx.subagents.listDescendants(parent.id, exec.signal))
+          .filter((entry) => entry.depth === 1)
       } catch (error) {
-        return 'listChildren failed: ' + (error && error.message ? error.message : String(error))
+        return 'subagent listing failed: ' + (error && error.message ? error.message : String(error))
       }
       const known = new Set(entries.map((entry) => entry.id))
-      const unknown = ids.filter((id) => !known.has(id))
-      if (unknown.length > 0) {
-        return `unknown subagent ${unknown.map((id) => `"${id}"`).join(', ')}: not a direct child of this agent (list_agents shows your children; only depth-1 children can be awaited).`
+      const resolved = []
+      const unknown = []
+      for (const ref of refs) {
+        let id
+        try {
+          // rc.2 names are the model-facing handles; a single token that is not
+          // a tree name is returned as a durable id, so both continue to work.
+          id = await ctx.subagents.resolveName(parent, ref, exec.signal)
+        } catch {
+          unknown.push(ref)
+          continue
+        }
+        if (!known.has(id)) {
+          unknown.push(ref)
+          continue
+        }
+        if (!resolved.some((entry) => entry.id === id)) resolved.push({ ref, id })
       }
+      if (unknown.length > 0) {
+        return `unknown subagent ${unknown.map((ref) => `"${ref}"`).join(', ')}: not a direct child of this agent (list_agents shows your children; only depth-1 children can be awaited).`
+      }
+      const ids = resolved.map((entry) => entry.id)
+      const labels = new Map(resolved.map((entry) => [entry.id, entry.ref]))
+      const displayOf = (id) => labels.get(id) ?? id
 
       const startedAt = Date.now()
       const capMs = typeof args.timeout_ms === 'number' && args.timeout_ms > 0 ? Math.max(args.timeout_ms, MIN_TIMEOUT_MS) : undefined
 
       const lineOf = (id, outcome) => {
-        if (outcome.kind === 'aborted') return `wait for subagent ${id} was aborted by user interruption; the child may still be running.`
-        if (outcome.kind === 'timedOut') return `timed out waiting for subagent ${id}; it is still running. You will be notified when it finishes — you can wait_subagent it again or continue with other work.`
+        const display = displayOf(id)
+        if (outcome.kind === 'aborted') return `wait for subagent ${display} was aborted by user interruption; the child may still be running.`
+        if (outcome.kind === 'timedOut') return `timed out waiting for subagent ${display}; it is still running. You will be notified when it finishes — you can wait_subagent it again or continue with other work.`
         if (outcome.kind === 'notStarted') {
-          return `subagent ${id} has not started after ${Math.round(START_GRACE_MS / 1000)}s (status: ${statusOf(id)}). It may still be spinning up — call wait_subagent again, or continue with other work; you will be notified when it finishes.`
+          return `subagent ${display} has not started after ${Math.round(START_GRACE_MS / 1000)}s (status: ${statusOf(id)}). It may still be spinning up — call wait_subagent again, or continue with other work; you will be notified when it finishes.`
         }
         if (outcome.kind === 'unconfirmed') {
-          return `subagent ${id} is not running, but its current turn state could not be confirmed (session state unavailable). Call wait_subagent again, or inspect it with list_agents before continuing.`
+          return `subagent ${display} is not running, but its current turn state could not be confirmed (session state unavailable). Call wait_subagent again, or inspect it with list_agents before continuing.`
         }
         if (outcome.kind === 'endedEarlier') {
-          return `subagent ${id} already finished its last turn (${outcome.reason?.kind ?? 'completed'}) and has no queued input; no new settlement was observed during this wait (its earlier notice was delivered before it). Use send_message to continue it if needed.`
+          return `subagent ${display} already finished its last turn (${outcome.reason?.kind ?? 'completed'}) and has no queued input; no new settlement was observed during this wait (its earlier notice was delivered before it). Use send_message to continue it if needed.`
         }
         // Real settlement: short done line; the framework's settlement notice
         // carries the closing message — nothing to consume or deduplicate.
-        return DONE(id, outcome.info && outcome.info.stopReason)
+        return DONE(display, outcome.info && outcome.info.stopReason)
       }
 
       /**

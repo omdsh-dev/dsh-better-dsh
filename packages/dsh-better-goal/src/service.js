@@ -1,7 +1,7 @@
 /**
  * Local, native-compatible same-session goal service.
  *
- * This module is an in-package port of the DSH 0.2.1-rc.2 goal domain. It
+ * This module is an in-package port of the DSH 0.2.2-rc.2 goal domain. It
  * deliberately imports only the public DSH peer packages: the durable
  * `goal/change` v1 schema, replay fold, projection unit, live view, CAS
  * mutations, and activation state stay byte-compatible with the host goal
@@ -18,6 +18,7 @@
  * @module dsh-better-goal/service
  */
 import { randomUUID } from "node:crypto";
+import { Service } from "@deepseek-ai/cordis";
 import z from "@deepseek-ai/schemastery";
 import { z as zod } from "zod";
 import { agentEvents } from "@deepseek-ai/dsh-agent";
@@ -716,10 +717,14 @@ export class GoalService extends TypertRemoteService {
       ),
     };
     this.runtimeStates = new WeakMap();
+  }
+
+  async [Service.init]() {
+    const ctx = this.ctx;
+    this.goalProjectionHandle = await ctx.sessionProjections.register(goalProjectionDefinition);
     ctx.on("agent/created", ({ agent }) => {
       this.setActivation(agent.session, "disarmed");
     });
-    ctx.sessionProjections.register(goalProjectionDefinition);
     ctx.on("session/event", (session, event) => {
       if (event.type !== "goal/change") return;
       const runtime = this.runtimeState(session);
@@ -1055,7 +1060,7 @@ export class GoalService extends TypertRemoteService {
 
   /** Read the current durable projection maintained by the registry. */
   state(session) {
-    const state = this.ctx.sessionProjections.stateOf(session, "goal");
+    const state = this.goalProjectionHandle.stateOf(session);
     if (state === undefined) {
       throw new Error("goal projection is not registered");
     }
@@ -1077,7 +1082,7 @@ export class GoalService extends TypertRemoteService {
     const runtime = this.runtimeState(session);
     if (runtime.activation === activation) return;
     runtime.activation = activation;
-    const state = this.ctx.sessionProjections.stateOf(session, "goal");
+    const state = this.goalProjectionHandle.stateOf(session);
     if (state === undefined) return;
     if (state.failure !== null) return;
     const goal = this.view(state.current, runtime);
