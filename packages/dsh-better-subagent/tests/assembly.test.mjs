@@ -26,7 +26,7 @@ const patch = () => yaml.load(readFileSync(join(ROOT, 'cordis.patch.yml'), 'utf8
 test('manifest identity: scoped name, version, Apache-2.0, repository, publish config', () => {
   const m = manifest()
   assert.equal(m.name, PACKAGE_NAME)
-  assert.equal(m.version, '0.5.2')
+  assert.equal(m.version, '0.5.3')
   assert.equal(m.license, 'Apache-2.0')
   assert.equal(m.type, 'module')
   assert.equal(m.main, 'src/index.js')
@@ -52,7 +52,7 @@ test('manifest: no build step, schemastery dependency, peer ranges, dev test dep
   assert.equal(m.scripts?.build, undefined, 'pure ESM package must not require a build')
   assert.equal(m.scripts.test, 'node --test')
   assert.equal(m.dependencies['@deepseek-ai/schemastery'], '~3.19.0')
-  assert.equal(m.dependencies['dsh-better-ptc'], '0.2.0')
+  assert.equal(m.dependencies['dsh-better-ptc'], '0.2.1')
   for (const [name, range] of Object.entries(m.peerDependencies)) {
     if (name === 'react') assert.equal(range, '^18.2.0')
     else if (name === '@deepseek-ai/cordis') assert.equal(range, '~4.1.0')

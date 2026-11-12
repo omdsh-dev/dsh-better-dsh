@@ -42,7 +42,7 @@
 
 ```sh
 # 只安装这个插件
-dsh plugin --profile <profile> add dsh-better-goal@0.4.3
+dsh plugin --profile <profile> add dsh-better-goal@0.4.4
 
 # 或安装 Better DSH（会自动带上所有独立插件）
 dsh plugin --profile <profile> add dsh-better-dsh@0.10.0
@@ -57,7 +57,7 @@ dsh plugin --profile <profile> add dsh-better-dsh@0.10.0
 | 稳定行 id | `dsh-better-goal` |
 | 入口 / 工具 | `goal` 工具 · `/goal` 命令 · GoalBar / 设置页 |
 | 设置 | 轮数策略、实现选择、原生参数 |
-| npm 包 | `dsh-better-goal@0.4.3` |
+| npm 包 | `dsh-better-goal@0.4.4` |
 | 仓库 | https://github.com/omdsh-dev/dsh-better-goal |
 
 ## 设置

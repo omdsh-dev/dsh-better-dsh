@@ -58,11 +58,11 @@ export async function packageSources() {
     if (manifest.name !== name) throw new Error(`${dir} is not ${name}`)
   }
   const apolloManifest = apollo
-  if (apolloManifest.dependencies[SUBAGENT_NAME] !== '0.5.2'
-    || apolloManifest.dependencies[COMPACT_NAME] !== '0.4.0'
-    || apolloManifest.dependencies[GOAL_NAME] !== '0.4.3'
-    || apolloManifest.dependencies[ASK_NAME] !== '0.3.3'
-    || apolloManifest.dependencies[PTC_NAME] !== '0.2.0') {
+  if (apolloManifest.dependencies[SUBAGENT_NAME] !== '0.5.3'
+    || apolloManifest.dependencies[COMPACT_NAME] !== '0.4.1'
+    || apolloManifest.dependencies[GOAL_NAME] !== '0.4.4'
+    || apolloManifest.dependencies[ASK_NAME] !== '0.3.4'
+    || apolloManifest.dependencies[PTC_NAME] !== '0.2.1') {
     throw new Error('Better DSH dependencies must pin the verification versions')
   }
   return {

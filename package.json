@@ -1,6 +1,6 @@
 {
   "name": "dsh-better-dsh",
-  "version": "0.11.3",
+  "version": "0.11.4",
   "description": "Better DSH: a DSH plugin bundle that installs workflow skills, engineering presets, and five independent plugins (goal, subagent, compact, ask-user, ptc). Pure ESM, no build step.",
   "license": "Apache-2.0",
   "repository": {
@@ -104,11 +104,11 @@
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "~3.19.0",
-    "@oh-my-dsh/dsh-better-subagent": "0.5.2",
-    "dsh-better-ask-user": "0.3.3",
-    "dsh-better-compact": "0.4.0",
-    "dsh-better-goal": "0.4.3",
-    "dsh-better-ptc": "0.2.0"
+    "@oh-my-dsh/dsh-better-subagent": "0.5.3",
+    "dsh-better-ask-user": "0.3.4",
+    "dsh-better-compact": "0.4.1",
+    "dsh-better-goal": "0.4.4",
+    "dsh-better-ptc": "0.2.1"
   },
   "peerDependencies": {
     "react": "^18.2.0"

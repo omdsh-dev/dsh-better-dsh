@@ -4,7 +4,7 @@
 
 ## 状态与兼容性
 
-- 当前源码版本：`0.4.0`（此迁移不发布 npm）。
+- 当前源码版本：`0.4.4`。
 - 仅支持 DSH `0.2.2-rc.2`；`package.json` 的 engines 与 DSH peers 均精确限定此版本，不承诺其他 RC 或旧版本。
 - Node.js：`>=24.9.0`；Cordis `~4.1.0`、Schemastery `~3.19.0`。
 - 纯 ESM，无构建步骤，没有需要生成的资源文件。
@@ -179,7 +179,7 @@ volatile schema 让全部字段可写并可热投递到活 fiber，但 `implemen
 
 这是 README 只保留一句提示、本文档保留完整原理的部分。
 
-Apollo 在 `package.json` 中把 `dsh-better-goal` 声明为精确 npm 依赖 `0.4.0`（不是 Git commit、分支、范围或 `file:` 说明符）；它的顶层 patch 自己插入了 `id/name` 都是 `dsh-better-goal` 的行。独立包也插入同一行。
+Apollo 在 `package.json` 中把 `dsh-better-goal` 声明为精确 npm 依赖 `0.4.4`（不是 Git commit、分支、范围或 `file:` 说明符）；它的顶层 patch 自己插入了 `id/name` 都是 `dsh-better-goal` 的行。独立包也插入同一行。
 
 - 两个 bundle 同时被显式选中时，DSH Loader 按行 id 去重，通常只激活一个实例，浏览器模块也只有一个 active source。
 - 但 DSH `0.2.2-rc.2` 的插件管理器会把组合行开关标成只读（`unaddressable`），配置编辑器也可能拒绝保存目标设置。
@@ -193,7 +193,7 @@ Apollo 在 `package.json` 中把 `dsh-better-goal` 声明为精确 npm 依赖 `0
 ### npm 安装
 
 ```sh
-dsh plugin --profile <profile> add dsh-better-goal@0.2.0
+dsh plugin --profile <profile> add dsh-better-goal@0.4.4
 ```
 
 npm 安装后，目标设置出现在 **Plugins → dsh-better-goal → dsh-better-goal 行**。GitHub main 仍保留为源码安装选项。
@@ -210,7 +210,7 @@ dsh plugin --profile <profile> add link:/absolute/path/to/dsh-better-goal
 
 链接后要重启 profile；运行时 `roundLimitMode` / `roundLimit` 仍然支持保存后热更新，`implementation` 与 `native*` 字段保存后需再次重载生效。
 
-Apollo 本地开发时，先在其根目录执行 `npm install`。`dsh plugin add link:` 只链接 Apollo 本身，不代装依赖；Apollo 的依赖是精确 npm 版本 `dsh-better-goal@0.2.0`，本地联调可临时改成 `file:../dsh-better-goal`，但不要提交该改动。GitHub 源码安装同样从 registry 解析这个精确版本。
+Apollo 本地开发时，先在其根目录执行 `npm install`。`dsh plugin add link:` 只链接 Apollo 本身，不代装依赖；Apollo 的依赖是精确 npm 版本 `dsh-better-goal@0.4.4`，本地联调可临时改成 `file:../dsh-better-goal`，但不要提交该改动。GitHub 源码安装同样从 registry 解析这个精确版本。
 
 ## 测试与宿主冒烟
 

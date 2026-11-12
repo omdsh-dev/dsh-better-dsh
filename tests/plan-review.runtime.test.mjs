@@ -86,7 +86,7 @@ for (const assembly of ['standalone', 'apollo']) {
         const manifest = JSON.parse(await readFile(join(dir, 'package.json'), 'utf8'))
         const copiedModule = await import(pathToFileURL(join(dir, manifest.main)).href)
         assert.equal(entry.moduleNamespace.apply, copiedModule.apply, id + ' must run from the copied temporary profile package')
-        if (id === 'dsh-better-ptc') assert.equal(manifest.version, '0.2.0')
+        if (id === 'dsh-better-ptc') assert.equal(manifest.version, '0.2.1')
       }
 
       async function runReview(code, outcome) {

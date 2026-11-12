@@ -1,6 +1,6 @@
 {
   "name": "@oh-my-dsh/dsh-better-subagent",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Standalone DSH plugin: Codex/Claude continuable CLI subagents, wait_subagent, child exit guard and model tiers. Pure ESM, no build step.",
   "license": "Apache-2.0",
   "repository": {
@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "~3.19.0",
-    "dsh-better-ptc": "0.2.0"
+    "dsh-better-ptc": "0.2.1"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.1.0",

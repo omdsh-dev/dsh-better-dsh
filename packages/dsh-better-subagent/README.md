@@ -42,7 +42,7 @@
 
 ```sh
 # 只安装这个插件
-dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.2
+dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.3
 
 # 或安装 Better DSH（会自动带上所有独立插件）
 dsh plugin --profile <profile> add dsh-better-dsh@0.10.1
@@ -57,7 +57,7 @@ dsh plugin --profile <profile> add dsh-better-dsh@0.10.1
 | 稳定行 id | `dsh-better-subagent` |
 | 入口 / 工具 | `wait_subagent` · `/better-subagent/api/*` · 子代理设置页 |
 | 设置 | `childExitGuard`、`delegation.prompt`、`tiers.*`、两个 CLI 后端、`trustedHosts` |
-| npm 包 | `@oh-my-dsh/dsh-better-subagent@0.5.2` |
+| npm 包 | `@oh-my-dsh/dsh-better-subagent@0.5.3` |
 | 仓库 | https://github.com/omdsh-dev/dsh-better-subagent |
 
 ## 设置

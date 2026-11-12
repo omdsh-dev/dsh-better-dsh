@@ -42,7 +42,7 @@
 
 ```sh
 # 只安装这个插件
-dsh plugin --profile <profile> add dsh-better-compact@0.3.1
+dsh plugin --profile <profile> add dsh-better-compact@0.4.1
 
 # 或安装 Better DSH（会自动带上所有独立插件）
 dsh plugin --profile <profile> add dsh-better-dsh@0.10.0
@@ -57,7 +57,7 @@ dsh plugin --profile <profile> add dsh-better-dsh@0.10.0
 | 稳定行 id | `dsh-better-compact + dsh-better-compact-engine` |
 | 入口 / 工具 | 压缩引擎行 · `/better-compact/api/inspect` · 压缩设置页 |
 | 设置 | 模式、auto、阈值 / headroom / 保留、摘要模型、重试、模型规则 |
-| npm 包 | `dsh-better-compact@0.3.1` |
+| npm 包 | `dsh-better-compact@0.4.1` |
 | 仓库 | https://github.com/omdsh-dev/dsh-better-compact |
 
 ## 设置

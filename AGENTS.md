@@ -32,10 +32,10 @@
 
 ## 依赖与版本
 
-- 根 `dependencies` 目前固定已发布的精确版本（ask-user `0.3.3`、compact `0.4.0`、goal `0.4.3`、subagent `0.5.2`、ptc `0.2.0`）。
-- **不要**把根依赖切成 `workspace:*` 或未发布版本：本地子包已同步到已发布 tag 并完成 DSH rc.2 适配，但版本号仍等于 registry 上的旧构建；根依赖必须继续指向可安装的精确 npm 版本，直到新子包发布。
-- 本地 `packages/*` 是后续源码真相：ask-user 已同步到 `0.3.3`，compact / goal / ptc / subagent 已同步到 `0.4.0` / `0.4.3` / `0.2.0` / `0.5.2` 并完成 rc.2 适配；这些适配尚未发布。
-- 发布前先确认子包版本在 `https://registry.npmjs.org/` 可取得；不要提交 `file:`/`link:`/`git:` 依赖。发布新子包后，再统一 bump 版本并更新根依赖。
+- 根 `dependencies` 当前固定已发布的精确版本（ask-user `0.3.4`、compact `0.4.1`、goal `0.4.4`、subagent `0.5.3`、ptc `0.2.1`）。
+- **不要**把根依赖切成 `workspace:*` 或未发布版本：根依赖必须指向可安装的精确 npm 版本。发布新子包后，再统一 bump 版本并更新根依赖；本地 `packages/*` 与 registry 版本号保持一致。
+- 本地 `packages/*` 是源码真相：ask-user `0.3.4`、compact `0.4.1`、goal `0.4.4`、ptc `0.2.1`、subagent `0.5.3` 已完成 DSH rc.2 适配并发布；发布验证需使用官方 registry，默认 npmmirror 可能滞后。
+- 发布前先确认子包版本在 `https://registry.npmjs.org/` 可取得；不要提交 `file:`/`link:`/`git:` 依赖。
 
 ## 发布
 

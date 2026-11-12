@@ -42,7 +42,7 @@
 
 ```sh
 # 只安装这个插件
-dsh plugin --profile <profile> add dsh-better-ask-user@0.3.1 dsh-better-ptc@0.2.0
+dsh plugin --profile <profile> add dsh-better-ask-user@0.3.4 dsh-better-ptc@0.2.1
 
 # 或安装 Better DSH（会自动带上所有独立插件）
 dsh plugin --profile <profile> add dsh-better-dsh@0.10.0
@@ -57,7 +57,7 @@ dsh plugin --profile <profile> add dsh-better-dsh@0.10.0
 | 稳定行 id | `dsh-better-ask-user` |
 | 入口 / 工具 | `ask_user_question` · 问题卡片 / 等待时间线 · 提问设置页 |
 | 设置 | 等待时长、输入续期、普通 / Goal 超时行为 |
-| npm 包 | `dsh-better-ask-user@0.3.1` |
+| npm 包 | `dsh-better-ask-user@0.3.4` |
 | 仓库 | https://github.com/omdsh-dev/dsh-better-ask-user |
 
 ## 设置
