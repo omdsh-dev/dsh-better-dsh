@@ -45,7 +45,7 @@
 dsh plugin --profile <profile> add dsh-better-ask-user@0.3.5 dsh-better-ptc@0.2.1
 
 # 或安装 Better DSH（会自动带上所有独立插件）
-dsh plugin --profile <profile> add dsh-better-dsh@0.11.5
+dsh plugin --profile <profile> add dsh-better-dsh@0.11.6
 ```
 
 > 安装 / 升级 / 换包后必须重启对应 profile；Desktop 必须完全退出后重新打开，只刷新网页不够。
