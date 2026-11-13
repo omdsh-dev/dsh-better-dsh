@@ -15,8 +15,8 @@ importers:
         specifier: 0.5.3
         version: 0.5.3(ce836e5f892502c712deef46f9796357)
       dsh-better-ask-user:
-        specifier: 0.3.4
-        version: 0.3.4(29ba343b8d66d43a4c90765ac69ee548)
+        specifier: 0.3.5
+        version: 0.3.5(29ba343b8d66d43a4c90765ac69ee548)
       dsh-better-compact:
         specifier: 0.4.1
         version: 0.4.1(f4594fa71adaffcce5fff1f0ce7e1d8a)
@@ -1010,8 +1010,8 @@ packages:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
 
-  dsh-better-ask-user@0.3.4:
-    resolution: {integrity: sha512-NdBvKihs3QHBz5YsKyXzTwKe5xTxghFDq5yeGS4OLIsQS24sKzybr+aPkmYw5FEyXRzoNcIUhWkqRru2E2q+pA==}
+  dsh-better-ask-user@0.3.5:
+    resolution: {integrity: sha512-+tcaEWZSp5HVx+KVR0Q7kpIko7b2StoQaNJVeXOT8Ywf8qAsVxH7NU3iKcNxPnRoSb2ar+0rBMUBRaBvPKwXCQ==}
     engines: {dsh: 0.2.2-rc.2, node: '>=24.9.0'}
     peerDependencies:
       '@deepseek-ai/cordis': ~4.1.0
@@ -1879,7 +1879,7 @@ snapshots:
 
   clsx@2.1.1: {}
 
-  dsh-better-ask-user@0.3.4(29ba343b8d66d43a4c90765ac69ee548):
+  dsh-better-ask-user@0.3.5(29ba343b8d66d43a4c90765ac69ee548):
     dependencies:
       '@deepseek-ai/cordis': 4.1.0
       '@deepseek-ai/dsh-agent': 0.2.2-rc.2(cffd9873b651459df2d19db33554a8f5)

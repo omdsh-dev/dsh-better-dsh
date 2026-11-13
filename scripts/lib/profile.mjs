@@ -61,7 +61,7 @@ export async function packageSources() {
   if (apolloManifest.dependencies[SUBAGENT_NAME] !== '0.5.3'
     || apolloManifest.dependencies[COMPACT_NAME] !== '0.4.1'
     || apolloManifest.dependencies[GOAL_NAME] !== '0.4.4'
-    || apolloManifest.dependencies[ASK_NAME] !== '0.3.4'
+    || apolloManifest.dependencies[ASK_NAME] !== '0.3.5'
     || apolloManifest.dependencies[PTC_NAME] !== '0.2.1') {
     throw new Error('Better DSH dependencies must pin the verification versions')
   }
