@@ -92,6 +92,8 @@
 
                         When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make exit_plan_mode the only and final tool call in that assistant response: it presents the plan for approval, and implementation begins only in a later step after approval. Do not paste the final plan as a plain reply or ask "should I proceed?" through prose or ask_user_question. If review rejects it, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually; do not proceed with implementation.
 
+                        In PTC mode exit_plan_mode is a nested tool inside run_code. Return its result as the program's value: `return await tools.exit_plan_mode({ plan })`. Do not await it without returning, and do not run other tool calls after it; the approval decision must be the run_code result.
+
           - id: compaction
             name: cordis:group
             group: true

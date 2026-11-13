@@ -114,8 +114,16 @@ function normalizedEng(rows) {
   return normalized
 }
 
-function assertStandard(eng, standard) {
+function assertStandard(eng, standard, { ptcPlanSection = false } = {}) {
   const upstream = structuredClone(standard).filter((row) => !isDropped(row))
+  if (ptcPlanSection) {
+    // The PTC preset adds one deliberate instruction: exit_plan_mode is nested
+    // in run_code and its result must be returned. Ignore only that section;
+    // every other preset row still compares byte-for-byte.
+    for (const rows of [eng, upstream]) {
+      for (const row of flatten(rows)) if (row.id === 'plan-mode' && row.config !== undefined) delete row.config.section
+    }
+  }
   for (const row of flatten(upstream)) {
     if (row.id === 'tool-plugin-manager' && row.disabled !== true) {
       assert.deepEqual(row.disabled, { javascript: "!ctx.get('profileContext')" })
@@ -155,7 +163,7 @@ test('eng / eng-ptc 分别与上游 standard / ptc 完整对齐，差异只有�
       assert.ok(upstream.some(([rowId, rowName]) => rowId === id && rowName === name), `剔除行必须仍存在于上游 ${base}：${id}`)
     }
     assert.deepEqual(identities(eng).filter(([id]) => !upstream.some(([reference]) => reference === id)), ownRows, base)
-    assertStandard(eng, standard)
+    assertStandard(eng, standard, { ptcPlanSection: base === 'ptc.patch.yml' })
   }
 })
 
@@ -200,7 +208,19 @@ test('eng-ptc 恰为 eng + PTC 呈现 + 禁用 workflow', () => {
   expected.splice(expected.findIndex((row) => row.id === 'present'), 0, {
     id: 'tool-executor-ptc', name: '@deepseek-ai/dsh-tool-executor-ptc',
   })
-  assert.deepEqual(rowsOf(PTC), expected)
+  const actual = structuredClone(rowsOf(PTC))
+  // The PTC plan-mode section carries one deliberate nested-call instruction.
+  for (const rows of [expected, actual]) {
+    for (const row of flatten(rows)) if (row.id === 'plan-mode' && row.config !== undefined) delete row.config.section
+  }
+  assert.deepEqual(actual, expected)
+})
+
+test('PTC plan mode returns the nested exit_plan_mode result', () => {
+  const ptcPlan = flatten(rowsOf(PTC)).find((row) => row.id === 'plan-mode')
+  assert.match(ptcPlan.config.section, /return await tools\.exit_plan_mode/)
+  const engPlan = flatten(rowsOf(ENG)).find((row) => row.id === 'plan-mode')
+  assert.equal(engPlan.config.section.includes('In PTC mode exit_plan_mode'), false)
 })
 
 test('两份 patch 的完整模块导出子路径在目标 DSH 安装中均可解析', (t) => {
