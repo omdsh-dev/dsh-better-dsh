@@ -22,6 +22,9 @@ test('real next client: six manifests and every declared inject resolve through 
   t.after(() => runtime.dispose())
   assert.equal(runtime.modules.version, 'client')
   assert.equal(runtime.manifests.length, 6)
+  const askUserManifest = json(new URL('../packages/dsh-better-ask-user/package.json', import.meta.url).pathname)
+  assert.equal(askUserManifest.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-settings'), false,
+    'the plugin must not wait for the optional settings page module')
   for (const { manifest } of runtime.manifests) {
     if (!manifest.dsh?.client) {
       assert.equal(manifest.name, 'dsh-better-ptc', 'only PTC is intentionally Host-only')

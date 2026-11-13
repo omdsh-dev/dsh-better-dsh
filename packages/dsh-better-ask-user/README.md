@@ -42,13 +42,19 @@
 
 ```sh
 # 只安装这个插件
-dsh plugin --profile <profile> add dsh-better-ask-user@0.3.4 dsh-better-ptc@0.2.1
+dsh plugin --profile <profile> add dsh-better-ask-user@0.3.5 dsh-better-ptc@0.2.1
 
 # 或安装 Better DSH（会自动带上所有独立插件）
-dsh plugin --profile <profile> add dsh-better-dsh@0.10.0
+dsh plugin --profile <profile> add dsh-better-dsh@0.11.5
 ```
 
-> 安装 / 升级 / 换包后必须重启对应 profile；只刷新网页不够。
+> 安装 / 升级 / 换包后必须重启对应 profile；Desktop 必须完全退出后重新打开，只刷新网页不够。
+
+### 提问卡片不出现
+
+- 先完整重启 Desktop；刷新页面、HMR 或只重装客户端 bundle 不会重建客户端模块图。
+- 在 WebView devtools 检查 `globalThis.__DSH_BOOT__.entries` 是否包含 `dsh-better-ask-user`。若没有，客户端半没有加载，优先检查 client-modules 依赖/安装日志并重启。
+- 若客户端半已加载，PTC 嵌套提问在等待期间仍需要客户端实时认领；超时转 pending 后由 `userQuestions` 投影恢复 continued 卡片。两种路径都失败时，工具行会显示“等待提问界面/已中断”，不会再提供必然失败的“打开”。
 
 ## 它拥有什么
 
@@ -57,7 +63,7 @@ dsh plugin --profile <profile> add dsh-better-dsh@0.10.0
 | 稳定行 id | `dsh-better-ask-user` |
 | 入口 / 工具 | `ask_user_question` · 问题卡片 / 等待时间线 · 提问设置页 |
 | 设置 | 等待时长、输入续期、普通 / Goal 超时行为 |
-| npm 包 | `dsh-better-ask-user@0.3.4` |
+| npm 包 | `dsh-better-ask-user@0.3.5` |
 | 仓库 | https://github.com/omdsh-dev/dsh-better-ask-user |
 
 ## 设置

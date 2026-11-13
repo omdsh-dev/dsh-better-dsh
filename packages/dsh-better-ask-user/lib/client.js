@@ -595,10 +595,10 @@ function AskHistoryRow({
   const questions = questionList(argsRaw);
   const settled = useProjection("userQuestions", (view) => view?.settled.find((row) => row.callId === callId));
   const answers = settled?.answers ?? answerList(output) ?? [];
-  const record = questions !== void 0 && phase === "result" ? { questions, answers } : void 0;
   const live = useQuestionPanelLive(callId, (present) => present === true);
   const errorCode = "kind" in block ? block.error?.code : void 0;
-  const status = live ? void 0 : errorCode === "ASK_ABORTED" || errorCode === "interrupted" ? t("history.interrupted") : errorCode === "ASK_CANCELLED" ? t("history.cancelled") : void 0;
+  const record = questions !== void 0 && phase === "result" ? { questions, answers } : void 0;
+  const status = live ? void 0 : errorCode === "ASK_ABORTED" || errorCode === "interrupted" ? t("history.interrupted") : errorCode === "ASK_CANCELLED" ? t("history.cancelled") : phase === "start" ? t("history.waiting") : void 0;
   const summary = questions?.[0]?.question.split("\n").find((line) => line.trim() !== "")?.trim() ?? t("history.title");
   const action = live ? () => revealPanel(callId) : record === void 0 ? void 0 : () => reviewPanel(callId, record);
   const review = !live && record !== void 0;
@@ -1714,6 +1714,7 @@ var zh = {
   "history.reopen": "\u6253\u5F00",
   "history.interrupted": "\u5DF2\u4E2D\u65AD",
   "history.cancelled": "\u5DF2\u53D6\u6D88",
+  "history.waiting": "\u7B49\u5F85\u63D0\u95EE\u754C\u9762\u2026",
   "history.unavailable": "\u8FD9\u4E2A\u95EE\u9898\u5DF2\u7ED3\u675F\uFF0C\u65E0\u6CD5\u6253\u5F00\u3002",
   "reply.copyFailed": "\u590D\u5236\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5\u3002",
   "wait.takeTime": "\u6162\u6162\u56DE\u7B54",
@@ -1759,6 +1760,7 @@ var en = {
   "history.reopen": "Open",
   "history.interrupted": "Interrupted",
   "history.cancelled": "Cancelled",
+  "history.waiting": "Waiting for the question UI\u2026",
   "history.unavailable": "This question has ended and cannot be reopened.",
   "reply.copyFailed": "Copy failed. Try again.",
   "wait.takeTime": "Take time",
@@ -2391,8 +2393,11 @@ var QuestionCards = class {
   }
 };
 async function answerQuestion(ctx, owner, request, next, cards) {
-  const sessionId = ctx.sessions.scopeOf(owner);
-  if (sessionId === void 0) return next();
+  const sessionId = ctx.sessions.scopeOf(owner) ?? (request.agent === void 0 ? void 0 : ctx.sessions.scopeOf(request.agent));
+  if (sessionId === void 0) {
+    ctx.logger?.warn?.(`Better Ask User: could not resolve the Session for ${request.wait?.callId ?? "a question without a call id"}; the question card cannot be created`);
+    return next();
+  }
   const callId = request.wait?.callId;
   const better = request.better;
   const card = cards.ensure(sessionId, request.questions, callId, better);

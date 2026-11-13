@@ -25,11 +25,14 @@ const sessionId = 'session'
 const callId = 'ordinary-call'
 const questions = [{ id: 'q', question: 'Pick', options: [{ label: 'A' }, { label: 'B' }] }]
 
-function harness(projectionFirst) {
+function harness(projectionFirst, options = {}) {
+  const cardCallId = options.callId ?? callId
+  const owner = options.owner ?? {}
+  const requestAgent = options.agent
   const disposers = []
   const seats = new Map()
   const questionSubscribers = new Set()
-  let projected = { active: projectionFirst ? [{ callId, questions, state: 'continued' }] : [], settled: [] }
+  let projected = { active: projectionFirst ? [{ callId: cardCallId, questions, state: 'continued' }] : [], settled: [] }
   let listener
   let closeClaim
   const questionsFace = {
@@ -52,7 +55,7 @@ function harness(projectionFirst) {
       return () => seats.delete(pending.key)
     } },
     sessions: {
-      scopeOf: () => sessionId,
+      scopeOf: options.scopeOf ?? (() => sessionId),
       list: { getSnapshot: () => ({ byId: { [sessionId]: { id: sessionId } } }), subscribe: () => () => {} },
       binding: () => ({ session: { projections: { faceOf: name => name === 'userQuestions' ? questionsFace : inboxFace } } }),
     },
@@ -62,7 +65,7 @@ function harness(projectionFirst) {
         answer: async () => ({ ok: true, value: true }),
         attachWait(agent, call, signal) {
           assert.equal(agent, sessionId)
-          assert.equal(call, callId)
+          assert.equal(call, cardCallId)
           const end = Promise.withResolvers()
           closeClaim = () => end.resolve({ done: true })
           signal.addEventListener('abort', closeClaim, { once: true })
@@ -83,9 +86,9 @@ function harness(projectionFirst) {
   apply(ctx)
   return {
     pending: () => [...seats.values()][0],
-    request: better => listener.call({}, { questions, wait: { callId, timed: true }, better }, () => assert.fail('the client owns this question')),
+    request: better => listener.call(owner, { questions, wait: { callId: cardCallId, timed: true }, ...(requestAgent === undefined ? {} : { agent: requestAgent }), better }, () => assert.fail('the client owns this question')),
     project() {
-      projected = { active: [{ callId, questions, state: 'continued' }], settled: [] }
+      projected = { active: [{ callId: cardCallId, questions, state: 'continued' }], settled: [] }
       for (const fn of questionSubscribers) fn()
     },
     async close() {
@@ -123,3 +126,43 @@ for (const projectionFirst of [false, true]) {
     })
   }
 }
+test('a PTC nested call id keeps its exact identity and answers the live wait', async () => {
+  const h = harness(false, { callId: 'call:ptc:1' })
+  try {
+    const result = h.request({ waitMs: 5000, timeoutMode: 'native' })
+    await Promise.resolve()
+    const pending = h.pending()
+    assert.ok(pending)
+    assert.equal(pending.callId, 'call:ptc:1')
+    assert.match(pending.key, /:ptc:1$/)
+    await pending.answer({ answers: [{ id: 'q', selected: ['A'] }] })
+    assert.deepEqual(await result, { answers: [{ id: 'q', selected: ['A'] }] })
+  } finally { await h.close() }
+})
+
+test('an unscoped event owner falls back to the request agent identity', async () => {
+  const agent = {}
+  const h = harness(false, {
+    owner: {},
+    agent,
+    scopeOf: ctx => ctx === agent ? sessionId : undefined,
+  })
+  try {
+    const result = h.request({ waitMs: 5000, timeoutMode: 'native' })
+    await Promise.resolve()
+    const pending = h.pending()
+    assert.ok(pending, 'the request agent identity must recover the Session')
+    await pending.answer({ answers: [{ id: 'q', selected: ['B'] }] })
+    assert.deepEqual(await result, { answers: [{ id: 'q', selected: ['B'] }] })
+  } finally { await h.close() }
+})
+
+test('a continued PTC projection creates the card without a forwarded request', async () => {
+  const h = harness(true, { callId: 'call:ptc:2' })
+  try {
+    const pending = h.pending()
+    assert.ok(pending)
+    assert.equal(pending.callId, 'call:ptc:2')
+    assert.equal(pending.getSnapshot().state, 'continued')
+  } finally { await h.close() }
+})

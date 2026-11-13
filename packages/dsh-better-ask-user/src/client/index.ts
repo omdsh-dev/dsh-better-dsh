@@ -257,7 +257,11 @@ async function answerQuestion(
   cards: QuestionCards,
 ): Promise<ClientQuestionAnswer> {
   const sessionId = ctx.sessions.scopeOf(owner)
-  if (sessionId === undefined) return next()
+    ?? (request.agent === undefined ? undefined : ctx.sessions.scopeOf(request.agent as unknown as ClientContext))
+  if (sessionId === undefined) {
+    ctx.logger?.warn?.(`Better Ask User: could not resolve the Session for ${request.wait?.callId ?? 'a question without a call id'}; the question card cannot be created`)
+    return next()
+  }
   const callId = request.wait?.callId
   const better = (request as { better?: BetterAskConfig }).better
   const card = cards.ensure(sessionId, request.questions, callId, better)

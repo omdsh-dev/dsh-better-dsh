@@ -112,21 +112,26 @@ export function AskHistoryRow({
   // A late reply settles through the projection, not through a second tool result.
   const settled = useProjection('userQuestions', view => view?.settled.find(row => row.callId === callId))
   const answers = settled?.answers ?? answerList(output) ?? []
+  const live = useQuestionPanelLive(callId, present => present === true)
+  const errorCode = 'kind' in block ? block.error?.code : undefined
   // Every settled call with readable questions can be reviewed; an empty answer
-  // batch still shows the question and its "no answer recorded" state.
+  // batch still shows the question and its "no answer recorded" state. The
+  // review is read-only, so an interrupted call must never expose "Open".
   const record: UserQuestionRecord | undefined = questions !== undefined && phase === 'result'
     ? { questions, answers }
     : undefined
-  const live = useQuestionPanelLive(callId, present => present === true)
-  const errorCode = 'kind' in block ? block.error?.code : undefined
   // A live card is the truth; a terminal label belongs only to the settled view.
+  // Before the client card arrives, keep the row honest: it is waiting for the
+  // question UI rather than silently offering nothing.
   const status = live
     ? undefined
     : errorCode === 'ASK_ABORTED' || errorCode === 'interrupted'
       ? t('history.interrupted')
       : errorCode === 'ASK_CANCELLED'
         ? t('history.cancelled')
-        : undefined
+        : phase === 'start'
+          ? t('history.waiting')
+          : undefined
   const summary = questions?.[0]?.question.split('\n').find(line => line.trim() !== '')?.trim() ?? t('history.title')
   const action = live
     ? () => revealPanel(callId)

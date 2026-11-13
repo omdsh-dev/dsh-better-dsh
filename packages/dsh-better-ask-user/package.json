@@ -1,6 +1,6 @@
 {
   "name": "dsh-better-ask-user",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Independent ask_user_question plugin: configurable wait, input-extended countdown, markdown/mobile card, native or default timeout behavior, and PTC deadline exemption.",
   "license": "Apache-2.0",
   "repository": {
@@ -58,8 +58,7 @@
         "@deepseek-ai/dsh-client-ui-conversation",
         "@deepseek-ai/dsh-client-ui-renderer",
         "@deepseek-ai/dsh-client-ui-session",
-        "@deepseek-ai/dsh-client-ui-chat",
-        "@deepseek-ai/dsh-client-ui-settings"
+        "@deepseek-ai/dsh-client-ui-chat"
       ]
     }
   },

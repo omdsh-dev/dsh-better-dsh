@@ -475,3 +475,14 @@ test('reply copy exposes pending, failed and copied states while retaining full 
     delete globalThis.window
   }
 })
+
+test('a pending start without a live card shows the waiting fallback and no dead open', () => {
+  const props = rowProps({ callId: 'ptc-pending', state: { live: false } })
+  let tree
+  try {
+    act(() => { tree = create(React.createElement(AskHistoryRow, { ...props, phase: 'start', block: { argsRaw: rowArgs } })) })
+    assert.equal(button(tree, 'Open'), undefined)
+    assert.equal(button(tree, 'Review'), undefined)
+    assert.ok(JSON.stringify(tree.toJSON()).includes(en['history.waiting']))
+  } finally { if (tree) act(() => tree.unmount()) }
+})
