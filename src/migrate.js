@@ -695,11 +695,12 @@ export async function runMigration(ctx, options = {}) {
  *   `onResult` receives the settled report without blocking the Loader callback.
  */
 export function mountMigration(ctx, config, options = {}) {
-  let started = false
-  const start = (settingsCtx) => {
-    if (started) return
-    started = true
-    void runMigration(settingsCtx, {
+  let settingsCtx
+  let running
+  const run = () => {
+    if (settingsCtx === undefined) return Promise.resolve(undefined)
+    if (running !== undefined) return running
+    running = runMigration(settingsCtx, {
       config,
       legacyImport: options.legacyImport,
       timeoutMs: options.timeoutMs,
@@ -708,7 +709,20 @@ export function mountMigration(ctx, config, options = {}) {
     }).catch((error) => {
       settingsCtx.logger?.warn?.(`apollo-migration: skipped: ${errorMessage(error)}`)
       return { status: 'error', error: errorMessage(error) }
-    }).then((result) => options.onResult?.(result))
+    }).then((result) => {
+      options.onResult?.(result)
+      running = undefined
+      return result
+    })
+    return running
+  }
+  const start = (serviceCtx) => {
+    if (settingsCtx !== undefined) return
+    settingsCtx = serviceCtx
+    void run()
   }
   ctx.inject(['settings'], start)
+  // Turns may retry a load-time migration that failed inside an HMR transaction
+  // (see admission.js); the migration itself is idempotent.
+  return { retry: run }
 }

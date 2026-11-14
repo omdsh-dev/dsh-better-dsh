@@ -36,9 +36,15 @@ export const inject = ['skills']
 export function apply(ctx, config) {
   ctx.skills.registerProvider(() => createProvider(ctx))
   if (typeof ctx.inject === 'function') {
-    const onResult = typeof ctx.on === 'function' ? mountMigrationAdmission(ctx) : undefined
+    // The retry runs from the turn path, outside any HMR transaction: a
+    // load-time attempt that failed inside one must not latch the gate shut
+    // for the rest of the process (issue #2).
+    let migration
+    const onResult = typeof ctx.on === 'function'
+      ? mountMigrationAdmission(ctx, { retry: () => migration?.retry() })
+      : undefined
     const settings = mountSettings(ctx, config)
-    mountMigration(ctx, config, { legacyImport: settings.legacyImport, onResult })
+    migration = mountMigration(ctx, config, { legacyImport: settings.legacyImport, onResult })
   }
 }
 
