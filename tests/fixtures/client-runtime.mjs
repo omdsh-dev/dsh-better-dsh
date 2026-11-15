@@ -6,7 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import vm from 'node:vm'
 
-export const VERSION = '0.2.2-rc.2'
+export const VERSION = '0.2.2-rc.3'
 export const root = fileURLToPath(new URL('../../', import.meta.url))
 export const hostRoot = process.env.DSH_PACKAGE_ROOT
 export const enabled = !!hostRoot

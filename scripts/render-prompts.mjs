@@ -49,11 +49,11 @@ assert.equal(subagentName, '@oh-my-dsh/dsh-better-subagent')
 assert.equal(compactName, 'dsh-better-compact')
 assert.equal(askName, 'dsh-better-ask-user')
 assert.equal(ptcName, 'dsh-better-ptc')
-assert.equal(manifest.dependencies[subagentName], '0.5.3')
-assert.equal(manifest.dependencies[compactName], '0.4.1')
-assert.equal(manifest.dependencies[goalName], '0.4.4')
-assert.equal(manifest.dependencies[askName], '0.3.5')
-assert.equal(manifest.dependencies[ptcName], '0.2.1')
+assert.equal(manifest.dependencies[subagentName], '0.5.4')
+assert.equal(manifest.dependencies[compactName], '0.4.2')
+assert.equal(manifest.dependencies[goalName], '0.4.5')
+assert.equal(manifest.dependencies[askName], '0.3.6')
+assert.equal(manifest.dependencies[ptcName], '0.2.2')
 
 /** Root row settings the rendered prompts use; tests re-render the Apollo section from the JSON block. */
 const APOLLO_SETTINGS = { exitGuard: false }

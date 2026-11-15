@@ -2,9 +2,9 @@
 
 面向维护者、集成者和需要排查装配问题的用户。用户安装与配置请看 [README](../README.md)；本文保留 DSH 插件的实现细节、旧配置迁移、组合安装边界与验证方法。
 
-当前实现版本：`0.11.6`；npm 包名是 `dsh-better-dsh`。纯 ESM，无构建步骤；宿主浏览器半边是直接加载的闭包工厂。旧 `Apollo` 名称只保留在迁移、历史兼容和旧包 deprecate 说明里。
+当前实现版本：`0.11.7`；npm 包名是 `dsh-better-dsh`。纯 ESM，无构建步骤；宿主浏览器半边是直接加载的闭包工厂。旧 `Apollo` 名称只保留在迁移、历史兼容和旧包 deprecate 说明里。
 
-**仓库布局**：`packages/*` 是六个子包的源码真相（pnpm workspaces；根目录 `pnpm install`、`pnpm test:packages`）。迁移前的 `plugins/` 目录和各自 `.git` 原样保留作归档，不再修改。本地子包已同步到已发布 tag 并完成 DSH rc.2 适配，但版本号未提升、根依赖仍指向 registry 上的旧构建；`workspace:*` 与各包发布流合并尚未完成。
+**仓库布局**：`packages/*` 是六个子包的源码真相（pnpm workspaces；根目录 `pnpm install`、`pnpm test:packages`）。迁移前的 `plugins/` 目录和各自 `.git` 原样保留作归档，不再修改。本地子包已同步到已发布 tag 并完成 DSH rc.3 适配，版本号已提升并发布；根依赖已指向新的精确构建；`workspace:*` 与各包发布流合并尚未完成。
 
 `pnpm test:packages` 暂时排除 `dsh-lazy-session-list`：它不在本轮适配范围，包本身尚未适配 rc.2；DSH rc.2 已提供匹配的 `@deepseek-ai/dsh-skill` / `@deepseek-ai/dsh-native-command`，需要时可用匹配 host 单独运行 live-smoke。
 
@@ -37,11 +37,11 @@
 
 | 依赖 | 版本 | 所有权 |
 |---|---|---|
-| `dsh-better-goal` | `0.4.4` | 目标域（`questionTimeoutSeconds` 已弃用、仅保留读取；`spinHintSeconds` 控制空转提示） |
-| `@oh-my-dsh/dsh-better-subagent` | `0.5.3` | 子代理 CLI/等待/child guard/分档/设置页；注册 `wait_subagent` PTC 豁免；委派提示词由 `delegation.prompt` 单独控制 |
-| `dsh-better-compact` | `0.4.1` | 压缩 companion + engine + 设置页/诊断 |
-| `dsh-better-ask-user` | `0.3.5` | 官方 `ask_user_question` 入参/返回 + 插件超时等待 + 历史预览行；注册 PTC 豁免；旧 goal 等待迁移 |
-| `dsh-better-ptc` | `0.2.1` | 单例 PTC deadline 豁免服务 |
+| `dsh-better-goal` | `0.4.5` | 目标域（`questionTimeoutSeconds` 已弃用、仅保留读取；`spinHintSeconds` 控制空转提示） |
+| `@oh-my-dsh/dsh-better-subagent` | `0.5.4` | 子代理 CLI/等待/child guard/分档/设置页；注册 `wait_subagent` PTC 豁免；委派提示词由 `delegation.prompt` 单独控制 |
+| `dsh-better-compact` | `0.4.2` | 压缩 companion + engine + 设置页/诊断 |
+| `dsh-better-ask-user` | `0.3.6` | 官方 `ask_user_question` 入参/返回 + 插件超时等待 + 历史预览行；注册 PTC 豁免；旧 goal 等待迁移 |
+| `dsh-better-ptc` | `0.2.2` | 单例 PTC deadline 豁免服务 |
 | `@deepseek-ai/schemastery` | `~3.19.0` | Better DSH 行 Config |
 | `react` | peer | 宿主提供 |
 
@@ -300,7 +300,7 @@ DSH_PACKAGE_ROOT="/…/node_modules/@deepseek-ai/dsh" npm run prompts
 - 独立安装不需要 Apollo 的 `eng` / `eng-ptc` 预设；better-subagent 在无这些预设时用 `subagents.global` 决定是否渲染/路由；
 - 不复制 CLI 身份 KV：命名空间仍是 `apollo_cli_<sha256(profile.dir)[:16]>`，包名变化不重命名、不复制、不清空。
 
-### 双显式 bundle 限制（DSH 0.2.2-rc.2）
+### 双显式 bundle 限制（DSH 0.2.2-rc.2 / rc.3）
 
 同一 profile 同时显式选择 Apollo 与独立 better-subagent / better-compact 时：
 
@@ -326,12 +326,12 @@ DSH_PACKAGE_ROOT="/…/node_modules/@deepseek-ai/dsh" npm run prompts
 ### npm 安装
 
 ```sh
-dsh plugin --profile <profile> add dsh-better-dsh@0.11.6
+dsh plugin --profile <profile> add dsh-better-dsh@0.11.7
 ```
 
 包发布后即可用此命令安装，并带入五个精确依赖、应用三份 bundle patch。安装后需要重启对应 profile 的 DSH 进程。本轮版本与精确依赖见上述包清单；发布后需重新验证 registry 干净安装。
 
-> `0.11.4` 起支持 DSH `0.2.2-rc.2`；更早的 `0.11.3` 及子包旧版本会被 rc.2 的 `engines.dsh` 门禁跳过。
+> `0.11.7` 起，根 bundle 与五个子包声明 DSH `>=0.2.2-rc.2 <0.3.0`（验收 rc.3）；更早的 `0.11.6` 及旧子包精确 pin rc.2，会被 rc.3 的 preflight 禁用独立行。
 
 ### GitHub 源码安装
 
@@ -372,7 +372,7 @@ dsh --profile <profile> --dump-config
 - 升级包后重启 profile；0.4.x → 0.5.x 的迁移见 [旧配置迁移](#旧配置迁移)；
 - 迁移写入的 compact 设置需要再重载一次才会被运行中引擎采用；
 - 升级 DSH 后先跑 `pnpm test`，漂移测试会按目标 DSH 安装比较预设；
-- 版本契约：Node `>=24.9.0`，DSH 精确 `0.2.2-rc.2`；只针对该 next 发布包验收，不实现旧 RC 兼容层。
+- 版本契约：Node `>=24.9.0`，DSH `>=0.2.2-rc.2 <0.3.0`（验收基线 `0.2.2-rc.3`）；不实现旧 RC 兼容层。
 
 ### 卸载
 
@@ -388,21 +388,22 @@ dsh plugin --profile <profile> remove @menghuan1918/dsh-apollo   # 旧包；新�
 
 当前阶段仍使用迁移前各子包的独立发布流程（归档的子仓里保留原 `.github/workflows/release.yml`）；monorepo 统一的子包发布 workflow 尚未完成。根包 `dsh-better-dsh` 用 GitHub Release 触发根 `.github/workflows/release.yml`，通过 npm trusted publishing（OIDC）发布，仓库里不存 npm token。tag 必须是 `v<package.json 的 version>`，CI 会先校验再跑测试和 `npm publish --provenance`。
 
-1. 先发布 `dsh-better-ptc@0.2.1`、`dsh-better-ask-user@0.3.5`、`@oh-my-dsh/dsh-better-subagent@0.5.3`、`dsh-better-goal@0.4.4`、`dsh-better-compact@0.4.1`（各自仓库的 Release）；
+1. 先发布 `dsh-better-ptc@0.2.2`、`dsh-better-ask-user@0.3.6`、`@oh-my-dsh/dsh-better-subagent@0.5.4`、`dsh-better-goal@0.4.5`、`dsh-better-compact@0.4.2`（各自仓库的 Release）；
 2. 在官方 registry（`https://registry.npmjs.org/`）确认五个版本可取得、可安装；
-3. 再把 Better DSH 的精确依赖指向已发布版本，推已验证的发布提交及 tag 并发布 Better DSH Release（本轮为 `v0.11.6`）；
+3. 再把 Better DSH 的精确依赖指向已发布版本，推已验证的发布提交及 tag 并发布 Better DSH Release（本轮为 `v0.11.7`）；
 4. 子包版本可取得前，不要把指向它们的精确依赖推到 Apollo main，否则 `pnpm install` / GitHub 源码安装会 404。
 
 ## 测试与冒烟
 
-### 0.2.2-rc.2 验证契约
+### 0.2.2-rc.3 验证契约
 
-- 精确 npm 宿主：`@deepseek-ai/dsh@0.2.2-rc.2`，Node `>=24.9.0`。`PROFILE_TEMPLATES` 从 `dsh-official-bundles` 导入，不再从 `dsh-app-boot` 导入。
+- npm 宿主：`@deepseek-ai/dsh@0.2.2-rc.3`（同时支持 rc.2），Node `>=24.9.0`。`PROFILE_TEMPLATES` 从 `dsh-official-bundles` 导入，不再从 `dsh-app-boot` 导入。
 - 工具准入：先 `tools.resolve({ agent, modelSelection, signal })`，再将同一 `toolSet` 传入 prompt assemble 与 batch `tools.execute({ calls, agent, signal, toolSet })`；结束后 dispose。presentation waterfall 不得改写工具定义。
 - projection 注册必须等待完成再读取；turn boundary 改走 AgentRegistry 的公开接口。compact 不通过覆盖宿主私有 `compactPressure` 扩展行为。
 - 两套预设对齐新版 planning、`tool-fs.applyPatch:false`、`modelSelection/modelDiscovery`；PTC 使用 `tool-executor-ptc`。`list_agents` 由原生 control 提供，不再挂已删除的额外子路径。
 - 临时 profile 禁用 headless parser 后，需显式替换 `sandbox-policy` 的 `inject` 与配置，否则新版 headless bundle 引入的 `headlessStartup` 依赖会让 fs/shell/PTC 一直 pending。测试 profile 使用 `danger-full-access` 并显式固定 `permission.defaultPreset`，避免无 workspace-write 后端的主机拒绝执行或产生 `custom` 权限组合。
-- `engines.dsh` 现在是硬门禁：不匹配的 bundle 会被 Loader 跳过。根包与五个子包都精确声明 `0.2.2-rc.2`；改宿主版本必须同步改清单并重跑真实装配。
+- `engines.dsh` 是硬门禁：根 bundle 不匹配会被 Loader 跳过；profile preflight 还会逐行检查插入的插件包，五个子包的 `engines.dsh` 不匹配时对应行会被禁用。根包与五个子包统一声明 `>=0.2.2-rc.2 <0.3.0`（验收 rc.3）；改宿主版本必须同步改全部清单并重跑真实装配。
+- rc.3 相对 rc.2 的 host 包差异是增量的（官方 bundle、图标、错误码、文档），预设未变。本地验证 rc.3 时设置 `APOLLO_PLUGIN_SOURCE_ROOT=$PWD/packages`，让临时 profile 使用已放宽范围的子包源码。
 - rc.2 子代理是具名、多层协作：原生 `subagent` 工具返回 `{kind:'activation', name}`；`list_agents` 展示树内名字；`send_message` 按名字寻址；`interrupt_agent` 在预设中默认关闭。Better Subagent 的 `wait_subagent` 同时接受名字与 durable id，并通过 `resolveName` 解析。
 - rc.2 PTC 按运行时限限制工具调用总量，并支持显式环境 reset；`dsh-better-ptc` 的 deadline 暂停包装不得绕过 host 在调用前算出的 `maxSubCalls`，超限中止也不能被误报成 PTC 超时。
 - 预设对齐 rc.2 上游：`eng` 增加 `tool-office`、`tool-subagent-control.interrupt:false` 与 standard 专属的 `skill-filesystem.customSkillDirs`；`eng-ptc` 只跟随 ptc 的增量，不复制 standard 专属 skill 目录。
@@ -507,7 +508,7 @@ APOLLO_PLUGIN_SOURCE_ROOT=/path/to/Code node scripts/ptc-smoke.mjs
 
 ### 版本范围
 
-`engines.dsh` 精确为 `0.2.2-rc.2`，Node `>=24.9.0`；Cordis `~4.1.0`、Schemastery `~3.19.0`。本轮只对该 next 发布包验收，不承诺其他 RC 或旧版本。升级 DSH 后仍须重新运行漂移与真实运行时测试，不能仅放宽版本声明。历史配置键、包名、row ID、预设 ID 和兼容 URL 别名保留，不等于维护旧宿主 API 分支。本轮只改源码与测试；子包和根 bundle 的版本号未提升，根 `dependencies` 仍指向 registry 上的旧构建，发布新子包后再统一 bump。
+根包与五个子包的 `engines.dsh` 统一为 `>=0.2.2-rc.2 <0.3.0`，验收基线 `0.2.2-rc.3`；Node `>=24.9.0`，Cordis `~4.1.0`、Schemastery `~3.19.0`。升级 DSH 后仍须重新运行漂移与真实运行时测试，不能仅放宽版本声明。历史配置键、包名、row ID、预设 ID 和兼容 URL 别名保留，不等于维护旧宿主 API 分支。本轮已提升五个子包版本（ptc 0.2.2、ask-user 0.3.6、subagent 0.5.4、compact 0.4.2、goal 0.4.5）与根 bundle 0.11.7；发布顺序仍是先子包、后根包。
 
 ## 实现入口、打包与发布
 

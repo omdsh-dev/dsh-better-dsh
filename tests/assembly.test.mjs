@@ -106,10 +106,10 @@ test('顶层 patch 禁用原生 goal 域与原生 compaction-basic，并插入�
   }
 })
 
-test('npm manifest：包名、0.11.6、repository、publishConfig 与 license', () => {
+test('npm manifest：包名、0.11.7、repository、publishConfig 与 license', () => {
   const m = manifest()
   assert.equal(m.name, PACKAGE_NAME)
-  assert.equal(m.version, '0.11.6')
+  assert.equal(m.version, '0.11.7')
   assert.equal(m.license, 'Apache-2.0')
   const license = readFileSync(join(ROOT, 'LICENSE'), 'utf8')
   assert.equal(createHash('sha256').update(license).digest('hex'), 'cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30')
@@ -125,11 +125,11 @@ test('npm manifest：包名、0.11.6、repository、publishConfig 与 license', 
 
 test('package.json 把五个独立插件声明为精确 npm 版本', () => {
   const dependencies = manifest().dependencies ?? {}
-  assert.equal(dependencies['dsh-better-goal'], '0.4.4', 'goal 依赖必须是精确 npm 版本')
-  assert.equal(dependencies[SUBAGENT_NAME], '0.5.3', 'better-subagent 依赖必须是精确 npm 版本')
-  assert.equal(dependencies[COMPACT_NAME], '0.4.1', 'better-compact 依赖必须是精确 npm 版本')
-  assert.equal(dependencies['dsh-better-ask-user'], '0.3.5', 'ask-user 依赖必须是精确 npm 版本')
-  assert.equal(dependencies['dsh-better-ptc'], '0.2.1', 'ptc 依赖必须是精确 npm 版本')
+  assert.equal(dependencies['dsh-better-goal'], '0.4.5', 'goal 依赖必须是精确 npm 版本')
+  assert.equal(dependencies[SUBAGENT_NAME], '0.5.4', 'better-subagent 依赖必须是精确 npm 版本')
+  assert.equal(dependencies[COMPACT_NAME], '0.4.2', 'better-compact 依赖必须是精确 npm 版本')
+  assert.equal(dependencies['dsh-better-ask-user'], '0.3.6', 'ask-user 依赖必须是精确 npm 版本')
+  assert.equal(dependencies['dsh-better-ptc'], '0.2.2', 'ptc 依赖必须是精确 npm 版本')
   for (const spec of [dependencies['dsh-better-goal'], dependencies[SUBAGENT_NAME], dependencies[COMPACT_NAME], dependencies['dsh-better-ask-user'], dependencies['dsh-better-ptc']]) {
     assert.doesNotMatch(spec, /^(?:github:|git\+|git:|file:|link:|workspace:|npm:|https?:)/)
   }
@@ -230,5 +230,24 @@ test('包安装布局：包根、client 与全部 preset 子路径真实解析',
     for (const name of expected) assert.doesNotThrow(() => require.resolve(name), name)
   } finally {
     rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('根包与五个子包的 DSH 兼容范围一致，且使用 0.2.x 范围', () => {
+  const range = manifest().engines.dsh
+  assert.equal(range, '>=0.2.2-rc.2 <0.3.0')
+  const packages = ['dsh-better-ask-user', 'dsh-better-compact', 'dsh-better-goal', 'dsh-better-ptc', 'dsh-better-subagent']
+  for (const name of packages) {
+    const pkg = JSON.parse(readFileSync(join(ROOT, 'packages', name, 'package.json'), 'utf8'))
+    assert.equal(pkg.engines.dsh, range, `${name} engines.dsh`)
+    for (const [peer, peerRange] of Object.entries(pkg.peerDependencies ?? {})) {
+      if (peer.startsWith('@deepseek-ai/dsh-')) assert.equal(peerRange, range, `${name}:${peer}`)
+    }
+    for (const [dev, devVersion] of Object.entries(pkg.devDependencies ?? {})) {
+      if (dev.startsWith('@deepseek-ai/dsh-')) assert.equal(devVersion, '0.2.2-rc.3', `${name}:${dev}`)
+    }
+  }
+  for (const [name, version] of Object.entries(manifest().devDependencies)) {
+    if (name.startsWith('@deepseek-ai/dsh-')) assert.equal(version, '0.2.2-rc.3', name)
   }
 })

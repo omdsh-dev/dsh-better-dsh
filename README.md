@@ -16,7 +16,7 @@
   <a href="https://www.npmjs.com/package/dsh-better-dsh"><img src="https://img.shields.io/npm/v/dsh-better-dsh.svg" alt="npm 版本"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/omdsh-dev/dsh-better-dsh?color=blue"></a>
   <a href="package.json"><img alt="Node &gt;=24.9.0" src="https://img.shields.io/badge/node-%3E%3D24.9.0-339933?logo=node.js&amp;logoColor=white"></a>
-  <a href="package.json"><img alt="DSH 0.2.2-rc.2" src="https://img.shields.io/badge/DSH-0.2.2--rc.2-4B32C3"></a>
+  <a href="package.json"><img alt="DSH 0.2.2-rc.3" src="https://img.shields.io/badge/DSH-0.2.2--rc.3-4B32C3"></a>
   <a href="https://github.com/omdsh-dev/dsh-better-dsh"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-omdsh--dev-181717?logo=github"></a>
 </p>
 
@@ -51,23 +51,23 @@
   </picture>
 </p>
 
-需要 Node.js `>=24.9.0`；验收基线是 DSH `0.2.2-rc.2`。
+需要 Node.js `>=24.9.0`；支持 DSH `>=0.2.2-rc.2 <0.3.0`，验收基线是 `0.2.2-rc.3`。
 
 ```sh
 # npm
-dsh plugin --profile <profile> add dsh-better-dsh@0.11.6
+dsh plugin --profile <profile> add dsh-better-dsh@0.11.7
 
 # 或从 GitHub tag 安装
-dsh plugin --profile <profile> add github:omdsh-dev/dsh-better-dsh#v0.11.6
+dsh plugin --profile <profile> add github:omdsh-dev/dsh-better-dsh#v0.11.7
 ```
 
 > 安装、升级或换包后必须**重启对应 profile**；只刷新网页不够。
 >
-> 不要同时显式添加 Better DSH 和独立插件 bundle：行实例仍只有一个，但 DSH 0.2.2-rc.2 会把同一 id 的配置写入拒绝为只读。只保留一个显式入口。
+> 不要同时显式添加 Better DSH 和独立插件 bundle：行实例仍只有一个，但 DSH 0.2.2-rc.2 / rc.3 会把同一 id 的配置写入拒绝为只读。只保留一个显式入口。
 
-本轮版本：**Better DSH `0.11.6`**，搭配 goal `0.4.4`、subagent `0.5.3`、compact `0.4.1`、ask-user `0.3.5`、ptc `0.2.1`。
+本轮版本：**Better DSH `0.11.7`**，搭配 goal `0.4.5`、subagent `0.5.4`、compact `0.4.2`、ask-user `0.3.6`、ptc `0.2.2`。
 
-> 从 Better DSH `0.11.4` 起，根 bundle 与五个子包均面向 DSH `0.2.2-rc.2`；更早的 `0.11.3` 及子包旧版本只面向 rc.1。
+> 从 Better DSH `0.11.7` 起，根 bundle 与五个子包声明 DSH `>=0.2.2-rc.2 <0.3.0`，验收基线为 rc.3；`0.11.6` 及旧子包精确 pin rc.2。
 
 ## 架构
 
@@ -185,10 +185,10 @@ Better DSH 包详情里的「集成设置」按 Core、Subagents、Compaction、
 # 旧入口
 dsh plugin --profile <profile> remove @menghuan1918/dsh-apollo
 # 新入口
-dsh plugin --profile <profile> add dsh-better-dsh@0.11.6
+dsh plugin --profile <profile> add dsh-better-dsh@0.11.7
 # subagent 独立安装的用户
 dsh plugin --profile <profile> remove @menghuan1918/dsh-better-subagent
-dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.3
+dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.4
 ```
 
 <details>
@@ -211,10 +211,10 @@ dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.3
 五个插件都可以单独安装；独立安装和 Better DSH 组合使用的是**同一组稳定行**。
 
 ```sh
-dsh plugin --profile <profile> add dsh-better-goal@0.4.4
-dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.3
-dsh plugin --profile <profile> add dsh-better-compact@0.4.1
-dsh plugin --profile <profile> add dsh-better-ask-user@0.3.5 dsh-better-ptc@0.2.1
+dsh plugin --profile <profile> add dsh-better-goal@0.4.5
+dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.4
+dsh plugin --profile <profile> add dsh-better-compact@0.4.2
+dsh plugin --profile <profile> add dsh-better-ask-user@0.3.6 dsh-better-ptc@0.2.2
 ```
 
 <details>
@@ -224,7 +224,7 @@ dsh plugin --profile <profile> add dsh-better-ask-user@0.3.5 dsh-better-ptc@0.2.
 |---|---|
 | 只有 Better DSH | 插入 goal / subagent / compact companion+engine / ask-user / ptc 行；工程预设内带 compact engine |
 | 只有独立 bundle | 各自插入同样的行；没有 Better DSH 的工程预设、技能或 job 守卫 |
-| Better DSH + 独立 bundle 同时显式选中 | Loader 仍按行 id 只激活一行实例，但 DSH 0.2.2-rc.2 会拒绝为同一 id 写入配置：行可读、配置只读 |
+| Better DSH + 独立 bundle 同时显式选中 | Loader 仍按行 id 只激活一行实例，但 DSH 0.2.2-rc.2 / rc.3 会拒绝为同一 id 写入配置：行可读、配置只读 |
 
 恢复方法：**只保留一个显式入口**，然后重启 profile。不要为了“多一层保险”同时安装两套入口。
 
@@ -247,12 +247,12 @@ dsh plugin --profile <profile> add dsh-better-ask-user@0.3.5 dsh-better-ptc@0.2.
 
 **发布顺序**：先发布独立包，再发布 Better DSH（精确依赖必须已存在）：
 
-1. `dsh-better-ptc@0.2.1`
-2. `dsh-better-ask-user@0.3.5`
-3. `dsh-better-compact@0.4.1`
-4. `dsh-better-goal@0.4.4`
-5. `@oh-my-dsh/dsh-better-subagent@0.5.3`
-6. `dsh-better-dsh@0.11.6`
+1. `dsh-better-ptc@0.2.2`
+2. `dsh-better-ask-user@0.3.6`
+3. `dsh-better-compact@0.4.2`
+4. `dsh-better-goal@0.4.5`
+5. `@oh-my-dsh/dsh-better-subagent@0.5.4`
+6. `dsh-better-dsh@0.11.7`
 
 当前子包仍使用各自的独立发布流程（归档子仓里的原 workflow）；monorepo 统一的子包发布 workflow 尚未完成。根包使用 npm trusted publishing（OIDC）；创建对应 GitHub Release 会发布 tag 指向的版本。旧包 `@menghuan1918/dsh-apollo` 与 `@menghuan1918/dsh-better-subagent` 已标记 deprecate，仅作为历史入口保留。
 </details>

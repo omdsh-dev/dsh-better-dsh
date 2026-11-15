@@ -233,11 +233,12 @@ test('两份 patch 的完整模块导出子路径在目标 DSH 安装中均可�
   }
 })
 
-test('engines.dsh 只声明已验证的 next 候选版', (t) => {
+test('engines.dsh 覆盖已验证的 0.2.x 候选范围', (t) => {
   const layout = dshLayout(t)
   if (!layout) return
   const range = manifest().engines.dsh
-  assert.equal(layout.semver.satisfies(layout.version, range), true)
-  assert.equal(range, '0.2.2-rc.2')
-  for (const version of ['0.2.2-rc.1', '0.2.1-rc.5', '0.2.2-alpha.3', '0.2.2', '0.3.0']) assert.equal(layout.semver.satisfies(version, range), false, version)
+  assert.equal(range, '>=0.2.2-rc.2 <0.3.0')
+  assert.equal(layout.semver.satisfies(layout.version, range, { includePrerelease: true }), true)
+  for (const version of ['0.2.2-rc.2', '0.2.2-rc.3', '0.2.2']) assert.equal(layout.semver.satisfies(version, range, { includePrerelease: true }), true, version)
+  for (const version of ['0.2.2-rc.1', '0.2.1-rc.5', '0.2.2-alpha.3', '0.3.0']) assert.equal(layout.semver.satisfies(version, range, { includePrerelease: true }), false, version)
 })

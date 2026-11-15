@@ -19,7 +19,7 @@ const apolloName = apolloRoot ? JSON.parse(await readFile(join(apolloRoot, 'pack
 const home = await mkdtemp(join(tmpdir(), 'dsh-better-goal-smoke-'))
 process.env.DSH_HOME = home
 process.env.DSH_TELEMETRY_DISABLED = '1'
-assert.equal(JSON.parse(await readFile(join(dsh, 'package.json'), 'utf8')).version, '0.2.2-rc.2', 'smoke requires the exact supported host')
+assert.equal(JSON.parse(await readFile(join(dsh, 'package.json'), 'utf8')).version, '0.2.2-rc.3', 'smoke requires the exact supported host')
 const A = await import(pathToFileURL(join(dirname(dsh), 'dsh-app-boot/lib/index.js')))
 const { PROFILE_TEMPLATES } = await import(pathToFileURL(join(dirname(dsh), 'dsh-official-bundles/lib/index.js')))
 const { symbols } = await import(pathToFileURL(join(dirname(dsh), 'cordis/lib/index.js')))
@@ -62,7 +62,7 @@ if (mode !== 'standalone') {
     const dest = join(modules, name)
     await mkdir(dest, { recursive: true })
     const sibling = JSON.parse(await readFile(join(target, 'package.json'), 'utf8'))
-    assert.equal(sibling.engines.dsh, '0.2.2-rc.2', `${name} must target the exact host`)
+    assert.equal(sibling.engines.dsh, '>=0.2.2-rc.3 <0.3.0', `${name} must target the supported host range`)
     for (const file of ['package.json', ...sibling.files]) {
       await cp(join(target, file), join(dest, file), { recursive: true })
     }
@@ -99,7 +99,7 @@ async function boot() {
   const goalLayer = profile.layers.find((layer) => layer.packageName === 'dsh-better-goal')
   if (goalLayer) assert.equal(goalLayer.packageDir, plugin, 'bundle resolves to the staged goal package')
   if (apolloRoot) assert.equal(profile.layers.find((layer) => layer.packageName === apolloName).packageDir, join(modules, apolloName))
-  assert.equal(JSON.parse(await readFile(join(plugin, 'package.json'), 'utf8')).version, '0.4.4')
+  assert.equal(JSON.parse(await readFile(join(plugin, 'package.json'), 'utf8')).version, '0.4.5')
   const booted = await runProfile({ profile: 'it', resolvedProfile: { profile, installAnchor: packageFile }, patchFiles: [], args: [], environment: A.loadLayeredEnv('dsh') })
   assert.equal((await booted.ctx.loader.import('dsh-better-goal')).apply.toString(), (await import('../src/index.js')).apply.toString(), 'runtime uses the staged goal implementation')
   return booted

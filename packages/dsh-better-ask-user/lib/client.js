@@ -32,7 +32,7 @@ __export(index_exports, {
 });
 module.exports = __toCommonJS(index_exports);
 
-// ../../node_modules/.pnpm/@deepseek-ai+dsh-brand@0.2.2-rc.2_@deepseek-ai+cordis@4.1.0/node_modules/@deepseek-ai/dsh-brand/lib/index.js
+// ../../node_modules/.pnpm/@deepseek-ai+dsh-brand@0.2.2-rc.3_@deepseek-ai+cordis@4.1.0/node_modules/@deepseek-ai/dsh-brand/lib/index.js
 function brandString(value) {
   return value;
 }
@@ -1455,7 +1455,7 @@ function QuestionFlow({ pending, t, useStore, useQuestionCard, actions }) {
   ) });
 }
 
-// ../../node_modules/.pnpm/@deepseek-ai+dsh-session@0.2.2-rc.2_@deepseek-ai+cordis@4.1.0_@deepseek-ai+dsh-error@0._9a4a2829599ffe2734cd8a867410231a/node_modules/@deepseek-ai/dsh-session/lib/types/surface.js
+// ../../node_modules/.pnpm/@deepseek-ai+dsh-session@0.2.2-rc.3_@deepseek-ai+cordis@4.1.0_@deepseek-ai+dsh-error@0._8cdd61b1154f5d685261866b42f1df49/node_modules/@deepseek-ai/dsh-session/lib/types/surface.js
 var SURFACE_EVENT_TYPES = /* @__PURE__ */ new Set([
   "system/message",
   "developer/message",

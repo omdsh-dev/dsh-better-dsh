@@ -7,7 +7,7 @@
 - 纯 ESM、无构建步骤；宿主入口 `src/index.js`，浏览器入口 `src/client.js`。
 - `package.json` 的 `dsh.bundle.patch` 指向 `cordis.patch.yml`；`dsh.client.platform = "web"`。
 - `files` 白名单：`src`、`docs`、`cordis.patch.yml`、`README.md`、`LICENSE`、`third-party`。测试、脚本、设计 Spec、凭据、临时 profile 都不进发布包。
-- 依赖：运行时只直接 import `@deepseek-ai/schemastery`；其余 DSH 包是精确 peer（`0.2.2-rc.2`），由宿主运行环境提供，服务全部经 `ctx` 获取。
+- 依赖：运行时只直接 import `@deepseek-ai/schemastery`；其余 DSH 包是 peer 范围（`>=0.2.2-rc.2 <0.3.0`），由宿主运行环境提供，服务全部经 `ctx` 获取。
 - 浏览器半边只 `require('react')`，不 import 任何 DSH client 包；样式全部使用宿主主题 token（`--dsw-alias-*`），不写 DOM。
 
 ## 2. 宿主行与配置

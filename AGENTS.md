@@ -18,7 +18,7 @@
 
 ## 工具链
 
-- Node `>=24.9.0`，pnpm `11.7.0`，DSH 精确 `0.2.2-rc.2`。
+- Node `>=24.9.0`，pnpm `11.7.0`，DSH `>=0.2.2-rc.2 <0.3.0`（验收基线 `0.2.2-rc.3`）。
 - 根目录：
   - `pnpm install --frozen-lockfile`
   - `pnpm test`：只跑根 bundle 的 `tests/*.test.mjs`
@@ -32,9 +32,9 @@
 
 ## 依赖与版本
 
-- 根 `dependencies` 当前固定已发布的精确版本（ask-user `0.3.5`、compact `0.4.1`、goal `0.4.4`、subagent `0.5.3`、ptc `0.2.1`）。
+- 根 `dependencies` 当前固定已发布的精确版本（ask-user `0.3.6`、compact `0.4.2`、goal `0.4.5`、subagent `0.5.4`、ptc `0.2.2`）。
 - **不要**把根依赖切成 `workspace:*` 或未发布版本：根依赖必须指向可安装的精确 npm 版本。发布新子包后，再统一 bump 版本并更新根依赖；本地 `packages/*` 与 registry 版本号保持一致。
-- 本地 `packages/*` 是源码真相：ask-user `0.3.5`、compact `0.4.1`、goal `0.4.4`、ptc `0.2.1`、subagent `0.5.3` 已完成 DSH rc.2 适配并发布；发布验证需使用官方 registry，默认 npmmirror 可能滞后。
+- 本地 `packages/*` 是源码真相：ask-user `0.3.6`、compact `0.4.2`、goal `0.4.5`、ptc `0.2.2`、subagent `0.5.4` 已完成 DSH rc.3 适配并发布；发布验证需使用官方 registry，默认 npmmirror 可能滞后。
 - 发布前先确认子包版本在 `https://registry.npmjs.org/` 可取得；不要提交 `file:`/`link:`/`git:` 依赖。
 
 ## 发布
@@ -45,7 +45,7 @@
 
 ## 测试已知限制
 
-- `dsh-lazy-session-list` 不在本轮适配范围；DSH rc.2 已提供匹配的 `@deepseek-ai/dsh-skill` / `@deepseek-ai/dsh-native-command`，但该包尚未适配，`pnpm test:packages` 仍排除它。需要时用匹配的 DSH host 单独跑 `pnpm test:lazy-session-list`。
+- `dsh-lazy-session-list` 不在本轮适配范围；DSH rc.3 已提供匹配的 `@deepseek-ai/dsh-skill` / `@deepseek-ai/dsh-native-command`，但该包尚未适配，`pnpm test:packages` 仍排除它。需要时用匹配的 DSH host 单独跑 `pnpm test:lazy-session-list`。
 - 需要真实 DSH 安装的漂移/迁移测试：设置 `DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh` 后跑 `pnpm test`。
 - 浏览器/客户端测试使用 esbuild + `react-test-renderer`；不要用 jsdom 替代真实渲染边界。
 

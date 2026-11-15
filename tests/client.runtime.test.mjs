@@ -11,7 +11,7 @@ import { rm, readFile } from 'node:fs/promises'
 import { prepareProfile, bootProfile, waitUntil } from '../scripts/lib/profile.mjs'
 import { createRuntime, enabled, VERSION, importHost, json, hostRequire } from './fixtures/client-runtime.mjs'
 
-const options = { skip: enabled ? false : 'Set DSH_PACKAGE_ROOT to the installed 0.2.2-rc.2 host', timeout: 60000 }
+const options = { skip: enabled ? false : 'Set DSH_PACKAGE_ROOT to the installed 0.2.2-rc.3 host', timeout: 60000 }
 const APOLLO = 'dsh-better-dsh'
 const ROW = APOLLO + '#apollo-skills'
 
