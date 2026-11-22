@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mountPtcExemption } from '../src/ptc.js'
+import { mountPtcExemption } from '../lib/ptc.js'
 
 test('registers ask_user_question with betterPtc and effects cleanup', () => {
   const calls = []

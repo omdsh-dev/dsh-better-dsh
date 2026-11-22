@@ -8,9 +8,13 @@
     "url": "git+https://github.com/omdsh-dev/dsh-better-ptc.git"
   },
   "type": "module",
-  "main": "src/index.js",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "exports": {
-    ".": "./src/index.js",
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
     "./package.json": "./package.json"
   },
   "engines": {
@@ -18,10 +22,14 @@
     "dsh": ">=0.2.2-rc.2 <0.3.0"
   },
   "scripts": {
-    "test": "node --test"
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
+    "test": "node --test",
+    "prepare": "npm run build"
   },
   "files": [
-    "src",
+    "lib",
     "cordis.patch.yml",
     "README.md",
     "LICENSE"
@@ -31,7 +39,9 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",
-    "js-yaml": "^4.2.0"
+    "@types/node": "24.19.2",
+    "js-yaml": "^4.2.0",
+    "typescript": "5.9.3"
   },
   "dsh": {
     "bundle": {

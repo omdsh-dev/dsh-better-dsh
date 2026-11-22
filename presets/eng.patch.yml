@@ -325,7 +325,7 @@
           # Apollo Config.exitGuard，默认关闭，每次事件读取当前值，设置保存后即时
           # 生效。监听器注册型插件，无服务发布，无需 realm。
           - id: eng-exit-guard
-            name: 'dsh-better-dsh/presets/eng/plugins/exit-guard/index.js'
+            name: 'dsh-better-dsh/presets/eng/plugins/exit-guard/lib/index.js'
 
           # ── mode instructions ────────────────────────────────────────────────────────
 
@@ -337,4 +337,4 @@
           # system-prompt section (order 1, right after the persona slot) and
           # re-rendered per request from the live Apollo config.
           - id: eng-mode-instructions
-            name: 'dsh-better-dsh/presets/eng/plugins/mode-instructions/index.js'
+            name: 'dsh-better-dsh/presets/eng/plugins/mode-instructions/lib/index.js'

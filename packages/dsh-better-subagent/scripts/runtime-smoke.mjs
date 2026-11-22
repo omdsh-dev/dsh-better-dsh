@@ -56,7 +56,7 @@ await mkdir(join(modules, '@menghuan1918'), { recursive: true })
 // from the same runtime the host uses. No copied node_modules or .git.
 const plugin = join(modules, '@menghuan1918', 'dsh-better-subagent')
 await mkdir(plugin, { recursive: true })
-for (const name of ['package.json', 'src', 'docs', 'cordis.patch.yml', 'LICENSE', 'README.md', 'third-party']) {
+for (const name of ['package.json', 'lib', 'docs', 'cordis.patch.yml', 'LICENSE', 'README.md', 'third-party']) {
   await cp(join(root, name), join(plugin, name), { recursive: true })
 }
 await symlink(dirname(dsh), join(modules, '@deepseek-ai'))

@@ -24,7 +24,7 @@ import {
   verifyCompactMigration,
   verifySubagentMigration,
   waitForDescriptors,
-} from '../src/migrate.js'
+} from '../lib/migrate.js'
 
 const EMPTY_TIER = { provider: '', model: '', reasoningEffort: '' }
 const CODEX = {

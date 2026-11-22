@@ -21,7 +21,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cliCatalog, installCliRouting, startCliSubagent } from '../src/subagents.js'
+import { cliCatalog, installCliRouting, startCliSubagent } from '../lib/subagents.js'
 
 // ── 契约配置工厂 ─────────────────────────────────────────────────────────────
 // 形状取自 src/* 的消费点：subagents[cli] = {enabled, executable, profile,

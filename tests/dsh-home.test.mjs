@@ -6,7 +6,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { join } from 'node:path'
-import { resolveDshHome } from '../src/dsh-home.js'
+import { resolveDshHome } from '../lib/dsh-home.js'
 
 test('缺省：<home>/.dsh', () => {
   assert.equal(resolveDshHome({}, '/home/tester'), join('/home/tester', '.dsh'))

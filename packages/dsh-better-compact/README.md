@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/dsh-better-compact"><img src="https://img.shields.io/npm/v/dsh-better-compact.svg" alt="npm 版本"></a>
   <a href="LICENSE"><img alt="Apache-2.0" src="https://img.shields.io/github/license/omdsh-dev/dsh-better-compact?color=blue"></a>
-  <a href="package.json"><img alt="DSH 0.2.2-rc.3" src="https://img.shields.io/badge/DSH-0.2.2--rc.3-4B32C3"></a>
+  <a href="package.json"><img alt="DSH 0.2.2-rc.2 / rc.3" src="https://img.shields.io/badge/DSH-0.2.2--rc.2%20%7C%20rc.3-4B32C3"></a>
   <a href="https://github.com/omdsh-dev/dsh-better-dsh"><img alt="Part of Better DSH" src="https://img.shields.io/badge/part%20of-dsh--better--dsh-2F80B7"></a>
 </p>
 
@@ -29,6 +29,7 @@
 - native / goal / file-handoff / custom 四种模式（custom 提示词默认填入 goal 指令模板）
 - 预算、阈值、headroom 与保留策略
 - 摘要模型 / 路由 / 输出预留
+- 检查点摘要可渲染成图片附加（[summaryImage](docs/SUMMARY-IMAGE.md)）：固定 Noto Sans SC 字体，设置页一键从 npm 下载（源站优先，镜像回退），跨设备排版一致
 - 只读诊断与实时过程可视化
 
 <p align="center">
@@ -42,11 +43,13 @@
 
 ```sh
 # 只安装这个插件
-dsh plugin --profile <profile> add dsh-better-compact@0.4.2
+dsh plugin --profile <profile> add dsh-better-compact@0.5.0
 
 # 或安装 Better DSH（会自动带上所有独立插件）
 dsh plugin --profile <profile> add dsh-better-dsh@0.11.7
 ```
+
+包内直接带预构建的 `lib/`，安装即用，不需要本地构建。
 
 > 安装 / 升级 / 换包后必须重启对应 profile；只刷新网页不够。
 
@@ -57,7 +60,7 @@ dsh plugin --profile <profile> add dsh-better-dsh@0.11.7
 | 稳定行 id | `dsh-better-compact + dsh-better-compact-engine` |
 | 入口 / 工具 | 压缩引擎行 · `/better-compact/api/inspect` · 压缩设置页 |
 | 设置 | 模式、auto、阈值 / headroom / 保留、摘要模型、重试、模型规则 |
-| npm 包 | `dsh-better-compact@0.4.2` |
+| npm 包 | `dsh-better-compact@0.5.0` |
 | 仓库 | https://github.com/omdsh-dev/dsh-better-compact |
 
 ## 设置
@@ -76,9 +79,22 @@ dsh plugin --profile <profile> add dsh-better-dsh@0.11.7
 
 ## 开发
 
+源码是 TypeScript，`lib/` 是 tsdown 的预构建产物并随仓库提交；改源码后必须重建。
+
 ```sh
-npm test        # 单元 / 组件测试
-npm run smoke   # 如仓库提供运行时冒烟
+npm install                        # 构建与测试工具链
+node scripts/link-dsh-types.mjs    # 指向已安装的 DSH 运行时，取到 @deepseek-ai/* 类型
+npm run typecheck                  # tsc --noEmit（host 面 + client 面）
+npm test                           # 单元 / 组件测试（图片渲染用仓库内的字体子集夹具）
+npm run build                      # tsdown + tsc 声明，重建 lib/
+npm run font:fetch                 # 预取固定字体（图片检查点的真实字体，约 29 MB）
+npm run smoke                      # 真实 profile 运行时冒烟（需要 rc.2 / rc.3 宿主）
+```
+
+以源码形态装进 profile 时用本地路径，改完重建 `lib/` 再重启：
+
+```sh
+dsh plugin --profile <profile> add /absolute/path/to/dsh-better-compact
 ```
 
 实现与测试说明见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。

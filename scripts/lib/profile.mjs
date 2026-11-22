@@ -10,7 +10,7 @@
  */
 
 import { createRequire } from 'node:module'
-import { cp, mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises'
+import { access, cp, mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -59,7 +59,7 @@ export async function packageSources() {
   }
   const apolloManifest = apollo
   if (apolloManifest.dependencies[SUBAGENT_NAME] !== '0.5.4'
-    || apolloManifest.dependencies[COMPACT_NAME] !== '0.4.2'
+    || apolloManifest.dependencies[COMPACT_NAME] !== '0.5.0'
     || apolloManifest.dependencies[GOAL_NAME] !== '0.4.5'
     || apolloManifest.dependencies[ASK_NAME] !== '0.3.6'
     || apolloManifest.dependencies[PTC_NAME] !== '0.2.2') {
@@ -98,6 +98,22 @@ async function copyShipped(source, target) {
     }
   }
   await cp(join(source, 'package.json'), join(target, 'package.json'))
+  // Every published runtime entry must exist in the copied layout. A missing
+  // build artifact must fail here, not surface later as an unresolvable row.
+  const runtimeFiles = new Set([manifest.main])
+  for (const [subpath, entry] of Object.entries(manifest.exports ?? {})) {
+    if (subpath === './package.json') continue
+    if (typeof entry === 'string') runtimeFiles.add(entry)
+    else if (typeof entry?.default === 'string') runtimeFiles.add(entry.default)
+  }
+  for (const runtimeFile of runtimeFiles) {
+    if (typeof runtimeFile !== 'string') continue
+    try {
+      await access(join(target, runtimeFile))
+    } catch {
+      throw new Error(`${manifest.name}: published layout is missing ${runtimeFile}; run pnpm build before the smoke test`)
+    }
+  }
   for (const optional of ['README.md', 'LICENSE']) {
     try {
       await cp(join(source, optional), join(target, optional))

@@ -13,7 +13,7 @@ import assert from 'node:assert/strict'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { apply, name } from '../src/index.js'
+import { apply, name } from '../lib/index.js'
 
 test('插件导出契约：name / apply', () => {
   assert.equal(name, 'apollo-skills')

@@ -34,7 +34,7 @@ await mkdir(modules, { recursive: true })
 // from the same runtime used by the host. No copied node_modules or .git.
 const plugin = join(modules, 'dsh-better-goal')
 await mkdir(plugin)
-for (const name of ['package.json', 'src', 'docs', 'cordis.patch.yml', 'LICENSE', 'README.md', 'third-party']) {
+for (const name of ['package.json', 'lib', 'docs', 'cordis.patch.yml', 'LICENSE', 'README.md', 'third-party']) {
   await cp(join(root, name), join(plugin, name), { recursive: true })
 }
 await symlink(dirname(dsh), join(modules, '@deepseek-ai'))
@@ -44,7 +44,7 @@ manifest.dependencies['dsh-better-goal'] = `file:${plugin}`
 if (mode !== 'standalone') {
   const apollo = join(modules, apolloName)
   await mkdir(apollo, { recursive: true })
-  for (const name of ['package.json', 'src', 'docs', 'skills', 'presets', 'cordis.patch.yml', 'README.md', 'LICENSE', 'third-party']) await cp(join(apolloRoot, name), join(apollo, name), { recursive: true })
+  for (const name of ['package.json', 'lib', 'docs', 'skills', 'presets', 'cordis.patch.yml', 'README.md', 'LICENSE', 'third-party']) await cp(join(apolloRoot, name), join(apollo, name), { recursive: true })
   manifest.dependencies[apolloName] = `file:${apollo}`
   // Transitive-only dependency path: a selected Apollo bundle discovers this
   // package through its dependency closure, not through selected goal bundles.
@@ -101,7 +101,7 @@ async function boot() {
   if (apolloRoot) assert.equal(profile.layers.find((layer) => layer.packageName === apolloName).packageDir, join(modules, apolloName))
   assert.equal(JSON.parse(await readFile(join(plugin, 'package.json'), 'utf8')).version, '0.4.5')
   const booted = await runProfile({ profile: 'it', resolvedProfile: { profile, installAnchor: packageFile }, patchFiles: [], args: [], environment: A.loadLayeredEnv('dsh') })
-  assert.equal((await booted.ctx.loader.import('dsh-better-goal')).apply.toString(), (await import('../src/index.js')).apply.toString(), 'runtime uses the staged goal implementation')
+  assert.equal((await booted.ctx.loader.import('dsh-better-goal')).apply.toString(), (await import('../lib/index.js')).apply.toString(), 'runtime uses the staged goal implementation')
   return booted
 }
 let ctx

@@ -16,8 +16,8 @@ import {
   renderCliCatalog,
   renderDelegation,
   renderTier,
-} from '../src/prompt.js'
-import { normalizeConfig } from '../src/config.js'
+} from '../lib/prompt.js'
+import { normalizeConfig } from '../lib/config.js'
 
 let liveConfig = {}
 let composed

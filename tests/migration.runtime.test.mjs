@@ -19,7 +19,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import { readdir, readFile, rm } from 'node:fs/promises'
 import { bootProfile, prepareProfile, waitUntil } from '../scripts/lib/profile.mjs'
-import { COMPACT_NS, SUBAGENT_NS, runMigration } from '../src/migrate.js'
+import { COMPACT_NS, SUBAGENT_NS, runMigration } from '../lib/migrate.js'
 
 const enabled = process.env.DSH_PACKAGE_ROOT !== undefined
 

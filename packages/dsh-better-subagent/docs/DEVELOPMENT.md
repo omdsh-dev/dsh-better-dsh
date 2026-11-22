@@ -4,10 +4,10 @@
 
 ## 1. 包形态
 
-- 纯 ESM、无构建步骤；宿主入口 `src/index.js`，浏览器入口 `src/client.js`。
+- 宿主源码使用严格 TypeScript（`src/index.ts`），构建为纯 ESM `lib/index.js` 与 `.d.ts`；浏览器源码 `src/client/index.ts` 经 esbuild 编译后包装为宿主加载的 `lib/client.js` closure。
 - `package.json` 的 `dsh.bundle.patch` 指向 `cordis.patch.yml`；`dsh.client.platform = "web"`。
-- `files` 白名单：`src`、`docs`、`cordis.patch.yml`、`README.md`、`LICENSE`、`third-party`。测试、脚本、设计 Spec、凭据、临时 profile 都不进发布包。
-- 依赖：运行时只直接 import `@deepseek-ai/schemastery`；其余 DSH 包是 peer 范围（`>=0.2.2-rc.2 <0.3.0`），由宿主运行环境提供，服务全部经 `ctx` 获取。
+- `files` 白名单：`lib`、`docs`、`cordis.patch.yml`、`README.md`、`LICENSE`、`third-party`。测试、脚本、设计 Spec、凭据、临时 profile 都不进发布包。
+- 依赖：运行时只直接 import `@deepseek-ai/schemastery`；其余 DSH 包是精确 peer（`0.2.2-rc.2`），由宿主运行环境提供，服务全部经 `ctx` 获取。
 - 浏览器半边只 `require('react')`，不 import 任何 DSH client 包；样式全部使用宿主主题 token（`--dsw-alias-*`），不写 DOM。
 
 ## 2. 宿主行与配置
@@ -22,7 +22,7 @@
 
 - 行 `name` 必须是 scoped npm 名：Loader 把它当模块 specifier 解析，`dsh-client-modules` 还要求 manifest 的 `name` 与行完全一致才能发现 `./client`。
 - 不允许再插入 agent preset 行；本插件不提供 preset。
-- 行 `Config` 在 `src/config.js`，由 `src/index.js` 重新导出。全部字段 volatile：`childExitGuard`、`delegation.prompt`、`tiers.fast/quality`、`subagents.eng/global`、`subagents.codex.*`、`subagents.claude.*`、`trustedHosts`（信任边界按请求重读活配置，保存即生效不重挂）。
+- 行 `Config` 在 `src/config.ts`，由 `src/index.ts` 重新导出。全部字段 volatile：`childExitGuard`、`delegation.prompt`、`tiers.fast/quality`、`subagents.eng/global`、`subagents.codex.*`、`subagents.claude.*`、`trustedHosts`（信任边界按请求重读活配置，保存即生效不重挂）。
 - `delegation.prompt`（默认 `true`）只决定 `better-subagent:delegation` 提示词段是否渲染，**对所有预设生效**；`subagents.eng/global` 只管 CLI 后端路由与 CLI 目录段。两者互不影响：把 CLI 范围全关掉，委派纪律照样渲染。
 - `normalizeConfig` 会把任意来源（volatile 引用、旧 JSON、残缺对象）规整成精确默认形状；非法值回退默认、绝不抛错。`currentConfig(ctx, fallback)` 经 `configEditor` 找**活**行配置；找不到时回退 `fallback`。
 - **命名**：S1 Spec 的 unscoped 名 `dsh-better-subagent` 已被他人占用，现使用 scoped 包名 `@oh-my-dsh/dsh-better-subagent`；行 id 仍是 `dsh-better-subagent`，行 name 与 client closure id 必须是 scoped 包名，短键 `dsh-better-subagent#dsh-better-subagent` 只作兼容别名保留。旧 `@menghuan1918/dsh-better-subagent` 作为 legacy 键保留。
@@ -36,7 +36,7 @@
 
 ## 3. 装配
 
-`src/index.js` 的 `apply(ctx, config)` 依次调用：
+`src/index.ts` 的 `apply(ctx, config)` 依次调用：
 
 | 模块 | 装配内容 | 需要的服务 |
 |---|---|---|
@@ -48,7 +48,7 @@
 
 所有 `ctx.inject` 都是延迟的：headless 组合缺少 `webServer` 时只有设置路由跳过，其余照常工作；缺少 CLI 所需服务时只有 CLI 桥不挂载。
 
-## 4. CLI 桥（`src/subagents.js` + `src/cli-adapter.js` + `src/cli/*`）
+## 4. CLI 桥（`src/subagents.ts` + `src/cli-adapter.ts` + `src/cli/*`）
 
 - 不注册第二个 spawn/fork registry；CLI 子代理仍是原生 `subagents.startActivation({provider:'spawn', childId, parent, prompt, ...})`，只是 `agentOptions.provider` 是内部 synthetic route。rc.2 的 spec 是扁平对象，返回 `{childId, name}`；工具结果只回传 `{kind:'activation', name}`。
 - 内部 route 历史固定为 `apollo-cli-codex` / `apollo-cli-claude`；不要为新包名重命名，否则旧会话不可续接。
@@ -56,12 +56,12 @@
   - `ctx.tools.guard`：内部 route 保留、禁用范围明确拒绝、fork 拒绝；
   - `ctx.tools.execute`：`subagent` + `provider=codex|claude` 短路创建；`list_subagent_models` 合并 CLI 目录；
   - `ctx.on('tools/result')`：未被调用方接受的 child 回收（drain + 删 KV）。
-- 创建流程：模型/effort 白名单校验 → 父当前目录解析（`workingDirectory.ensure`）→ `resolveExecutable` 预检 → `<executable> --version` 版本预检（`src/cli/version.js`：Codex 基线 `0.162.1`，Claude 基线 `2.1.300`；无法执行/无法识别/过旧都给出点名可执行文件与安装/升级方式的可操作错误）→ 先落 KV 再 `startActivation` → 已发布 activation 在失败/取消时 `dispose()`，再删记录；预发布失败由 rc.2 manager 回滚。`ctx.cliVersionProbe` 是测试 seam；真实运行时用 `execFile`，无 shell。
+- 创建流程：模型/effort 白名单校验 → 父当前目录解析（`workingDirectory.ensure`）→ `resolveExecutable` 预检 → `<executable> --version` 版本预检（`src/cli/version.ts`：Codex 基线 `0.162.1`，Claude 基线 `2.1.300`；无法执行/无法识别/过旧都给出点名可执行文件与安装/升级方式的可操作错误）→ 先落 KV 再 `startActivation` → 已发布 activation 在失败/取消时 `dispose()`，再删记录；预发布失败由 rc.2 manager 回滚。`ctx.cliVersionProbe` 是测试 seam；真实运行时用 `execFile`，无 shell。
 - 每个 adapter：一轮一个子进程；`delivered` 在 spawn 前落 KV；`remoteId` 第一行事件即落盘；`parse` 失败/非零退出/缺完成标志都抛错且不自动重试；`dispose()` 等待进程句柄退出。没有 `subprocess` 服务或 spawn 未发布时回滚 `started/delivered`。
-- 身份 KV（`src/cli-sessions.js`）：命名空间前缀 `apollo_cli_` + `sha256(profile.dir)[:16]`，version 1，`sessions` 表，`per-record`。**包名变化不重命名/复制/清空**。
+- 身份 KV（`src/cli-sessions.ts`）：命名空间前缀 `apollo_cli_` + `sha256(profile.dir)[:16]`，version 1，`sessions` 表，`per-record`。**包名变化不重命名/复制/清空**。
 - 权限/模型/effort 与父子归属在启动前失败；缺 CLI 或版本不兼容给可操作诊断，不回退到另一后端。
 
-## 5. wait_subagent 的跨回合判定（`src/wait-subagent.js`）
+## 5. wait_subagent 的跨回合判定（`src/wait-subagent.ts`）
 
 旧实现的缺陷：`settled` 只按 childId 缓存 `subagent/end`，当同一 child 被续接（新 activation 或 resident 新回合）时会把旧 end 当成本轮完成。
 
@@ -84,7 +84,7 @@
 
 回归测试：`tests/wait-subagent.test.mjs` 构造「旧 end → 新 start + 排队 idle → running → 新 end」与「同一 run 内 turn 结束后又有 splice」；另通过真实 `installWaitTool` 注册 seam 的 deferred `observeSession`，覆盖读取挂起期间的新 activation / 无新 start 的 resident running + claim，以及 start/end 换代后 idle 的旧日志快照。
 
-## 6. 子代理退出守卫（`src/child-exit-guard.js`）
+## 6. 子代理退出守卫（`src/child-exit-guard.ts`）
 
 - 只由 volatile `childExitGuard`（默认 false）控制；
 - 只听 `agent/turn-stopping`，只收集 `subagents.listDescendants(agent.id)` 中 `depth === 1` 且 **live status === running** 的直接子代理；
@@ -92,7 +92,7 @@
 - 查询/注入异常 → 告警并放行（fail open）；`payload.signal.aborted` 直接返回；
 - 不看 jobs、不 import Apollo、不扩大权限。
 
-## 7. 提示词（`src/prompt.js`）
+## 7. 提示词（`src/prompt.ts`）
 
 在 `agent/created` 时向该 Agent 的 `agent.ctx.systemPrompt` 注册（effect 随 Agent 释放）：
 
@@ -104,7 +104,7 @@
 
 preset 解析优先 `agentPresets.composedPreset(agent.ctx)`，回退 `sessionProjections`/session header；文本是函数，按活配置每次请求渲染。Apollo 的 PRINCIPLES、工作流 skills、job/general guard 文本不在此处。
 
-## 8. 只读 API（`src/panel.js` + `src/settings.js`）
+## 8. 只读 API（`src/panel.ts` + `src/settings.ts`）
 
 - `registerCapabilitiesRoute` 一次注册两个 prefix：`/better-subagent/api` 与 `/apollo/api`，共享同一 handler；`settings.js` 只注册一次。
 - 路由：`/capabilities`、`/models?cli=codex|claude`、`/routes`；GET only；未知路径 404；非 GET 405；不读请求体。
@@ -112,7 +112,7 @@ preset 解析优先 `agentPresets.composedPreset(agent.ctx)`，回退 `sessionPr
 - 能力探针：30s 有界缓存 + 并发去重。发现：Codex `codex debug models`（失败回退 `--bundled`）；Claude 读 `ANTHROPIC_BASE_URL`/凭据并请求 `/v1/models`。发现只在显式调用时触发（不做后台缓存/重探）；响应不回凭据，只回可执行文件路径/版本、profile 名、模型 id/effort。
 - `trustedHosts` 只约束本插件的读接口，不改变宿主设置镜像的可写性。
 
-## 9. 客户端设置页（`src/client.js`）
+## 9. 客户端设置页（`src/client/index.ts`）
 
 - `window.__ModuleLoader__.load({id:'@oh-my-dsh/dsh-better-subagent', factory})`；只 require React。
 - 使用 `form.state`（`{status, value, revision, writable, mode}`）与 `form.mutate(ops, revision)`；只在保存时提交与宿主快照的差异 `set` ops。
@@ -127,7 +127,11 @@ preset 解析优先 `agentPresets.composedPreset(agent.ctx)`，回退 `sessionPr
 ```sh
 cd /path/to/dsh-better-subagent
 npm install
-npm test
+npm run typecheck
+npm test # pretest 自动构建 lib/；全部测试加载生成的 lib/*.js
+
+# 仅构建；smoke 暂存并加载 lib/，直接运行前需先完成构建
+npm run build
 
 # 真实宿主（headless，无需 CLI 凭据）：原生 subagent create→wait→continue→wait→interrupt→wait
 DSH_PACKAGE_ROOT="/path/to/dependencies/dsh/node_modules/@deepseek-ai/dsh" npm run smoke

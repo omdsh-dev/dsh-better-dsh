@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildDefaultAnswer, isRecommended } from '../src/default-answer.js'
+import { buildDefaultAnswer, isRecommended } from '../lib/default-answer.js'
 
 test('single select always picks the first option', () => {
   const result = buildDefaultAnswer([

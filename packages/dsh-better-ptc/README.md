@@ -45,7 +45,9 @@ dsh plugin --profile <profile> add dsh-better-ptc
 
 ~~~sh
 npm install
-npm test
+npm run typecheck  # 严格 TypeScript 检查
+npm run build      # 生成 lib/ ESM 与声明
+npm test           # 自动先构建
 ~~~
 
 The unit tests exercise the registry and service lifecycle with a fake runtime.

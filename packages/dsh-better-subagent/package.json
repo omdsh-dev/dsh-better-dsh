@@ -1,17 +1,21 @@
 {
   "name": "@oh-my-dsh/dsh-better-subagent",
   "version": "0.5.4",
-  "description": "Standalone DSH plugin: Codex/Claude continuable CLI subagents, wait_subagent, child exit guard and model tiers. Pure ESM, no build step.",
+  "description": "Standalone DSH plugin: Codex/Claude continuable CLI subagents, wait_subagent, child exit guard and model tiers. TypeScript sources compiled to ESM.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/omdsh-dev/dsh-better-subagent.git"
   },
   "type": "module",
-  "main": "src/index.js",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "exports": {
-    ".": "./src/index.js",
-    "./client": "./src/client.js",
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": "./lib/client.js",
     "./package.json": "./package.json"
   },
   "engines": {
@@ -19,11 +23,17 @@
     "dsh": ">=0.2.2-rc.2 <0.3.0"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/build-client.mjs",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json",
+    "pretest": "npm run build",
     "test": "node --test",
+    "prepare": "npm run build",
     "smoke": "node scripts/runtime-smoke.mjs"
   },
   "files": [
-    "src",
+    "lib/**/*.js",
+    "lib/**/*.d.ts",
+    "lib/**/*.js.map",
     "docs",
     "cordis.patch.yml",
     "README.md",
@@ -66,9 +76,13 @@
     "react": "^18.2.0"
   },
   "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/react": "18.3.31",
+    "esbuild": "0.25.0",
     "js-yaml": "^4.2.0",
     "react": "18.3.1",
-    "react-test-renderer": "18.3.1"
+    "react-test-renderer": "18.3.1",
+    "typescript": "5.9.3"
   },
   "dsh": {
     "bundle": {

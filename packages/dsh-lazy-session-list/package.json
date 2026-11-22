@@ -12,9 +12,13 @@
     "url": "https://github.com/omdsh-dev/dsh-lazy-session-list/issues"
   },
   "type": "module",
-  "main": "src/index.js",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "exports": {
-    ".": "./src/index.js",
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
     "./package.json": "./package.json"
   },
   "engines": {
@@ -22,16 +26,24 @@
     "dsh": ">=0.2.1-rc.2 <0.3.0"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
     "test": "node --test",
+    "prepare": "npm run build",
     "smoke": "node scripts/live-smoke.mjs"
   },
   "files": [
-    "src",
+    "lib",
     "docs/assets",
     "cordis.patch.yml",
     "README.md",
     "LICENSE"
   ],
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "5.9.3"
+  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.5",
     "@deepseek-ai/schemastery": "^3.18.5",

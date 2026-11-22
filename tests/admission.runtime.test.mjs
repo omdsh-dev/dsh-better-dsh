@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { rm } from 'node:fs/promises'
 import { prepareProfile, bootProfile, waitUntil } from '../scripts/lib/profile.mjs'
-import { runMigration } from '../src/migrate.js'
+import { runMigration } from '../lib/migrate.js'
 
 const enabled = !!process.env.DSH_PACKAGE_ROOT
 

@@ -21,20 +21,23 @@
 - Node `>=24.9.0`，pnpm `11.7.0`，DSH `>=0.2.2-rc.2 <0.3.0`（验收基线 `0.2.2-rc.3`）。
 - 根目录：
   - `pnpm install --frozen-lockfile`
+  - `pnpm typecheck`：根包 + 所有迁移包的 TypeScript 严格检查
+  - `pnpm build` / `pnpm build:all`：生成 `lib/`、`.d.ts` 与浏览器 closure（`lib/client.js`）
   - `pnpm test`：只跑根 bundle 的 `tests/*.test.mjs`
   - `pnpm test:packages`：跑 `packages/*`（暂时排除 `dsh-lazy-session-list`，见下）
-  - `pnpm test:all`：根 + 子包
+  - `pnpm test:all`：先 `pnpm typecheck`，再跑根 + 子包测试
   - `pnpm build:packages`、`pnpm prompts`、`pnpm smoke`
 - 单包：
-  - `pnpm --filter dsh-better-ask-user test`
-  - ask-user 的 `pretest` 会重建已跟踪的 `lib/client.js`；改了 `src/client/` 后必须重新生成并提交。
+  - `pnpm --filter dsh-better-ask-user test`（自动先 build）
+  - 所有包的 `pretest` 都会先构建；`lib/` 是生成物，不入库。改了 `src/` 后跑 `pnpm build`（或直接跑测试）即可，不需要提交生成文件。
 - 根 `node --test` 必须带 `tests/*.test.mjs`，否则会把 `packages/*/tests` 也发现进来。
 
 ## 依赖与版本
 
-- 根 `dependencies` 当前固定已发布的精确版本（ask-user `0.3.6`、compact `0.4.2`、goal `0.4.5`、subagent `0.5.4`、ptc `0.2.2`）。
+- 根 `dependencies` 当前固定已发布的精确版本（ask-user `0.3.6`、compact `0.5.0`、goal `0.4.5`、subagent `0.5.4`、ptc `0.2.2`）。
 - **不要**把根依赖切成 `workspace:*` 或未发布版本：根依赖必须指向可安装的精确 npm 版本。发布新子包后，再统一 bump 版本并更新根依赖；本地 `packages/*` 与 registry 版本号保持一致。
-- 本地 `packages/*` 是源码真相：ask-user `0.3.6`、compact `0.4.2`、goal `0.4.5`、ptc `0.2.2`、subagent `0.5.4` 已完成 DSH rc.3 适配并发布；发布验证需使用官方 registry，默认 npmmirror 可能滞后。
+- 本地 `packages/*` 是源码真相：ask-user `0.3.6`、compact `0.5.0`、goal `0.4.5`、ptc `0.2.2`、subagent `0.5.4` 已完成 DSH rc.3 适配并发布（compact 的发布由独立仓库负责，本地副本只跟随源码）；发布验证需使用官方 registry，默认 npmmirror 可能滞后。
+- 本仓根包与全部子包（含 compact）都已迁移到 TypeScript（源码 `src/*.ts`，产物 `lib/`）。根/子包的 `main`、`types`、`exports` 都指向 `lib/`，`lib/` 不提交；compact 的独立仓库提交预构建 `lib/`（git 安装即用），本仓副本按本仓约定构建产物不提交。
 - 发布前先确认子包版本在 `https://registry.npmjs.org/` 可取得；不要提交 `file:`/`link:`/`git:` 依赖。
 
 ## 发布
@@ -45,9 +48,9 @@
 
 ## 测试已知限制
 
-- `dsh-lazy-session-list` 不在本轮适配范围；DSH rc.3 已提供匹配的 `@deepseek-ai/dsh-skill` / `@deepseek-ai/dsh-native-command`，但该包尚未适配，`pnpm test:packages` 仍排除它。需要时用匹配的 DSH host 单独跑 `pnpm test:lazy-session-list`。
+- `dsh-lazy-session-list` 已完成 TypeScript 构建迁移，但仍不在 `test:packages` 范围：其 `session-list.test.mjs` 需要完整的 DSH host 依赖闭包（本仓安装缺少 `dsh-session-title` 等 peer）。需要时用匹配的 DSH host 单独跑 `pnpm test:lazy-session-list`；本仓至少跑 `node --test packages/dsh-lazy-session-list/tests/live-smoke.test.mjs`。
 - 需要真实 DSH 安装的漂移/迁移测试：设置 `DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh` 后跑 `pnpm test`。
-- 浏览器/客户端测试使用 esbuild + `react-test-renderer`；不要用 jsdom 替代真实渲染边界。
+- 根包与除 compact 外的子包，浏览器/客户端测试使用 esbuild + `react-test-renderer`；不要用 jsdom 替代真实渲染边界。compact 的客户端测试沿用其发布源码中的 `@testing-library/react` + jsdom 边界（与独立仓库一致）。
 
 ## 约定
 

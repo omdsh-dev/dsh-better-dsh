@@ -34,7 +34,7 @@ import {
   resolveExecutable,
   ROUTES_PATH,
   collectTierRoutes,
-} from '../src/panel.js'
+} from '../lib/panel.js'
 
 /** 造一个临时目录，结束后删除（支持异步回调）。 */
 async function withTemp(run) {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { isDeepStrictEqual } from 'node:util'
 import { Context, Service } from '@deepseek-ai/cordis'
-import * as plugin from '../src/index.js'
+import * as plugin from '../lib/index.js'
 
 const origin = process.argv[2] ?? 'http://127.0.0.1:3384'
 const listProjectionKeys = ['title', 'sessionListMetadata', 'subagentCatalog', 'agentPreset']

@@ -3,8 +3,8 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { join, dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { apply } from '../src/index.js'
-import { mountMigrationAdmission } from '../src/admission.js'
+import { apply } from '../lib/index.js'
+import { mountMigrationAdmission } from '../lib/admission.js'
 
 function host() {
   const listeners = new Map()

@@ -7,7 +7,7 @@ import { SessionProjectionRegistry } from "@deepseek-ai/dsh-session-projection";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { remoteMethods } from "@deepseek-ai/dsh-typert-protocol";
 
-import { readConfig } from "../src/config.js";
+import { readConfig } from "../lib/config.js";
 import {
   GOAL_CHANGE_VERSION,
   GoalError,
@@ -19,7 +19,7 @@ import {
   foldGoal,
   goalChangeRef,
   goalProjectionDefinition,
-} from "../src/service.js";
+} from "../lib/service.js";
 
 const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER;
 const CWD = "/tmp";

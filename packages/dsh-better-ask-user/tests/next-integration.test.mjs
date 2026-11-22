@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
-import * as betterAsk from '../src/index.js'
+import * as betterAsk from '../lib/index.js'
 
 const hostRoot = process.env.DSH_PACKAGE_ROOT
 const hostRequire = createRequire(hostRoot ? resolve(hostRoot, 'package.json') : import.meta.url)

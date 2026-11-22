@@ -7,10 +7,10 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionStore } from '@deepseek-ai/dsh-session'
 import { SessionProjectionRegistry } from '@deepseek-ai/dsh-session-projection'
 
-import { GoalService } from '../src/service.js'
-import { createGoalTool, executeGoalAction, GOAL_ACTIONS } from '../src/tool.js'
-import { executeGoalCommand, parseGoalCommand, registerGoalCommand } from '../src/commands.js'
-import { DEFAULTS, UNLIMITED_ROUNDS, readConfig } from '../src/config.js'
+import { GoalService } from '../lib/service.js'
+import { createGoalTool, executeGoalAction, GOAL_ACTIONS } from '../lib/tool.js'
+import { executeGoalCommand, parseGoalCommand, registerGoalCommand } from '../lib/commands.js'
+import { DEFAULTS, UNLIMITED_ROUNDS, readConfig } from '../lib/config.js'
 
 let sessionCounter = 0
 

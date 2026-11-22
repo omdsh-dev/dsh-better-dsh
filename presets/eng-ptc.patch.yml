@@ -181,7 +181,7 @@
             disabled: true
 
           - id: eng-exit-guard
-            name: 'dsh-better-dsh/presets/eng/plugins/exit-guard/index.js'
+            name: 'dsh-better-dsh/presets/eng/plugins/exit-guard/lib/index.js'
 
           - id: eng-mode-instructions
-            name: 'dsh-better-dsh/presets/eng/plugins/mode-instructions/index.js'
+            name: 'dsh-better-dsh/presets/eng/plugins/mode-instructions/lib/index.js'

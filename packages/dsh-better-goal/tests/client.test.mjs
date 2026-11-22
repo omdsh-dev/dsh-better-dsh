@@ -1,7 +1,7 @@
 /**
  * Scoped React tests for the zero-build browser closure.
  *
- * Loads `src/client.js` through a fake `window.__ModuleLoader__` (no browser),
+ * Loads `lib/client.js` through a fake `window.__ModuleLoader__` (no browser),
  * drives components with react-test-renderer@18, and verifies:
  *   - closure identity / service injection / slot registration;
  *   - the GoalBar renders the native goal projection and mutates through the
@@ -19,7 +19,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import * as React from 'react'
 import TestRenderer from 'react-test-renderer'
-import { DEFAULTS, ENTRY_ID, PACKAGE_NAME, ROW_CONFIG_KEY, UNLIMITED_ROUNDS } from '../src/config.js'
+import { DEFAULTS, ENTRY_ID, PACKAGE_NAME, ROW_CONFIG_KEY, UNLIMITED_ROUNDS } from '../lib/config.js'
 
 const { createElement: h } = React
 const act = TestRenderer.act ?? TestRenderer.default?.act
@@ -33,7 +33,7 @@ const BETTER_DSH_ROW_CONFIG_KEY = 'dsh-better-dsh#dsh-better-goal'
 const APOLLO_ROW_CONFIG_KEY = 'dsh-apollo#dsh-better-goal'
 /** The row-config key for Apollo's published scoped package. */
 const SCOPED_APOLLO_ROW_CONFIG_KEY = '@menghuan1918/dsh-apollo#dsh-better-goal'
-const SOURCE = readFileSync(new URL('../src/client.js', import.meta.url), 'utf8')
+const SOURCE = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
 
 /** Fake t: keeps keys and parameters visible without depending on copy. */
 const t = (key, params) => (params === undefined ? key : key + '(' + JSON.stringify(params) + ')')

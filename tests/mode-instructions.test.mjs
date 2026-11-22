@@ -5,8 +5,8 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { apply, renderInstructions } from '../presets/eng/plugins/mode-instructions/index.js'
-import { normalizeConfig } from '../src/config.js'
+import { apply, renderInstructions } from '../presets/eng/plugins/mode-instructions/lib/index.js'
+import { normalizeConfig } from '../lib/config.js'
 
 /** fake ctx：configEditor 返回可替换的 apollo-skills 行配置，捕获注册的 section。 */
 function mount() {

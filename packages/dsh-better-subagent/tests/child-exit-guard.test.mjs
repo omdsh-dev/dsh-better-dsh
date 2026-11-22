@@ -11,7 +11,7 @@ import {
   collectRunningChildren,
   installChildExitGuard,
   name,
-} from '../src/child-exit-guard.js'
+} from '../lib/child-exit-guard.js'
 
 let liveConfig = {}
 

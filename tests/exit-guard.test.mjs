@@ -6,7 +6,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { apply, buildJobGuardMessage, name, NOTICE_SOURCE_KIND } from '../presets/eng/plugins/exit-guard/index.js'
+import { apply, buildJobGuardMessage, name, NOTICE_SOURCE_KIND } from '../presets/eng/plugins/exit-guard/lib/index.js'
 
 let liveConfig = {}
 

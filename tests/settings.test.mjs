@@ -14,14 +14,14 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ENTRY_ID } from '../src/config.js'
+import { ENTRY_ID } from '../lib/config.js'
 import {
   LEGACY_FILES,
   importLegacyConfig,
   legacyPatch,
   mountSettings,
   readLegacyDocument,
-} from '../src/settings.js'
+} from '../lib/settings.js'
 
 /** 在临时 DSH_HOME 下写文件并运行断言。 */
 async function withHome(files, run) {

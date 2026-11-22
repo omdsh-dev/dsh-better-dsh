@@ -10,13 +10,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import * as React from 'react'
 import TestRenderer from 'react-test-renderer'
-import { CLAUDE_PERMISSION_MODES, CODEX_PERMISSION_MODES } from '../src/config.js'
+import { CLAUDE_PERMISSION_MODES, CODEX_PERMISSION_MODES } from '../lib/config.js'
 
 const { createElement } = React
 const act = TestRenderer.act ?? TestRenderer.default?.act
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
-const SOURCE = readFileSync(new URL('../src/client.js', import.meta.url), 'utf8')
+const SOURCE = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
 const NS = 'better-subagent'
 /** 假 t：键名 + 参数（断言不依赖文案）。 */
 const t = (key, params) => (params === undefined ? key : key + '(' + JSON.stringify(params) + ')')

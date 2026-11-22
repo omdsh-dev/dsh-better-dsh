@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { DEFAULTS, normalizeConfig } from '../src/config.js'
+import { DEFAULTS, normalizeConfig } from '../lib/config.js'
 
 test('missing config uses native behavior and 120 seconds', () => {
   assert.deepEqual(normalizeConfig(undefined), DEFAULTS)

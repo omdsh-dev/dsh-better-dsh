@@ -19,7 +19,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { JsonStorageBackend } from '@deepseek-ai/dsh-storage-json'
-import { CliSessions, KV_NAMESPACE_PREFIX, openCliSessions } from '../src/cli-sessions.js'
+import { CliSessions, KV_NAMESPACE_PREFIX, openCliSessions } from '../lib/cli-sessions.js'
 
 // ── fake 存储介质 ────────────────────────────────────────────────────────────
 // medium: name -> Map(key -> value)，跨 open/close 存活，模拟磁盘上的 per-record 目录。

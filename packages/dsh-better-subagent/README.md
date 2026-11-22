@@ -77,8 +77,10 @@ dsh plugin --profile <profile> add dsh-better-dsh@0.11.7
 ## 开发
 
 ```sh
-npm test        # 单元 / 组件测试
-npm run smoke   # 如仓库提供运行时冒烟
+npm run typecheck # 宿主与客户端的严格 TypeScript 检查
+npm run build     # 生成 lib/ 下的 ESM、声明文件与浏览器 closure
+npm test          # 自动先构建，再运行单元 / 组件测试
+npm run smoke     # 构建后运行真实宿主冒烟（需 DSH_PACKAGE_ROOT）
 ```
 
 实现与测试说明见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。

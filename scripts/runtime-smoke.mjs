@@ -376,7 +376,7 @@ async function scenarioApollo() {
       await waitUntil(() => ctx.get('jobs').list(guardAgent.id)
         .every((job) => ['completed', 'killed', 'failed'].includes(job.status)), 'background job to settle', 5_000)
     } catch (error) {
-      const { currentConfig } = await import('../src/config.js')
+      const { currentConfig } = await import('../lib/config.js')
       results.jobGuard = {
         state: state.jobGuard,
         exitGuard: currentConfig(ctx).exitGuard,

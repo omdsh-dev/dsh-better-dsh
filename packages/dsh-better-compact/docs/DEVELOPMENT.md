@@ -7,15 +7,25 @@ commits, docs, or the npm package.
 
 ## Status and compatibility
 
-- Package version: `0.3.0`.
-- Verified DSH build: `0.2.2-rc.3`; `engines.dsh` is
-  `>=0.2.2-rc.2 <0.3.0`; rc.2 and rc.3 are supported by this release range.
+- Package version: `0.5.0`.
+- Verified DSH builds: `0.2.2-rc.3` (current) and `0.2.2-rc.2`;
+  `engines.dsh` is `>=0.2.2-rc.2 <0.3.0`, so both rc.2 and rc.3 hosts are
+  supported by this release; other builds are not.
 - Node.js `>=24.9.0`.
-- Pure ESM, no build step, no generated assets.
-- The visual settings page is implemented as the zero-build browser half and
-  covered by `react-test-renderer` component tests with a fake Host form. A
-  visual/keyboard acceptance pass in the current GUI was **not** performed here;
-  that belongs to S4.
+- TypeScript sources under `src/`, prebuilt `lib/` in the repository. The port
+  preserved 0.4.1 compaction behaviour and added one capability: `summaryImage`
+  renders the checkpoint with a fixed, downloadable Noto Sans SC face instead of
+  whatever CJK font the machine happens to have.
+- `lib/index.js` / `lib/engine.js` are ESM host bundles, `lib/client.js` is the
+  single-file browser bundle wrapped in the `window.__ModuleLoader__` factory,
+  and `lib/types/**/*.d.ts` is the published declaration surface.
+- The build is [tsdown](../tsdown.config.ts) + `tsc -p tsconfig.build.json`
+  (`npm run build`). Tests run straight off the TypeScript sources through the
+  `tsx` loader (`.tsx` needs JSX support that Node's native type stripping does
+  not have); there is no test bundle and no build step in the test path.
+- The visual settings page is the browser half and is covered by component
+  tests with a fake Host form. A visual/keyboard acceptance pass in the current
+  GUI was **not** performed here; that belongs to S4.
 
 ## Repository layout
 
@@ -23,37 +33,78 @@ commits, docs, or the npm package.
 | --- | --- |
 | [package.json](../package.json) | npm metadata, exports, peers, `dsh.bundle.patch`, `dsh.client`. |
 | [cordis.patch.yml](../cordis.patch.yml) | Standalone composition: disable host `compaction-basic`, insert host companion + host-plane engine rows. |
-| [presets/better-compact.patch.yml](../presets/better-compact.patch.yml) | Selectable Web preset: pinned rc.2 `standard` copy with the compaction group's engine swapped. |
-| [src/index.js](../src/index.js) | Host companion row: volatile `Config`, `betterCompactConfig` service, settings policy, GET inspect route, test seam for the fence. |
-| [src/engine.js](../src/engine.js) | `BetterCompactEngine extends BasicCompactionEngine`: enhanced `summarize()`, preset-supersede guard, manual handoff continuation, failure classification. |
-| [src/config.js](../src/config.js) | Single source of truth for defaults, schema, normalization, native projection, row keys. |
-| [src/budget.js](../src/budget.js) | Clearly marked adapter re-implementing the native capacity/retention/selection formulas and fixed-prefix pricing. |
-| [src/prompts.js](../src/prompts.js) | Goal/handoff instructions, authoritative-state rendering, output structure check, mode detection, conservative redaction, handoff document/continuation text. |
-| [src/state.js](../src/state.js) | Read-only goal/todo/question/job/child collection and continuation blockers. |
-| [src/handoff.js](../src/handoff.js) | Per-attempt temp directory/path, owner-only write, permission stat, byte-for-byte read-back. |
-| [src/live.js](../src/live.js) | Process-local "summary in flight", classified-failure, and handoff-continuation outcome observations for inspect only; no durable claim. |
-| [src/identity.js](../src/identity.js) | Unwraps cordis service proxies (`symbols.original`) so preset-owned engines can be compared and recognized. |
-| [src/inspect.js](../src/inspect.js) | Live/cold session inspection, budget/preview construction, `lastCompaction` projection, inspect error taxonomy. |
-| [src/models.js](../src/models.js) | Read-only projection of the host's allowed summary-model candidates and their advertised efforts. |
-| [src/client.js](../src/client.js) | Zero-build visual settings page: three strategy diagrams, model/effort, budget/retention, cache, advanced options, native status, session picker, Host-form save. Registers the stable row-config keys. |
+| [presets/better-compact.patch.yml](../presets/better-compact.patch.yml) | Selectable Web preset: pinned rc.3 `standard` copy (identical in rc.2) with the compaction group's engine swapped. |
+| [tsconfig.json](../tsconfig.json) | Host + test typecheck face (`strict`, `noUncheckedIndexedAccess`, classic JSX). No `paths`/`baseUrl`: `@deepseek-ai/*` types resolve through `node_modules`, linked by `scripts/link-dsh-types.mjs`. |
+| [tsconfig.client.json](../tsconfig.client.json) | Browser-only typecheck face: `src/client` + `src/shared`, no Node types. |
+| [tsconfig.build.json](../tsconfig.build.json) | Declaration build: emits `lib/types/**/*.d.ts` from the host half. |
+| [tsdown.config.ts](../tsdown.config.ts) | Three entries: `lib/index.js`, `lib/engine.js` (ESM), `lib/client.js` (CJS closure with the ModuleLoader banner). |
+| [lib/](../lib) | Committed build output. Never edited by hand; `npm run build` regenerates it and CI rejects a drift. |
+| [src/index.ts](../src/index.ts) | Host companion row: volatile `Config`, `betterCompactConfig` service, settings policy, the GET inspect/models routes and the GET|POST font route, test seams for the fence and bodies. |
+| [src/font.ts](../src/font.ts) | Fixed checkpoint face: pinned Noto Sans SC artifact, integrity-checked download from the npm registry (npmmirror fallback), cache under the DSH home, actionable failure codes. |
+| [src/engine.ts](../src/engine.ts) | `BetterCompactEngine extends BasicCompactionEngine`: enhanced `summarize()`, preset-supersede guard, manual handoff continuation, failure classification. |
+| [src/config.ts](../src/config.ts) | Single source of truth for defaults, schema, normalization, native projection, row keys. |
+| [src/budget.ts](../src/budget.ts) | Clearly marked adapter re-implementing the native capacity/retention/selection formulas and fixed-prefix pricing. |
+| [src/prompts.ts](../src/prompts.ts) | Goal/handoff instructions, authoritative-state rendering, output structure check, mode detection, conservative redaction, handoff document/continuation text. |
+| [src/state.ts](../src/state.ts) | Read-only goal/todo/question/job/child collection and continuation blockers. |
+| [src/handoff.ts](../src/handoff.ts) | Per-attempt temp directory/path, owner-only write, permission stat, byte-for-byte read-back. |
+| [src/live.ts](../src/live.ts) | Process-local "summary in flight", classified-failure, and handoff-continuation outcome observations for inspect only; no durable claim. |
+| [src/identity.ts](../src/identity.ts) | Unwraps cordis service proxies (`symbols.original`) so preset-owned engines can be compared and recognized. |
+| [src/inspect.ts](../src/inspect.ts) | Live/cold session inspection, budget/preview construction, `lastCompaction` projection, inspect error taxonomy. |
+| [src/models.ts](../src/models.ts) | Read-only projection of the host's allowed summary-model candidates and their advertised efforts. |
+| [src/shared/](../src/shared) | Host/client shared contract: stable paths, mode ids, row keys, inspect payload types, optional host service faces. Must not import `node:*`. |
+| [src/summary-image.ts](../src/summary-image.ts) | Checkpoint-as-image renderer: 860px white pages, two font ladders, page cap, hand-written 8-bit greyscale PNG encoder (`deflateSync` + CRC32). `@napi-rs/canvas` is imported lazily. |
+| [src/client/](../src/client) | Visual settings page: three strategy diagrams, model/effort, budget/retention, cache, advanced options, native status, session picker, Host-form save. Registers the stable row-config keys. `font.ts` is the font status/install hook. |
+| [docs/SUMMARY-IMAGE.md](../docs/SUMMARY-IMAGE.md) | The `summaryImage` option: scope, page layout, fail-closed semantics, cost, local visual check. |
+| [scripts/link-dsh-types.mjs](../scripts/link-dsh-types.mjs) | Junctions `@deepseek-ai/*` from an installed DSH runtime into `node_modules` so `tsc` resolves the peer types. |
 | [scripts/runtime-smoke.mjs](../scripts/runtime-smoke.mjs) | Four-boot real-profile smoke with a temp DSH home and scripted adapter. |
-| [tests/](../tests) | `node:test` unit/component tests; no browser build. |
+| [scripts/fetch-font.mjs](../scripts/fetch-font.mjs) | Headless/CI prefetch of the pinned checkpoint face (`npm run font:fetch`). |
+| [tests/fixtures/](../tests/fixtures) | Committed subset of the pinned face plus its OFL text, so renderer tests never need the network or a system font. |
+| [scripts/summary-image-probe.mjs](../scripts/summary-image-probe.mjs) | Renders the sample checkpoint to temp PNGs for visual inspection; never part of `npm test`. |
+| [tests/](../tests) | `node:test` unit/component tests (run directly on `.ts` sources); no browser build. |
 | [third-party/](../third-party) | MIT notice/license for adapted DSH material. |
 
 ## Install for development
 
 ```sh
-npm install
-DSH_PACKAGE_ROOT="/path/to/node_modules/@deepseek-ai/dsh" npm test
+npm install                          # build/test toolchain + test-only React/js-yaml/jsdom
+node scripts/link-dsh-types.mjs      # point node_modules/@deepseek-ai at a DSH runtime
+npm run typecheck                    # host face + client face
+npm test                             # node --import tsx --test
+npm run build                        # tsdown + tsc declarations -> lib/
+npm run font:fetch                   # prefetch the fixed face (image checkpoints, ~29 MB)
 ```
 
-`npm install` installs the declared peer range (the same packages the host
-provides at runtime) plus test-only React/js-yaml. Tests import the public peer
-packages directly.
+`@deepseek-ai/*` is a runtime peer the host provides, not a dependency of this
+plugin, so `npm install` brings no types for it. Run
+[scripts/link-dsh-types.mjs](../scripts/link-dsh-types.mjs) once after cloning:
+it junctions each DSH package into `node_modules/@deepseek-ai`, taking the
+source from `$DSH_PACKAGE_ROOT`, `--from <dir>`, or the isolated
+`.dsh-dev/runtime` checkout — in that order. **Re-run it after every
+`npm install`**: installing rewrites `node_modules` and drops the junctions, which
+makes `typecheck` fail with `Cannot find module '@deepseek-ai/…'`. TypeScript then resolves every
+`@deepseek-ai/*` specifier through plain node_modules; the packages ship their
+own `lib/types` and expose the subpaths this plugin imports, so `tsconfig.json`
+needs no `paths`/`baseUrl` mapping. `--check` only reports and exits 1, which is
+how CI fails fast on a missing type tree.
+
+`lib/` is committed. Whenever you touch `src/`, `npm run build` and commit the
+regenerated `lib/` in the same change — the release workflow re-runs the build
+and fails on `git diff --exit-code lib/`, so a stale artifact tree cannot be
+published.
+
+Source conventions (`strict` + `noUncheckedIndexedAccess`):
+
+- A relative import carries its `.ts` extension (`from './config.ts'`).
+- Keep everything erasable — no `enum`, no `namespace`, no parameter
+  properties. Modules are loaded by `tsx`/`tsdown`, never transpiled by `tsc`.
+- `tsconfig.json` uses the **classic** JSX runtime (`"jsx": "react"`), so every
+  `.tsx` file imports React explicitly (`import React from 'react'`) and does not
+  rely on `react/jsx-runtime` being injected.
 
 Install this checkout into a throwaway profile to try it interactively:
 
 ```sh
+npm run build
 dsh plugin --profile <profile> add /absolute/path/to/dsh-better-compact
 # restart the DSH process for the new profile wiring
 ```
@@ -117,7 +168,7 @@ installed build:
    for pricing (MIT notice), never used to write checkpoints.
 10. **The native formulas are mirrored in one adapter.** DSH's installed build is
    bundled and does not export `resolveCompactSpec`, `resolveTargetPolicy`, or
-   `selectCompactableRange`. `src/budget.js` reproduces them for the inspect
+   `selectCompactableRange`. `src/budget.ts` reproduces them for the inspect
    preview and the summary budget. The smoke asserts the preview cut against the
    actual `shadowedRange` of a real automatic compaction; when changing the DSH
    baseline, re-check those formulas first.
@@ -138,45 +189,58 @@ installed build:
     comes from the client `sessions` list store, so the row page never invents a
     session id. Strategy SVGs are schematics; token/budget/status numbers come
     only from inspect and unknown values stay unknown.
+14. **The checkpoint face is pinned, not discovered.** `src/font.ts` owns the only
+    artifact the renderer may draw with: the settings route downloads the pinned
+    npm tarball, verifies the tarball and the extracted font, and installs it
+    under `$DSH_HOME/cache/better-compact/fonts`. `summaryImage` fails closed
+    until it is installed; tests use the committed subset in `tests/fixtures`, so
+    the suite is identical on Linux, macOS and Windows.
+15. **The image-capability check reads the next step.** `agent.model.current()`
+    names the model the next request will use. During a model switch the durable
+    request header still names the model being left (the host compacts before it
+    records the new header), so validating that header would commit an image-only
+    checkpoint for a text-only destination.
 
 ## Test coverage
 
-`npm test` runs `node --test` over:
+`npm test` runs `node --import tsx --test` over the TypeScript sources — the
+`tsx` loader handles `.tsx` component tests, which Node's native type stripping
+cannot. No bundle or build step is involved:
 
-- `config.test.mjs` — schema defaults, volatile fields, normalization, all
+- `config.test.ts` — schema defaults, volatile fields, normalization, all
   cross-field conflicts, unknown top-level/policy key rejection,
   native-projection stripping, policy-level headroom semantics, stable keys.
-- `budget.test.mjs` — exact native threshold/retention arithmetic, per-target
+- `budget.test.ts` — exact native threshold/retention arithmetic, per-target
   overrides, capacity/retention errors, safe-cut tail retention, tool-pairing
   boundaries, fixed-prefix pricing.
-- `prompts.test.mjs` — required sections, state rendering/caps, omission notes,
+- `prompts.test.ts` — required sections, state rendering/caps, omission notes,
   structure rejection, mode detection, redaction patterns, handoff document
   composition, continuation text.
-- `handoff.test.mjs` — temp directory/file uniqueness, POSIX `0600` and
+- `handoff.test.ts` — temp directory/file uniqueness, POSIX `0600` and
   Windows synthetic-mode paths, read-back verification, empty-body rejection,
   path-safe session ids, explicit timestamps.
-- `engine.test.mjs` — frozen snapshot, missing companion error, native delegation
+- `engine.test.ts` — frozen snapshot, missing companion error, native delegation
   and native in-flight summary marking, goal state + effort + cache-shape
   request, unsupported effort, truncation / malformed-output rejection, handoff
   file embedding and rawOutput redaction, ordered budget fallback (todos first,
   then pending facts, then goal-only) with disclosure/omission recording, route
   resolution, supersede identity, exactly-one continuation and blockers,
   continuation outcome recording.
-- `state.test.mjs` — read-only goal/todo/question/job/child collection and every
+- `state.test.ts` — read-only goal/todo/question/job/child collection and every
   continuation blocker.
-- `inspect.test.mjs` — `lastCompaction` status/trigger/mode projection (including
+- `inspect.test.ts` — `lastCompaction` status/trigger/mode projection (including
   recorded-error surfacing on an open bracket), budget/preview math with native
   framing, null-not-zero semantics, engine ownership for host/preset/foreign/
   cold sessions, handoff-continuation exposure, diagnostics for token-meter
   failure and summary-budget omissions, live read-only behavior, 404/503
   mapping, cold `observeSession` path.
-- `fence.test.mjs` — 401/403 ordering, missing-fence 503, registration waiting
+- `fence.test.ts` — 401/403 ordering, missing-fence 503, registration waiting
   for both webServer and connection, 400/405, documented response shape and
   no-store.
-- `models.test.mjs` — absent/allowed/malformed catalogs, per-route capability
+- `models.test.ts` — absent/allowed/malformed catalogs, per-route capability
   failure, fence ordering before model work, GET-only 405, no-store JSON, and
   both routes being registered only with webserver+fence.
-- `client.test.mjs` — module identity, alias keys, slot registration, summary
+- `client.test.tsx` — module identity, alias keys, slot registration, summary
   copy, section order, three distinct diagrams, radiogroup/keyboard/disabled
   semantics, pending active-mode flags, native "not applicable" controls,
   model/effort incompatibility and pair clearing, unknown capability,
@@ -186,28 +250,69 @@ installed build:
   continuation, deduped diagnostics, foreign-engine suppression, session
   selection/stale abort/empty state, inspect failure still editable, host theme
   tokens/reduced motion/labelled controls, and no client-side token counting.
-- `package.test.mjs` — npm contract, file whitelist, patch structure, verbatim
-  standard-preset copy (when `DSH_PACKAGE_ROOT` is set), release workflow, and
+- `summary-image.test.ts` — one page for a short summary, byte-for-byte
+  determinism, fixed 860px width with variable height, empty text still yielding
+  one page, a 40-line break on the default layout, consecutive page names capped
+  at `SUMMARY_IMAGE_MAX_PAGES`, the compact re-wrap that saves a marginal
+  checkpoint, the `… (N more line(s) omitted…)` marker, an explicit lower
+  `maxPages`, different bytes for CJK vs ASCII, and a real `loadImage` decode
+  round-trip (the hand-written greyscale PNG is valid). Every case renders
+  with the committed fixture subset, never a system font.
+- `draft.test.ts` — form validation messages against the dictionary, instruction
+  length cap, the mirrored default retain ratio, `policyDraft`/`policyValue`
+  round-trips, `buildOps` writing only changed fields (retention form included),
+  stored-value tolerance, and model-selection effort warnings.
+- `font.test.ts` — pinned-artifact constants, the real install pipeline against a
+  synthetic tarball (extraction, tarball and font integrity, registry fallback,
+  idempotent cache, `force`, concurrent dedupe, atomic write failures, missing
+  and corrupt caches), and the production pins for package/version/hashes.
+- `font-route.test.ts` — the font route's fence, method/media-type/body branches
+  (405/415/413/400), 502 mapping, status payload and no-store contract.
+- `link-dsh-types.test.ts` — the three documented `DSH_PACKAGE_ROOT` shapes,
+  explicit `--from` precedence and de-duplicated candidates.
+- `inspect-client.test.tsx` — the read-only renderer: foreign-engine suppression
+  of budget/preview, unknown capacity staying unavailable instead of invented,
+  every measured `lastCompaction` field plus the persistence failure, and the
+  safe-cut range/upper bound.
+- `package.test.ts` — npm contract (`main`/`types`/`exports`/`files` and the
+  build scripts, `@napi-rs/canvas` staying a runtime dependency), patch
+  structure, verbatim standard-preset copy (when
+  `DSH_PACKAGE_ROOT` is set), release workflow, documented commands, and
   tracked-file hygiene.
+- built artifacts — `lib/index.js`, `lib/engine.js`, `lib/client.js` and
+  `lib/types/**/*.d.ts` exist, every `exports` target points at one of them
+  (never at `src/*.ts`), and `lib/client.js` opens with the
+  `window.__ModuleLoader__.load({ id: 'dsh-better-compact', ... })` banner.
+  Build before running the suite, or these assertions fail on purpose.
 
-Run with the baseline preset comparison enabled:
+Run with the baseline preset comparison enabled (the isolated rc.2/rc.3 runtime in
+this repository already has that shape):
 
 ```sh
-DSH_PACKAGE_ROOT="/Users/<you>/Library/Application Support/dsh-tauri/dependencies/dsh/node_modules/@deepseek-ai/dsh" npm test
+DSH_PACKAGE_ROOT="../.dsh-dev/runtime/node_modules/@deepseek-ai/dsh" npm test
 ```
 
 ## Real-profile smoke
 
 ```sh
+npm run build   # the smoke installs the published layout, so lib/ must exist
 DSH_PACKAGE_ROOT="/path/to/node_modules/@deepseek-ai/dsh" npm run smoke
 ```
+
+The `DSH_PACKAGE_ROOT` value may also point at a runtime root or at its
+`node_modules/@deepseek-ai` directory; the script resolves `@deepseek-ai/dsh`
+from any of the three. The expected host version comes from `engines.dsh`, so a
+host that does not match it fails before the first boot.
 
 What it does:
 
 1. Creates a temp `DSH_HOME` and an `it` profile from the installed
    `@deepseek-ai/dsh-base` + `@deepseek-ai/dsh-headless` bundles plus this
-   package. Only shipped files are copied, with `@deepseek-ai` symlinked to the
-   runtime; no repo `node_modules` or design docs are used.
+   package. Only the entries listed in `files` are copied (i.e. the built
+   `lib/` tree, the presets, docs and licences) with `@deepseek-ai` symlinked to
+   the runtime; no repo `node_modules`, `src/` or design docs are used. Missing
+   artifacts abort with a "run npm run build" message instead of booting half a
+   package.
 2. Disables the headless startup/runner rows, inserts a workspace row, the
    model-selection settings row, an agent-preset registry, and a real
    `@deepseek-ai/dsh-host-webserver` on port 0.
@@ -304,7 +409,7 @@ touches the user's real profile or the running GUI.
   on the `standard` preset correctly reports a foreign engine and no
   budget/preview; that is not a missing backend.
 - Windows handoff writes skip the POSIX `0600` assertion (Node synthesizes
-  `stat.mode` there). The read-back check still runs; see `handoff.test.mjs`.
+  `stat.mode` there). The read-back check still runs; see `handoff.test.ts`.
 - Do not add mutating verbs to inspect; settings writes go through the host
   `settings`/configForms pipeline only.
 
@@ -344,7 +449,7 @@ The read-only payload is the shared contract the visual settings page renders; t
 1. Read the installed `@deepseek-ai/dsh-compaction-basic` source and re-check
    `resolveCompactSpec`, `resolveTargetPolicy`, `selectCompactableRange`,
    `summarizeWithLlm`, `frameSummary`, and the manual/overflow retain rules
-   against `src/budget.js` / `src/engine.js`.
+   against `src/budget.ts` / `src/engine.ts`.
 2. Refresh `presets/better-compact.patch.yml` from the new
    `@deepseek-ai/dsh-web-app/presets/standard.patch.yml` and change only the
    preset identity/metadata and the compaction group engine row. The package
@@ -367,3 +472,23 @@ The read-only payload is the shared contract the visual settings page renders; t
 - A current-GUI visual/keyboard acceptance pass of the visual settings page
   (component tests only here; the running-GUI check belongs to S4).
 - Apollo combination/loading matrix and migration (S4).
+
+## Known pre-existing failure (not a regression)
+
+`scripts/runtime-smoke.mjs` stops at the model-switch turn of the
+`better-compact` preset realm on DSH 0.2.2-rc.2:
+
+```
+MODEL_SWITCH_COMPACTION_FAILED: Cannot switch to it-noop/smaller: context
+compaction failed: compaction still above threshold after 1 compaction
+attempts (7897 estimated tokens >= threshold 7500)
+```
+
+The host realm and every check before it pass. This was verified A/B against
+the pre-TypeScript implementation (`v0.4.1`, `src/*.js`) on the same rc.2
+runtime: identical assertion, identical turn number, identical 7897/7500
+numbers, identical `checks so far` list. It is therefore a defect of the
+0.4.1 engine in the preset realm (model-switch pressure with
+`compactionRetries: 0`), not something the TypeScript port introduced — and it
+doubles as evidence that the port is behaviour-preserving. Triage on its own;
+the smoke keeps every original assertion, so it stays visible.

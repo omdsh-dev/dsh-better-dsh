@@ -4,8 +4,8 @@ import { Context } from '@deepseek-ai/cordis'
 import { SessionStore } from '@deepseek-ai/dsh-session'
 import { SessionProjectionRegistry } from '@deepseek-ai/dsh-session-projection'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import { GoalService, goalProjectionDefinition } from '../src/service.js'
-import { createGoalHistoryDefinition } from '../src/history.js'
+import { GoalService, goalProjectionDefinition } from '../lib/service.js'
+import { createGoalHistoryDefinition } from '../lib/history.js'
 
 const ref = (goal) => ({ id: goal.id, revision: goal.revision })
 

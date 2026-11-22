@@ -31,7 +31,7 @@ import {
   currentConfig,
   liveConfigEntry,
   normalizeConfig,
-} from '../src/config.js'
+} from '../lib/config.js'
 
 /** 规范里写死的默认形状（EXACT）。 */
 const EMPTY_TIER = { provider: '', model: '', reasoningEffort: '' }
@@ -137,11 +137,11 @@ test('标识常量：行 id / 包名 / 行配置键（含旧键）', () => {
 
 test('包名在 manifest、config 与 client closure id/row 键之间一致', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
-  const source = readFileSync(new URL('../src/client.js', import.meta.url), 'utf8')
+  const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
   assert.equal(PACKAGE_NAME, pkg.name)
-  assert.equal(source.includes(`id: '${pkg.name}'`), true, 'client closure id 必须等于 npm 包名')
-  assert.equal(source.includes(`'${ROW_CONFIG_KEY}'`), true)
-  assert.equal(source.includes(`'${LEGACY_ROW_CONFIG_KEY}'`), true)
+  assert.equal(source.includes(`'${pkg.name}'`) || source.includes(`"${pkg.name}"`), true, 'client closure id 必须等于 npm 包名')
+  assert.equal(source.includes(`'${ROW_CONFIG_KEY}'`) || source.includes(`"${ROW_CONFIG_KEY}"`), true)
+  assert.equal(source.includes(`'${LEGACY_ROW_CONFIG_KEY}'`) || source.includes(`"${LEGACY_ROW_CONFIG_KEY}"`), true)
 })
 
 test('权限档常量：与两个 CLI 的实测取值一一对应', () => {

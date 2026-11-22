@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { apply, renderGoalRoundPrompt } from '../src/driver.js'
-import { DEFAULTS, UNLIMITED_ROUNDS } from '../src/config.js'
+import { apply, renderGoalRoundPrompt } from '../lib/driver.js'
+import { DEFAULTS, UNLIMITED_ROUNDS } from '../lib/config.js'
 
 const drain = async () => { for (let i = 0; i < 6; i++) await new Promise(setImmediate) }
 

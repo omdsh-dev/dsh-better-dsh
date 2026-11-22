@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { AUTO_SELECTED_WARNING, createBetterAskTool } from '../src/ask-tool.js'
+import { AUTO_SELECTED_WARNING, createBetterAskTool } from '../lib/ask-tool.js'
 
 const base = {
   name: 'ask_user_question',

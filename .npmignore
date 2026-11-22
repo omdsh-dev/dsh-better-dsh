@@ -13,3 +13,10 @@ packages/
 pnpm-workspace.yaml
 pnpm-lock.yaml
 *.tgz
+
+# Build intermediates and TypeScript sources.
+lib/client.cjs
+**/*.tsbuildinfo
+**/*.ts
+**/*.tsx
+!**/*.d.ts

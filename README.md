@@ -16,7 +16,7 @@
   <a href="https://www.npmjs.com/package/dsh-better-dsh"><img src="https://img.shields.io/npm/v/dsh-better-dsh.svg" alt="npm 版本"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/omdsh-dev/dsh-better-dsh?color=blue"></a>
   <a href="package.json"><img alt="Node &gt;=24.9.0" src="https://img.shields.io/badge/node-%3E%3D24.9.0-339933?logo=node.js&amp;logoColor=white"></a>
-  <a href="package.json"><img alt="DSH 0.2.2-rc.3" src="https://img.shields.io/badge/DSH-0.2.2--rc.3-4B32C3"></a>
+  <a href="package.json"><img alt="DSH 0.2.2-rc.2" src="https://img.shields.io/badge/DSH-0.2.2--rc.2-4B32C3"></a>
   <a href="https://github.com/omdsh-dev/dsh-better-dsh"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-omdsh--dev-181717?logo=github"></a>
 </p>
 
@@ -39,7 +39,7 @@
 | **五个独立插件** | goal、subagent、compact、ask-user、ptc 各自有独立的 npm 包、设置页和生命周期；源码统一在 monorepo 的 `packages/*`，也可以单独安装。 |
 | **一份设置** | Better DSH 详情页的「集成设置」聚合五个设置页；保存写回同一份 profile，不产生第二份配置。 |
 | **一套工作流** | 流程技能、两套工程预设、长期目标、CLI 子代理、压缩与提问增强，开箱即用。 |
-| **纯 ESM** | 零构建步骤；浏览器半边是直接加载的 closure factory。 |
+| **TypeScript** | 源码为 `.ts`/`.tsx`，`tsc` 输出 ESM 到 `lib/`（compact 由 tsdown 打包）；浏览器半边由 esbuild/tsdown 打成单个 closure factory。 |
 | **Apache-2.0** | monorepo 内的六个子包统一使用 Apache License 2.0。 |
 
 ## 安装
@@ -51,23 +51,23 @@
   </picture>
 </p>
 
-需要 Node.js `>=24.9.0`；支持 DSH `>=0.2.2-rc.2 <0.3.0`，验收基线是 `0.2.2-rc.3`。
+需要 Node.js `>=24.9.0`；验收基线是 DSH `0.2.2-rc.2`。
 
 ```sh
 # npm
-dsh plugin --profile <profile> add dsh-better-dsh@0.11.7
+dsh plugin --profile <profile> add dsh-better-dsh@0.12.0
 
 # 或从 GitHub tag 安装
-dsh plugin --profile <profile> add github:omdsh-dev/dsh-better-dsh#v0.11.7
+dsh plugin --profile <profile> add github:omdsh-dev/dsh-better-dsh#v0.12.0
 ```
 
 > 安装、升级或换包后必须**重启对应 profile**；只刷新网页不够。
 >
 > 不要同时显式添加 Better DSH 和独立插件 bundle：行实例仍只有一个，但 DSH 0.2.2-rc.2 / rc.3 会把同一 id 的配置写入拒绝为只读。只保留一个显式入口。
 
-本轮版本：**Better DSH `0.11.7`**，搭配 goal `0.4.5`、subagent `0.5.4`、compact `0.4.2`、ask-user `0.3.6`、ptc `0.2.2`。
+本轮版本：**Better DSH `0.12.0`**，搭配 goal `0.4.5`、subagent `0.5.4`、compact `0.5.0`、ask-user `0.3.6`、ptc `0.2.2`。
 
-> 从 Better DSH `0.11.7` 起，根 bundle 与五个子包声明 DSH `>=0.2.2-rc.2 <0.3.0`，验收基线为 rc.3；`0.11.6` 及旧子包精确 pin rc.2。
+> 从 Better DSH `0.11.7` 起，根 bundle 与五个子包声明 DSH `>=0.2.2-rc.2 <0.3.0`，验收基线为 rc.3；`0.11.6` 及旧子包精确 pin rc.2，更早的 `0.11.3` 只面向 rc.1。`0.12.0` 是 TypeScript 重构版本，宿主范围与 `0.11.7` 相同。
 
 ## 架构
 
@@ -185,7 +185,7 @@ Better DSH 包详情里的「集成设置」按 Core、Subagents、Compaction、
 # 旧入口
 dsh plugin --profile <profile> remove @menghuan1918/dsh-apollo
 # 新入口
-dsh plugin --profile <profile> add dsh-better-dsh@0.11.7
+dsh plugin --profile <profile> add dsh-better-dsh@0.12.0
 # subagent 独立安装的用户
 dsh plugin --profile <profile> remove @menghuan1918/dsh-better-subagent
 dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.4
@@ -194,7 +194,7 @@ dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.4
 <details>
 <summary><strong>迁移规则与旧配置兼容</strong></summary>
 
-0.6.0 把提问等待从 better-goal 移到独立的 dsh-better-ask-user，并把 PTC deadline 豁免移到共享 dsh-better-ptc；better-goal 的旧 `questionTimeoutSeconds` 仍可读取，ask-user 行会做一次性迁移。旧 profile 不需要手工重填配置：Better DSH 启动后在 settings/loader 可用时运行一次**幂等迁移**（[src/migrate.js](src/migrate.js)）。
+0.6.0 把提问等待从 better-goal 移到独立的 dsh-better-ask-user，并把 PTC deadline 豁免移到共享 dsh-better-ptc；better-goal 的旧 `questionTimeoutSeconds` 仍可读取，ask-user 行会做一次性迁移。旧 profile 不需要手工重填配置：Better DSH 启动后在 settings/loader 可用时运行一次**幂等迁移**（[src/migrate.ts](src/migrate.ts)）。
 
 - **目标行已有的显式用户值优先**；迁移只补缺失字段，不覆盖你在新设置页里改过的值。显式 `false` / `0` / `""` / `[]` 都是值。
 - 旧 `exitGuard` 的初值同时复制到 better-subagent 的 `childExitGuard`；Better DSH 自己的 `exitGuard` 继续作为后台 job/通用守卫开关，之后两者可独立配置。
@@ -213,7 +213,7 @@ dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.4
 ```sh
 dsh plugin --profile <profile> add dsh-better-goal@0.4.5
 dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.4
-dsh plugin --profile <profile> add dsh-better-compact@0.4.2
+dsh plugin --profile <profile> add dsh-better-compact@0.5.0
 dsh plugin --profile <profile> add dsh-better-ask-user@0.3.6 dsh-better-ptc@0.2.2
 ```
 
@@ -224,7 +224,7 @@ dsh plugin --profile <profile> add dsh-better-ask-user@0.3.6 dsh-better-ptc@0.2.
 |---|---|
 | 只有 Better DSH | 插入 goal / subagent / compact companion+engine / ask-user / ptc 行；工程预设内带 compact engine |
 | 只有独立 bundle | 各自插入同样的行；没有 Better DSH 的工程预设、技能或 job 守卫 |
-| Better DSH + 独立 bundle 同时显式选中 | Loader 仍按行 id 只激活一行实例，但 DSH 0.2.2-rc.2 / rc.3 会拒绝为同一 id 写入配置：行可读、配置只读 |
+| Better DSH + 独立 bundle 同时显式选中 | Loader 仍按行 id 只激活一行实例，但 DSH 0.2.2-rc.2 会拒绝为同一 id 写入配置：行可读、配置只读 |
 
 恢复方法：**只保留一个显式入口**，然后重启 profile。不要为了“多一层保险”同时安装两套入口。
 
@@ -238,7 +238,7 @@ dsh plugin --profile <profile> add dsh-better-ask-user@0.3.6 dsh-better-ptc@0.2.
 - UI kit：[docs/UI-KIT.md](docs/UI-KIT.md)
 - API / 迁移实现：[src/](src/)
 - 子包源码：`packages/*`（pnpm workspaces）；迁移前 `plugins/` 目录保留为归档
-- 测试：根包 `pnpm test`，全部子包 `pnpm test:packages`；运行时冒烟：`pnpm run smoke`
+- 构建与类型检查：`pnpm build` / `pnpm build:all`、`pnpm typecheck`；测试：根包 `pnpm test`，全部子包 `pnpm test:packages`；运行时冒烟：`pnpm run smoke`
 
 <details>
 <summary><strong>提示词归属、Specs 与发布顺序</strong></summary>
@@ -249,10 +249,10 @@ dsh plugin --profile <profile> add dsh-better-ask-user@0.3.6 dsh-better-ptc@0.2.
 
 1. `dsh-better-ptc@0.2.2`
 2. `dsh-better-ask-user@0.3.6`
-3. `dsh-better-compact@0.4.2`
+3. `dsh-better-compact@0.5.0`
 4. `dsh-better-goal@0.4.5`
 5. `@oh-my-dsh/dsh-better-subagent@0.5.4`
-6. `dsh-better-dsh@0.11.7`
+6. `dsh-better-dsh@0.12.0`
 
 当前子包仍使用各自的独立发布流程（归档子仓里的原 workflow）；monorepo 统一的子包发布 workflow 尚未完成。根包使用 npm trusted publishing（OIDC）；创建对应 GitHub Release 会发布 tag 指向的版本。旧包 `@menghuan1918/dsh-apollo` 与 `@menghuan1918/dsh-better-subagent` 已标记 deprecate，仅作为历史入口保留。
 </details>

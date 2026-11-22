@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { apply } from '../src/index.js'
+import { apply } from '../lib/index.js'
 
 const base = {
   name: 'ask_user_question',

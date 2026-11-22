@@ -20,7 +20,7 @@ import {
   isUnlimitedCap,
   readConfig,
   resolveRoundLimit,
-} from '../src/config.js'
+} from '../lib/config.js'
 
 const VOLATILE_WRITE = Symbol.for('cosmokit.volatile.write')
 

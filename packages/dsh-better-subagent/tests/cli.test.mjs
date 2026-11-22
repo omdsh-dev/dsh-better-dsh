@@ -16,10 +16,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { Readable } from 'node:stream'
-import { MAX_ERROR_CHARS, readJsonLines, sanitizeError } from '../src/cli/jsonl.js'
-import { buildCommand as buildCodexCommand, createParser as createCodexParser } from '../src/cli/codex.js'
-import { buildCommand as buildClaudeCommand, createParser as createClaudeParser } from '../src/cli/claude.js'
-import { CLI_MIN_LABELS, assertCliVersion, parseCliVersion, probeCliVersion, versionAtLeast } from '../src/cli/version.js'
+import { MAX_ERROR_CHARS, readJsonLines, sanitizeError } from '../lib/cli/jsonl.js'
+import { buildCommand as buildCodexCommand, createParser as createCodexParser } from '../lib/cli/codex.js'
+import { buildCommand as buildClaudeCommand, createParser as createClaudeParser } from '../lib/cli/claude.js'
+import { CLI_MIN_LABELS, assertCliVersion, parseCliVersion, probeCliVersion, versionAtLeast } from '../lib/cli/version.js'
 
 // 合成 fixture 标识：保留 UUID / profile 的形状，但与任何真机会话无关。
 const CODEX_THREAD_ID = '11111111-1111-4111-8111-111111111111'

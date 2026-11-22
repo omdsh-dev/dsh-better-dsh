@@ -4,7 +4,7 @@ One flat visual system for every browser surface in this bundle: the Better DSH 
 all row-config settings pages, and the conversation surfaces owned by
 `dsh-better-goal` and `dsh-better-ask-user`.
 
-The clients are independent, zero-build module-loader closures. They cannot
+The clients are independent, bundled module-loader closures (esbuild for most packages, tsdown for `dsh-better-compact`). They cannot
 share a runtime package without adding a dependency or a build step, so the
 contract is duplicated in each client's CSS and verified by a browser
 computed-style audit. Keep the values here and in every client in sync.

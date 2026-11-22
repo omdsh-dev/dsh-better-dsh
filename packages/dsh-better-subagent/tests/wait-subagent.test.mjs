@@ -12,7 +12,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { installWaitTool, START_GRACE_MS, MIN_TIMEOUT_MS, POLL_MS } from '../src/wait-subagent.js'
+import { installWaitTool, START_GRACE_MS, MIN_TIMEOUT_MS, POLL_MS } from '../lib/wait-subagent.js'
 
 /** A fake sessionQuery over in-memory durable child event logs. */
 function makeSessionQuery() {

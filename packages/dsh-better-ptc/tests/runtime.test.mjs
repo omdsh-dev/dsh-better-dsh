@@ -5,7 +5,7 @@ import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
-import { BetterPtc } from '../src/index.js'
+import { BetterPtc } from '../lib/index.js'
 
 const hostRoot = process.env.DSH_PACKAGE_ROOT
 

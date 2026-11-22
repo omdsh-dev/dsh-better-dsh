@@ -9,9 +9,13 @@
     "directory": "packages/dsh-better-ask-user"
   },
   "type": "module",
-  "main": "src/index.js",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "exports": {
-    ".": "./src/index.js",
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
     "./client": "./lib/client.js",
     "./package.json": "./package.json"
   },
@@ -20,9 +24,11 @@
     "dsh": ">=0.2.2-rc.2 <0.3.0"
   },
   "scripts": {
-    "pretest": "node scripts/build-client.mjs",
+    "build": "tsc -p tsconfig.build.json && node scripts/build-client.mjs",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json",
+    "pretest": "npm run build",
     "test": "node --test",
-    "build": "node scripts/build-client.mjs"
+    "prepare": "npm run build"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "~3.19.0",
@@ -39,11 +45,14 @@
     "react": "^18.2.0"
   },
   "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/react": "18.3.31",
     "clsx": "^2.1.1",
     "esbuild": "^0.25.0",
     "js-yaml": "^4.2.0",
     "react": "18.3.1",
-    "react-test-renderer": "18.3.1"
+    "react-test-renderer": "18.3.1",
+    "typescript": "5.9.3"
   },
   "dsh": {
     "bundle": {
@@ -63,8 +72,9 @@
     }
   },
   "files": [
-    "src",
-    "lib/client.js",
+    "lib/**/*.js",
+    "lib/**/*.d.ts",
+    "lib/**/*.js.map",
     "cordis.patch.yml",
     "README.md",
     "LICENSE",

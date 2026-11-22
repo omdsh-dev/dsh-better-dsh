@@ -1,7 +1,7 @@
 /** Legacy dsh-better-goal questionTimeoutSeconds migration tests. */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { ASK_NS, LEGACY_GOAL_NS, migrateLegacyQuestionTimeout } from '../src/settings.js'
+import { ASK_NS, LEGACY_GOAL_NS, migrateLegacyQuestionTimeout } from '../lib/settings.js'
 
 function harness({ sourceUser = { questionTimeoutSeconds: -1 }, targetUser = {}, sourceValue = -1, writable = true, targetFirst = false, asyncDescribe = false } = {}) {
   const calls = []

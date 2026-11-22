@@ -14,7 +14,7 @@ registerHooks({ resolve: (specifier, context, next) => next(specifier === '@deep
 const hostRoot = dirname(require.resolve('@deepseek-ai/dsh-api-session-controller/package.json'))
 const { SessionManager } = await import(pathToFileURL(join(hostRoot, 'lib/types/client/sessions/manager.js')))
 // Run the same assertions against the unmodified host to demonstrate the failure.
-const plugin = process.env.LAZY_SESSION_LIST_BASELINE === '1' ? undefined : await import('../src/index.js')
+const plugin = process.env.LAZY_SESSION_LIST_BASELINE === '1' ? undefined : await import('../lib/index.js')
 const indexKeys = ['title', 'sessionListMetadata', 'subagentCatalog', 'agentPreset']
 const deferred = ['fixtureDetail', 'fixtureIndex', 'fixtureUnknown']
 

@@ -9,10 +9,10 @@ import { SessionProjectionRegistry } from '@deepseek-ai/dsh-session-projection'
 import { SystemPrompt } from '@deepseek-ai/dsh-system-prompt'
 import { ToolRuntime } from '@deepseek-ai/dsh-tools'
 import { CommandRuntime } from '@deepseek-ai/dsh-commands'
-import { apply, inject } from '../src/index.js'
-import { GoalService } from '../src/service.js'
-import { DEFAULTS, UNLIMITED_ROUNDS } from '../src/config.js'
-import { handleConfig, CONFIG_PATH } from '../src/settings.js'
+import { apply, inject } from '../lib/index.js'
+import { GoalService } from '../lib/service.js'
+import { DEFAULTS, UNLIMITED_ROUNDS } from '../lib/config.js'
+import { handleConfig, CONFIG_PATH } from '../lib/settings.js'
 
 const drain = async () => { for (let i = 0; i < 8; i++) await new Promise(setImmediate) }
 const hostRoot = process.env.DSH_PACKAGE_ROOT
@@ -278,7 +278,7 @@ nativeTest('isolated real profile switches both backends and preserves the same 
   const plugin = join(modules, 'dsh-better-goal')
   await mkdir(plugin, { recursive: true })
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-  for (const name of ['package.json', 'src', 'cordis.patch.yml']) await cp(join(root, name), join(plugin, name), { recursive: true })
+  for (const name of ['package.json', 'lib', 'cordis.patch.yml']) await cp(join(root, name), join(plugin, name), { recursive: true })
   await symlink(dirname(hostRoot), join(modules, '@deepseek-ai'))
   const localRequire = createRequire(import.meta.url)
   await symlink(dirname(localRequire.resolve('zod/package.json')), join(modules, 'zod'))

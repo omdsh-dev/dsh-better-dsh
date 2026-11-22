@@ -7,8 +7,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { CAPABILITIES_ALIAS_PREFIX, CAPABILITIES_PREFIX } from '../src/panel.js'
-import { mountSettings } from '../src/settings.js'
+import { CAPABILITIES_ALIAS_PREFIX, CAPABILITIES_PREFIX } from '../lib/panel.js'
+import { mountSettings } from '../lib/settings.js'
 
 /** fake ctx: record injections and invoke callbacks with the supplied services. */
 function makeMountCtx(services, { fiber = { id: 'fiber' } } = {}) {
@@ -92,6 +92,6 @@ test('mountSettings: settings service without configure is handled like a failur
 })
 
 test('settings source has no legacy-file import or Apollo dependency', () => {
-  const source = readFileSync(new URL('../src/settings.js', import.meta.url), 'utf8')
+  const source = readFileSync(new URL('../lib/settings.js', import.meta.url), 'utf8')
   assert.doesNotMatch(source, /eng\.json|atlas\.json|dsh-home|from '@menghuan1918\/dsh-apollo/)
 })

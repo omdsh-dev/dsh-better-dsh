@@ -32,7 +32,7 @@ import {
   currentConfig,
   liveConfigEntry,
   normalizeConfig,
-} from '../src/config.js'
+} from '../lib/config.js'
 
 /** 规范里写死的默认形状（EXACT）。 */
 const EMPTY_TIER = { provider: '', model: '', reasoningEffort: '' }
@@ -143,10 +143,10 @@ test('标识常量：行 id / scoped 包名 / 六个行配置键（同一行）'
 
 test('scoped 包名在 manifest、config 与 client closure id/row 键之间一致', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
-  const source = readFileSync(new URL('../src/client.js', import.meta.url), 'utf8')
+  const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
   assert.equal(PACKAGE_NAME, pkg.name)
-  assert.equal(source.includes(`id: '${pkg.name}'`), true, 'client closure id 必须等于 npm 包名')
-  for (const key of ROW_CONFIG_KEYS) assert.equal(source.includes(`'${key}'`), true, key)
+  assert.equal((source.includes(`id: '${pkg.name}'`) || source.includes(`id: "${pkg.name}"`)), true, 'client closure id 必须等于 npm 包名')
+  for (const key of ROW_CONFIG_KEYS) assert.equal((source.includes(`'${key}'`) || source.includes(`"${key}"`)), true, key)
 })
 
 test('权限档常量：与两个 CLI 的实测取值一一对应', () => {
@@ -157,10 +157,10 @@ test('权限档常量：与两个 CLI 的实测取值一一对应', () => {
 })
 
 test('浏览器半边的权限档清单与 config.js 同步（无法 import，只能文本对齐）', () => {
-  const source = readFileSync(new URL('../src/client.js', import.meta.url), 'utf8')
+  const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
   const lists = [...source.matchAll(/permissions: \[([^\]]*)\]/g)].map((match) => match[1]
     .split(',')
-    .map((entry) => entry.trim().replace(/^'|'$/g, ''))
+    .map((entry) => entry.trim().replace(/^['"]|['"]$/g, ''))
     .filter((entry) => entry !== ''))
   assert.equal(lists.length, 2)
   assert.deepEqual(lists[0], [...CODEX_PERMISSION_MODES])

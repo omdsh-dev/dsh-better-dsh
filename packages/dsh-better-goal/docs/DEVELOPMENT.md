@@ -7,7 +7,8 @@
 - 当前源码版本：`0.4.5`。
 - 支持 DSH `>=0.2.2-rc.2 <0.3.0`（验收基线 `0.2.2-rc.3`）；`package.json` 的 engines 与 DSH peers 使用同一范围。
 - Node.js：`>=24.9.0`；Cordis `~4.1.0`、Schemastery `~3.19.0`。
-- 纯 ESM，无构建步骤，没有需要生成的资源文件。
+- 宿主与浏览器源码使用严格 TypeScript；宿主构建为 `lib/` 下的 ESM、`.d.ts` 与 source map，浏览器由 esbuild 打包为宿主 ModuleLoader closure。
+- 在工作区根目录运行 `pnpm --filter dsh-better-goal typecheck` / `build` / `test`；`pretest` 自动构建，测试读取生成的 `lib/`，`prepare` 支持源码安装。冒烟前先构建。
 
 本仓库的测试和冒烟不包含“当前正在使用的浏览器 GUI 已完成验收”，也没有对 PTC 工具呈现模式或其他自定义提问工具做专项验证。不要把这些未覆盖场景写成已验证。
 
@@ -15,8 +16,8 @@
 
 `package.json` 声明：
 
-- `main` / `exports["."]`：宿主入口 [src/index.js](../src/index.js)。
-- `exports["./client"]`：浏览器入口 [src/client.js](../src/client.js)。
+- `main` / `exports["."]`：宿主入口 `lib/index.js`，类型入口 `lib/index.d.ts`；源码 [src/index.ts](../src/index.ts)。
+- `exports["./client"]`：浏览器入口 `lib/client.js`；源码 [src/client/index.ts](../src/client/index.ts)，构建脚本 [scripts/build-client.mjs](../scripts/build-client.mjs) 将 `lib/client.cjs` 包装为 `dsh-better-goal` closure。
 - `dsh.bundle.patch`：顶层装配 [cordis.patch.yml](../cordis.patch.yml)。
 - `dsh.client`：Web 客户端及注入的宿主服务。
 
@@ -25,7 +26,7 @@
 1. 禁用原生 `goal`、`goal-round-driver`、`command-goal`、`tool-goal`、`ui-goal` 行。
 2. 插入顶层行 `id: dsh-better-goal`、`name: dsh-better-goal`。
 
-插件不会修改 DSH 安装目录，也不依赖实验性的 plugin records。`implementation: 'enhanced'`（默认）时，[src/index.js](../src/index.js) 对旧 Agent 上仍可见的 `get_goal` / `create_goal` / `update_goal` 在 Agent 的 tools 作用域内做 deny 过滤，并在本行 volatile 配置提交时重新检查。热 schema 刷新发生在下一次 tools step admission 之前，不再修改 `system-prompt/assemble` 的 presentation；next 的工具声明由 provider 持有。`implementation: 'native'` 时不做该过滤，由本行通过宿主 Loader 加载原生服务、round driver、命令和工具，旧三工具就是当前实现本身。
+插件不会修改 DSH 安装目录，也不依赖实验性的 plugin records。`implementation: 'enhanced'`（默认）时，[src/index.ts](../src/index.ts) 对旧 Agent 上仍可见的 `get_goal` / `create_goal` / `update_goal` 在 Agent 的 tools 作用域内做 deny 过滤，并在本行 volatile 配置提交时重新检查。热 schema 刷新发生在下一次 tools step admission 之前，不再修改 `system-prompt/assemble` 的 presentation；next 的工具声明由 provider 持有。`implementation: 'native'` 时不做该过滤，由本行通过宿主 Loader 加载原生服务、round driver、命令和工具，旧三工具就是当前实现本身。
 
 ## 后端选择与运行状态
 
@@ -60,16 +61,16 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| [src/index.js](../src/index.js) | 挂载 goal 服务、设置页、单工具、`/goal` 命令、系统提示和续跑驱动；按 Agent 管理生命周期。 |
-| [src/service.js](../src/service.js) | 原生兼容的 goal 域：持久 schema、replay fold、projection、CAS 写操作、process-local activation。 |
-| [src/driver.js](../src/driver.js) | 同会话自动续跑：在静默边界排队下一轮，处理暂停、中断、计划模式、子代理和竞态。 |
-| [src/tool.js](../src/tool.js) | 模型侧唯一的 `goal` 工具；统一动作执行与参数校验，内部引用由服务/命令层管理。 |
-| [src/commands.js](../src/commands.js) | 人类侧 `/goal` 命令解析与输出。 |
-| [src/history.js](../src/history.js) | 复用原生严格 fold 的只读历史 projection，保留各目标最后状态、轮数与清除标记。 |
-| [src/config.js](../src/config.js) / [src/settings.js](../src/settings.js) | 正式 Config schema、默认值、volatile 热设置和设置页挂载。 |
-| [src/client.js](../src/client.js) | 零构建 browser closure：GoalBar 和 Plugins 行配置页。 |
+| [src/index.ts](../src/index.ts) | 挂载 goal 服务、设置页、单工具、`/goal` 命令、系统提示和续跑驱动；按 Agent 管理生命周期。 |
+| [src/service.ts](../src/service.ts) | 原生兼容的 goal 域：持久 schema、replay fold、projection、CAS 写操作、process-local activation。 |
+| [src/driver.ts](../src/driver.ts) | 同会话自动续跑：在静默边界排队下一轮，处理暂停、中断、计划模式、子代理和竞态。 |
+| [src/tool.ts](../src/tool.ts) | 模型侧唯一的 `goal` 工具；统一动作执行与参数校验，内部引用由服务/命令层管理。 |
+| [src/commands.ts](../src/commands.ts) | 人类侧 `/goal` 命令解析与输出。 |
+| [src/history.ts](../src/history.ts) | 复用原生严格 fold 的只读历史 projection，保留各目标最后状态、轮数与清除标记。 |
+| [src/config.ts](../src/config.ts) / [src/settings.ts](../src/settings.ts) | 正式 Config schema、默认值、volatile 热设置和设置页挂载。 |
+| [src/client/index.ts](../src/client/index.ts) | browser closure 源码：GoalBar 和 Plugins 行配置页，构建后由宿主 ModuleLoader 加载。 |
 | [scripts/runtime-smoke.mjs](../scripts/runtime-smoke.mjs) | 真实 DSH profile、真实 AgentLoop、脚本化模型适配器的宿主冒烟。 |
-| [tests/](../tests) | 单元与组件测试；无浏览器构建依赖。 |
+| [tests/](../tests) | 单元与组件测试；直接验证已构建的宿主 ESM 与浏览器 closure。 |
 
 ## 数据、兼容与恢复
 
@@ -116,7 +117,7 @@
 
 README 只写五个动作的用户语义，不复制 JSON、schema 或内部引用；精确契约以本文档和测试为准。动作集合变化时同步 README、本文档和测试，不要提前宣称未实现内容。
 
-人类命令由 [src/commands.js](../src/commands.js) 注册：
+人类命令由 [src/commands.ts](../src/commands.ts) 注册：
 
 | 输入 | 行为 |
 | --- | --- |
@@ -137,7 +138,7 @@ GoalBar 不新建 goal，只通过正式 `remote.goals` RPC 做编辑、暂停�
 
 ## 轮数策略与实现选择
 
-七个字段都由正式 Config 管理，schema 全部 volatile。默认值在 [src/config.js](../src/config.js)：
+七个字段都由正式 Config 管理，schema 全部 volatile。默认值在 [src/config.ts](../src/config.ts)：
 
 | 字段 | 默认 | 约束 | 用途 |
 | --- | --- | --- | --- |
@@ -184,7 +185,7 @@ Apollo 在 `package.json` 中把 `dsh-better-goal` 声明为精确 npm 依赖 `0
 - 两个 bundle 同时被显式选中时，DSH Loader 按行 id 去重，通常只激活一个实例，浏览器模块也只有一个 active source。
 - 但 DSH `0.2.2-rc.2 / rc.3` 的插件管理器会把组合行开关标成只读（`unaddressable`），配置编辑器也可能拒绝保存目标设置。
 - 这不是两个服务同时运行，也不是通过修改 DSH 核心可以安全绕过的行为；推荐只保留 Apollo 入口，不重复 add。
-- [src/client.js](../src/client.js) 注册三个 row-config key：`dsh-better-goal#dsh-better-goal`（独立安装）、`@menghuan1918/dsh-apollo#dsh-better-goal`（scoped Apollo）和 `dsh-apollo#dsh-better-goal`（历史 Apollo）。三者指向同一个设置页、同一份配置和同一个行 id。
+- [src/client/index.ts](../src/client/index.ts) 注册三个 row-config key：`dsh-better-goal#dsh-better-goal`（独立安装）、`@menghuan1918/dsh-apollo#dsh-better-goal`（scoped Apollo）和 `dsh-apollo#dsh-better-goal`（历史 Apollo）。三者指向同一个设置页、同一份配置和同一个行 id。
 - Apollo 自身的 `apollo-skills` 行用 `@menghuan1918/dsh-apollo#apollo-skills`，并保留 `dsh-apollo#apollo-skills` 旧键；两键同样指向同一行配置。行 id、预设 ID 和 CLI 路由不随包名改名。
 - 如果只需要临时开关有效行，可在 profile 覆盖中写 `id: dsh-better-goal`、`disabled: true`；不要写成 `id: goal, disabled: false`，那会启用原生 goal 服务。
 

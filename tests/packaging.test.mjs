@@ -53,14 +53,14 @@ test('npm pack --dry-run：迁移后仍然交付集成所需的运行时文件',
     'cordis.patch.yml',
     'presets/eng.patch.yml',
     'presets/eng-ptc.patch.yml',
-    'presets/eng/plugins/exit-guard/index.js',
-    'presets/eng/plugins/mode-instructions/index.js',
-    'src/index.js',
-    'src/config.js',
-    'src/settings.js',
-    'src/migrate.js',
-    'src/owns-host.js',
-    'src/client.js',
+    'presets/eng/plugins/exit-guard/lib/index.js',
+    'presets/eng/plugins/mode-instructions/lib/index.js',
+    'lib/index.js',
+    'lib/config.js',
+    'lib/settings.js',
+    'lib/migrate.js',
+    'lib/owns-host.js',
+    'lib/client.js',
     'docs/DEVELOPMENT.md',
     'README.md',
     'LICENSE',
@@ -68,13 +68,16 @@ test('npm pack --dry-run：迁移后仍然交付集成所需的运行时文件',
     assert.ok(files.includes(file), `发布包缺少 ${file}`)
   }
   for (const removed of [
-    'src/panel.js',
-    'src/subagents.js',
-    'src/cli-adapter.js',
-    'src/cli-sessions.js',
-    'presets/eng/plugins/wait-subagent/index.js',
+    'lib/panel.js',
+    'lib/subagents.js',
+    'lib/cli-adapter.js',
+    'lib/cli-sessions.js',
+    'presets/eng/plugins/wait-subagent/lib/index.js',
+    'lib/client.cjs',
   ]) {
     assert.equal(files.includes(removed), false, `已迁移实现不得留在发布包：${removed}`)
   }
-  assert.equal(files.some((file) => file.startsWith('src/cli/')), false)
+  assert.equal(files.some((file) => file.startsWith('src/')), false, 'TS source/tests must not ship')
+  assert.equal(files.some((file) => file.endsWith('.ts') && !file.endsWith('.d.ts')), false, 'TS source must not ship')
+  assert.equal(files.some((file) => file.endsWith('.tsbuildinfo')), false, 'tsbuildinfo must not ship')
 })

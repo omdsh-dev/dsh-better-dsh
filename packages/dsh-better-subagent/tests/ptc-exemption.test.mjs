@@ -1,7 +1,7 @@
 /** Unit tests for the wait_subagent PTC exemption registration. */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mountPtcExemption } from '../src/ptc-exemption.js'
+import { mountPtcExemption } from '../lib/ptc-exemption.js'
 
 test('registers wait_subagent with the shared betterPtc service', () => {
   const calls = []

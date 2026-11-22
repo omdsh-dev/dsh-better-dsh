@@ -34,10 +34,12 @@ import { questionReplyDefinition } from './question-reply.ts'
 import { QuestionReplyView } from './QuestionReplyView.tsx'
 import { en, zh, type QuestionKey } from './locales.ts'
 import { SettingsEntry } from './settings.tsx'
-import { settingsEn, settingsZh } from './settings-locales.ts'
+import { type SettingsKey, settingsEn, settingsZh } from './settings-locales.ts'
 
+// PendingQuestion is re-exported as the runtime class below; repeating it in
+// this type-only list collides as a duplicate identifier (TS2300).
 export type {
-  PendingQuestion, PlanReview, QuestionAnswer, QuestionComposerProps, QuestionWait,
+  PlanReview, QuestionAnswer, QuestionComposerProps, QuestionWait,
 } from './contract/slots.ts'
 export type { QuestionKey } from './locales.ts'
 
@@ -45,6 +47,18 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** The question composer's copy. */
     question: QuestionKey
+    /** The Plugins-page row configuration copy. */
+    'better-ask-user-settings': SettingsKey
+  }
+
+  interface SlotMap {
+    /**
+     * A bundle row's configuration page, owned by the Plugins page. The host
+     * package declares this slot with its own owner-props share; this package
+     * does not compile against that package, so the local declaration carries
+     * only the axes the lookup and the (cast) registration are checked against.
+     */
+    'plugins.row.config': { kind: 'keyed'; scope: 'root' }
   }
 }
 
@@ -427,7 +441,7 @@ const ROW_CONFIG_KEYS = Object.freeze([
 
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-user-questions: dictionaries')
-  ctx.effect(() => ctx.locale.register(SETTINGS_NS, { zh: settingsZh, en: settingsEn } as any), 'better-ask-user: settings dictionaries')
+  ctx.effect(() => ctx.locale.register(SETTINGS_NS, { zh: settingsZh, en: settingsEn }), 'better-ask-user: settings dictionaries')
   ctx.effect(() => ctx.slots.inject('plugins.row.config', () => {
     const disposers: Array<() => void> = []
     for (const key of ROW_CONFIG_KEYS) {
@@ -488,7 +502,7 @@ export function apply(ctx: ClientContext): void {
     key: 'question-reply',
     locale: NS,
   }, QuestionReplyView))
-  ctx.remote.$on('user-questions/request', function (request, next) {
+  ctx.remote.$on('user-questions/request', function (this: ClientContext, request: ClientQuestionRequest, next: ClientQuestionNext) {
     return answerQuestion(ctx, this, request, next, cards)
   })
 }

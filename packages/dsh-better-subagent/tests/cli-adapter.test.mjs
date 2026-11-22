@@ -19,7 +19,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { Readable } from 'node:stream'
-import { CLI_ROUTES, createCliAdapter, pendingMessages } from '../src/cli-adapter.js'
+import { CLI_ROUTES, createCliAdapter, pendingMessages } from '../lib/cli-adapter.js'
 
 // ── fake managed subprocess ──────────────────────────────────────────────────
 

@@ -29,10 +29,11 @@ test('manifest identity: scoped name, version, Apache-2.0, repository, publish c
   assert.equal(m.version, '0.5.4')
   assert.equal(m.license, 'Apache-2.0')
   assert.equal(m.type, 'module')
-  assert.equal(m.main, 'src/index.js')
+  assert.equal(m.main, 'lib/index.js')
+  assert.equal(m.types, 'lib/index.d.ts')
   assert.deepEqual(m.exports, {
-    '.': './src/index.js',
-    './client': './src/client.js',
+    '.': { types: './lib/index.d.ts', default: './lib/index.js' },
+    './client': './lib/client.js',
     './package.json': './package.json',
   })
   assert.deepEqual(m.repository, {
@@ -47,9 +48,12 @@ test('manifest identity: scoped name, version, Apache-2.0, repository, publish c
   assert.equal(m.engines.dsh, '>=0.2.2-rc.2 <0.3.0')
 })
 
-test('manifest: no build step, schemastery dependency, peer ranges, dev test deps', () => {
+test('manifest: TypeScript build, schemastery dependency, peer ranges, dev test deps', () => {
   const m = manifest()
-  assert.equal(m.scripts?.build, undefined, 'pure ESM package must not require a build')
+  assert.equal(m.scripts.build, 'tsc -p tsconfig.build.json && node scripts/build-client.mjs')
+  assert.equal(m.scripts.typecheck, 'tsc -p tsconfig.json && tsc -p tsconfig.client.json')
+  assert.equal(m.scripts.pretest, 'npm run build')
+  assert.equal(m.scripts.prepare, 'npm run build')
   assert.equal(m.scripts.test, 'node --test')
   assert.equal(m.dependencies['@deepseek-ai/schemastery'], '~3.19.0')
   assert.equal(m.dependencies['dsh-better-ptc'], '0.2.2')
@@ -66,7 +70,7 @@ test('manifest: no build step, schemastery dependency, peer ranges, dev test dep
 
 test('manifest: files whitelist never ships tests, specs, scripts or credentials', () => {
   const m = manifest()
-  assert.deepEqual([...m.files].sort(), ['LICENSE', 'README.md', 'cordis.patch.yml', 'docs', 'src', 'third-party'].sort())
+  assert.deepEqual([...m.files].sort(), ['LICENSE', 'README.md', 'cordis.patch.yml', 'docs', 'lib/**/*.d.ts', 'lib/**/*.js', 'lib/**/*.js.map', 'third-party'].sort())
   for (const forbidden of ['tests', 'scripts', 'presets', 'skills', '.github', '.env', '.npmrc']) {
     assert.equal(m.files.includes(forbidden), false, forbidden)
   }
@@ -105,8 +109,8 @@ test('scoped install layout: package root, client and package.json resolve', () 
     symlinkSync(ROOT, join(scope, 'dsh-better-subagent'), process.platform === 'win32' ? 'junction' : 'dir')
     writeFileSync(join(dir, 'package.json'), '{}\n')
     const require = createRequire(join(dir, 'package.json'))
-    assert.equal(require.resolve(PACKAGE_NAME), join(ROOT, 'src/index.js'))
-    assert.equal(require.resolve(`${PACKAGE_NAME}/client`), join(ROOT, 'src/client.js'))
+    assert.equal(require.resolve(PACKAGE_NAME), join(ROOT, 'lib/index.js'))
+    assert.equal(require.resolve(`${PACKAGE_NAME}/client`), join(ROOT, 'lib/client.js'))
     assert.equal(require.resolve(`${PACKAGE_NAME}/package.json`), join(ROOT, 'package.json'))
   } finally {
     rmSync(dir, { recursive: true, force: true })
@@ -114,8 +118,8 @@ test('scoped install layout: package root, client and package.json resolve', () 
 })
 
 test('client half: closure id equals the package name and all six row config keys exist', () => {
-  const source = readFileSync(join(ROOT, 'src/client.js'), 'utf8')
-  assert.equal(source.includes(`id: '${PACKAGE_NAME}'`), true)
+  const source = readFileSync(join(ROOT, 'lib/client.js'), 'utf8')
+  assert.match(source, new RegExp(`id:\\s*['"]${PACKAGE_NAME}['"]`))
   for (const key of [
     `${PACKAGE_NAME}#${ENTRY_ID}`,
     `dsh-better-dsh#${ENTRY_ID}`,
@@ -123,13 +127,13 @@ test('client half: closure id equals the package name and all six row config key
     `@menghuan1918/dsh-apollo#${ENTRY_ID}`,
     `dsh-apollo#${ENTRY_ID}`,
     `${ENTRY_ID}#${ENTRY_ID}`,
-  ]) assert.equal(source.includes(`'${key}'`), true, key)
-  assert.doesNotMatch(source, /document\./, 'no-build client must not touch the DOM directly')
-  assert.doesNotMatch(source, /require\('(?!react')/, 'the client factory only requires react')
+  ]) assert.equal(source.includes(`'${key}'`) || source.includes(`"${key}"`), true, key)
+  assert.doesNotMatch(source, /document\./, 'client must not touch the DOM directly')
+  assert.doesNotMatch(source, /require\(["'](?!react["'])/, 'the client factory only requires react')
 })
 
 test('host sources never import Apollo or a design-spec path', () => {
-  for (const file of ['src/index.js', 'src/config.js', 'src/settings.js', 'src/panel.js', 'src/subagents.js', 'src/wait-subagent.js', 'src/child-exit-guard.js', 'src/prompt.js']) {
+  for (const file of ['lib/index.js', 'lib/config.js', 'lib/settings.js', 'lib/panel.js', 'lib/subagents.js', 'lib/wait-subagent.js', 'lib/child-exit-guard.js', 'lib/prompt.js']) {
     const source = readFileSync(join(ROOT, file), 'utf8')
     assert.doesNotMatch(source, /from\s+'@menghuan1918\/dsh-apollo/, file)
     assert.doesNotMatch(source, /docs\/specs/, file)

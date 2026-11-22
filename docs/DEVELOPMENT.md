@@ -2,11 +2,19 @@
 
 面向维护者、集成者和需要排查装配问题的用户。用户安装与配置请看 [README](../README.md)；本文保留 DSH 插件的实现细节、旧配置迁移、组合安装边界与验证方法。
 
-当前实现版本：`0.11.7`；npm 包名是 `dsh-better-dsh`。纯 ESM，无构建步骤；宿主浏览器半边是直接加载的闭包工厂。旧 `Apollo` 名称只保留在迁移、历史兼容和旧包 deprecate 说明里。
+当前实现版本：`0.12.0`；npm 包名是 `dsh-better-dsh`。TypeScript 源码经 `tsc` 编译为 ESM（`lib/`，含 `.d.ts`）；浏览器半边由 esbuild/tsdown 打成单个 closure factory。旧 `Apollo` 名称只保留在迁移、历史兼容和旧包 deprecate 说明里。
 
-**仓库布局**：`packages/*` 是六个子包的源码真相（pnpm workspaces；根目录 `pnpm install`、`pnpm test:packages`）。迁移前的 `plugins/` 目录和各自 `.git` 原样保留作归档，不再修改。本地子包已同步到已发布 tag 并完成 DSH rc.3 适配，版本号已提升并发布；根依赖已指向新的精确构建；`workspace:*` 与各包发布流合并尚未完成。
+**仓库布局**：`packages/*` 是六个子包的源码真相（pnpm workspaces；根目录 `pnpm install`、`pnpm test:packages`）。迁移前的 `plugins/` 目录和各自 `.git` 原样保留作归档，不再修改。本地子包已同步到已发布 tag 并完成 DSH rc.3 适配，版本号已提升并发布；根依赖指向 registry 上已发布的精确版本（compact `0.5.0`、ask-user `0.3.6`、goal `0.4.5`、subagent `0.5.4`、ptc `0.2.2`）。`workspace:*` 与各包发布流合并尚未完成。
 
-`pnpm test:packages` 暂时排除 `dsh-lazy-session-list`：它不在本轮适配范围，包本身尚未适配 rc.2；DSH rc.2 已提供匹配的 `@deepseek-ai/dsh-skill` / `@deepseek-ai/dsh-native-command`，需要时可用匹配 host 单独运行 live-smoke。
+`pnpm test:packages` 暂时排除 `dsh-lazy-session-list`：它已完成 TypeScript 构建迁移，但 `session-list.test.mjs` 需要完整的 DSH host 依赖闭包（本仓安装缺少 `dsh-session-title` 等 peer）。本仓至少跑 `node --test packages/dsh-lazy-session-list/tests/live-smoke.test.mjs`；需要完整回归时用匹配 host 单独运行 `pnpm test:lazy-session-list`。
+
+### TypeScript 构建
+
+- 源码：根包与迁移包的 host 逻辑是 `src/**/*.ts`；浏览器半边是 `src/client/**/*.ts(x)`；预设本地插件是 `presets/eng/plugins/*/src/index.ts`。
+- 产物：`tsc` 输出 `lib/**/*.js`、`.d.ts` 与 source map；esbuild 输出根包/ask-user/goal/subagent 的 `lib/client.js`（单个 `window.__ModuleLoader__.load` closure）和 preset 的 `presets/eng/plugins/*/lib/index.js`；compact 用 tsdown 打包 `lib/index.js`、`lib/engine.js` 与 `lib/client.js`。
+- `lib/` 是生成物，不提交；`pretest` 和 `prepare` 会构建，测试与打包都针对构建后的产物。
+- `pnpm typecheck` 跑根包 server/client/preset 三份 tsconfig，并递归跑各子包的 `typecheck`。
+- `dsh-better-compact` 已跟随独立仓库迁移到 TypeScript（源码 `src/*.ts`，客户端 `src/client/**`）。本仓副本按本仓约定不提交 `lib/`，由 `pretest` / `pnpm build` 生成；独立仓库仍提交预构建 `lib/`。pnpm 的隔离 `node_modules` 会让 `z.object()` 的声明发射不可命名（TS2742），因此本仓副本的 `tsconfig.build.json` 打开 `preserveSymlinks` 并把 `@deepseek-ai/cosmokit` 列为 devDependency——这两点只属于 monorepo 副本，不回写独立仓库。
 
 ## 目录
 
@@ -31,7 +39,7 @@
 2. [presets/eng.patch.yml](../presets/eng.patch.yml)：`eng` 预设；
 3. [presets/eng-ptc.patch.yml](../presets/eng-ptc.patch.yml)：`eng-ptc` 预设。
 
-浏览器半边由 `dsh.client` 的注入列表发现；`exports["./client"]` 指向 [src/client.js](../src/client.js)。`exports["./presets/*"]` 让预设里的本地插件通过裸子路径引用本包内的模块。
+浏览器半边由 `dsh.client` 的注入列表发现；`exports["./client"]` 指向构建后的 `lib/client.js`（源码为 [src/client/index.ts](../src/client/index.ts)，由 esbuild 打成单 closure）。`exports["./presets/*"]` 让预设里的本地插件通过裸子路径引用本包内的模块。
 
 精确运行时依赖（**不提交 file/link/Git/范围说明符**）：
 
@@ -39,7 +47,7 @@
 |---|---|---|
 | `dsh-better-goal` | `0.4.5` | 目标域（`questionTimeoutSeconds` 已弃用、仅保留读取；`spinHintSeconds` 控制空转提示） |
 | `@oh-my-dsh/dsh-better-subagent` | `0.5.4` | 子代理 CLI/等待/child guard/分档/设置页；注册 `wait_subagent` PTC 豁免；委派提示词由 `delegation.prompt` 单独控制 |
-| `dsh-better-compact` | `0.4.2` | 压缩 companion + engine + 设置页/诊断 |
+| `dsh-better-compact` | `0.5.0` | 压缩 companion + engine + 设置页/诊断 |
 | `dsh-better-ask-user` | `0.3.6` | 官方 `ask_user_question` 入参/返回 + 插件超时等待 + 历史预览行；注册 PTC 豁免；旧 goal 等待迁移 |
 | `dsh-better-ptc` | `0.2.2` | 单例 PTC deadline 豁免服务 |
 | `@deepseek-ai/schemastery` | `~3.19.0` | Better DSH 行 Config |
@@ -89,9 +97,9 @@ pnpm install --frozen-lockfile
 `apollo-skills` 是 Apollo 的主宿主插件行，0.5.0 后只承担：
 
 1. 向技能注册表的全局层注册包内 `skills/*/SKILL.md`（rank 600，用户技能根可覆盖）；
-2. 挂载正式行 Config（[src/config.js](../src/config.js)）与最小浏览器行页；
-3. 一次性只读导入旧 `<dshHome>/eng.json`（或 `atlas.json`）里的 `exitGuard`，并驱动一次性旧配置迁移（[src/migrate.js](../src/migrate.js)）；
-4. 行配置 `declareOwnsHost: true` 时给 index HTML 注入 `__DSH_TRANSPORT__.ownsHost`（[src/owns-host.js](../src/owns-host.js)）。
+2. 挂载正式行 Config（[src/config.ts](../src/config.ts)）与最小浏览器行页；
+3. 一次性只读导入旧 `<dshHome>/eng.json`（或 `atlas.json`）里的 `exitGuard`，并驱动一次性旧配置迁移（[src/migrate.ts](../src/migrate.ts)）；
+4. 行配置 `declareOwnsHost: true` 时给 index HTML 注入 `__DSH_TRANSPORT__.ownsHost`（[src/owns-host.ts](../src/owns-host.ts)）。
 
 **不再负责**：CLI 协议/适配/身份 KV、`wait_subagent`、能力/模型/路由 HTTP 探针、子代理设置页、模型分档与委派提示词生成、运行中子代理退出判断。Apollo 不注册任何 HTTP 路由；`/apollo/api/*` 由 better-subagent 作为只读兼容别名拥有，重复注册同一 `(kind, path)` 会被 webServer 拒绝。
 
@@ -124,7 +132,7 @@ PTC deadline 豁免由独立的 `dsh-better-ptc` 单例行提供（无浏览器�
 
 ### 最小行页
 
-[src/client.js](../src/client.js) 只注册 `<包名>#apollo-skills` 与旧名 `<旧包名>#apollo-skills` 两个 `plugins.row.config` 键，closure id 必须是 npm 包名。页面：
+[src/client/index.ts](../src/client/index.ts) 只注册 `<包名>#apollo-skills` 与旧名 `<旧包名>#apollo-skills` 两个 `plugins.row.config` 键，closure id 必须是 npm 包名。页面：
 
 - `summary` 只回一行；
 - `page` 渲染 `exitGuard` 开关（开启后显示 `exitGuardWaitSeconds` 数字输入）、「连接与访问」折叠组里的 `declareOwnsHost` 开关、保存/放弃、只读/不可用状态与迁移说明；
@@ -135,7 +143,7 @@ PTC deadline 豁免由独立的 `dsh-better-ptc` 单例行提供（无浏览器�
 
 ### 旧 eng.json 导入
 
-[src/settings.js](../src/settings.js) 保留一次性只读导入：
+[src/settings.ts](../src/settings.ts) 保留一次性只读导入：
 
 - 文件：`<dshHome>/eng.json` 优先，损坏/缺失回退 `atlas.json`；
 - 只导入 `exitGuard`（布尔）；
@@ -177,7 +185,7 @@ PTC deadline 豁免由独立的 `dsh-better-ptc` 单例行提供（无浏览器�
 
 ### 退出守卫（job-only）
 
-[presets/eng/plugins/exit-guard/index.js](../presets/eng/plugins/exit-guard/index.js)：
+[presets/eng/plugins/exit-guard/src/index.ts](../presets/eng/plugins/exit-guard/src/index.ts)：
 
 - 监听 `agent/turn-stopping`；`exitGuard` 开启且本会话仍有非终态后台 job 时 `agent.steer()` 注入提醒；
 - 拦截有时限（`exitGuardWaitSeconds`，默认 2400 秒）：超时即放行回合结束并 `logger.warn` 一次，后台 job 不被取消、之后仍可 `job_output` 收取；`0` 恢复旧的无期限拦截。计时有 `WeakMap` 按代理保存首次拦截时刻，一旦本代理没有运行中 job 即清零，使下一次阻塞事件重新起算；
@@ -190,7 +198,7 @@ PTC deadline 豁免由独立的 `dsh-better-ptc` 单例行提供（无浏览器�
 
 ### 工程模式提示词
 
-[presets/eng/plugins/mode-instructions/index.js](../presets/eng/plugins/mode-instructions/index.js)（`eng:mode-instructions`，order 1）只保留：
+[presets/eng/plugins/mode-instructions/src/index.ts](../presets/eng/plugins/mode-instructions/src/index.ts)（`eng:mode-instructions`，order 1）只保留：
 
 - 通用工程纪律：KISS/YAGNI、检查先行、修复根因、一个连贯变更、既有约定、防过度设计与过度防御、验证与汇报、权限/Git 身份/依赖边界、命令与进程纪律；
 - `exitGuard` 开启时的 job-only 退出守卫说明，其中写明最长拦截时长与「超时后任务继续运行、可稍后收取」；`exitGuardWaitSeconds: 0` 时不写上限。
@@ -199,7 +207,7 @@ PTC deadline 豁免由独立的 `dsh-better-ptc` 单例行提供（无浏览器�
 
 ## 旧配置迁移
 
-[src/migrate.js](../src/migrate.js) 在 Apollo apply 后运行，`mountMigration` 使用 `ctx.inject(['settings'])`；顺序为：
+[src/migrate.ts](../src/migrate.ts) 在 Apollo apply 后运行，`mountMigration` 使用 `ctx.inject(['settings'])`；顺序为：
 
 1. 有 Loader 时等待装配完成（`loader.await()`，有界）；
 2. 等待 `legacyImport`（旧 eng.json）完成；
@@ -300,7 +308,7 @@ DSH_PACKAGE_ROOT="/…/node_modules/@deepseek-ai/dsh" npm run prompts
 - 独立安装不需要 Apollo 的 `eng` / `eng-ptc` 预设；better-subagent 在无这些预设时用 `subagents.global` 决定是否渲染/路由；
 - 不复制 CLI 身份 KV：命名空间仍是 `apollo_cli_<sha256(profile.dir)[:16]>`，包名变化不重命名、不复制、不清空。
 
-### 双显式 bundle 限制（DSH 0.2.2-rc.2 / rc.3）
+### 双显式 bundle 限制（DSH 0.2.2-rc.2）
 
 同一 profile 同时显式选择 Apollo 与独立 better-subagent / better-compact 时：
 
@@ -326,12 +334,12 @@ DSH_PACKAGE_ROOT="/…/node_modules/@deepseek-ai/dsh" npm run prompts
 ### npm 安装
 
 ```sh
-dsh plugin --profile <profile> add dsh-better-dsh@0.11.7
+dsh plugin --profile <profile> add dsh-better-dsh@0.12.0
 ```
 
 包发布后即可用此命令安装，并带入五个精确依赖、应用三份 bundle patch。安装后需要重启对应 profile 的 DSH 进程。本轮版本与精确依赖见上述包清单；发布后需重新验证 registry 干净安装。
 
-> `0.11.7` 起，根 bundle 与五个子包声明 DSH `>=0.2.2-rc.2 <0.3.0`（验收 rc.3）；更早的 `0.11.6` 及旧子包精确 pin rc.2，会被 rc.3 的 preflight 禁用独立行。
+> `0.11.4` 起支持 DSH `0.2.2-rc.2`；更早的 `0.11.3` 及子包旧版本会被 rc.2 的 `engines.dsh` 门禁跳过。
 
 ### GitHub 源码安装
 
@@ -372,7 +380,7 @@ dsh --profile <profile> --dump-config
 - 升级包后重启 profile；0.4.x → 0.5.x 的迁移见 [旧配置迁移](#旧配置迁移)；
 - 迁移写入的 compact 设置需要再重载一次才会被运行中引擎采用；
 - 升级 DSH 后先跑 `pnpm test`，漂移测试会按目标 DSH 安装比较预设；
-- 版本契约：Node `>=24.9.0`，DSH `>=0.2.2-rc.2 <0.3.0`（验收基线 `0.2.2-rc.3`）；不实现旧 RC 兼容层。
+- 版本契约：Node `>=24.9.0`，DSH `>=0.2.2-rc.2 <0.3.0`（验收基线 `0.2.2-rc.3`）；不实现更早 RC 的兼容层。
 
 ### 卸载
 
@@ -388,21 +396,21 @@ dsh plugin --profile <profile> remove @menghuan1918/dsh-apollo   # 旧包；新�
 
 当前阶段仍使用迁移前各子包的独立发布流程（归档的子仓里保留原 `.github/workflows/release.yml`）；monorepo 统一的子包发布 workflow 尚未完成。根包 `dsh-better-dsh` 用 GitHub Release 触发根 `.github/workflows/release.yml`，通过 npm trusted publishing（OIDC）发布，仓库里不存 npm token。tag 必须是 `v<package.json 的 version>`，CI 会先校验再跑测试和 `npm publish --provenance`。
 
-1. 先发布 `dsh-better-ptc@0.2.2`、`dsh-better-ask-user@0.3.6`、`@oh-my-dsh/dsh-better-subagent@0.5.4`、`dsh-better-goal@0.4.5`、`dsh-better-compact@0.4.2`（各自仓库的 Release）；
+1. 先发布 `dsh-better-ptc@0.2.2`、`dsh-better-ask-user@0.3.6`、`@oh-my-dsh/dsh-better-subagent@0.5.4`、`dsh-better-goal@0.4.5`、`dsh-better-compact@0.5.0`（各自仓库的 Release）；
 2. 在官方 registry（`https://registry.npmjs.org/`）确认五个版本可取得、可安装；
-3. 再把 Better DSH 的精确依赖指向已发布版本，推已验证的发布提交及 tag 并发布 Better DSH Release（本轮为 `v0.11.7`）；
+3. 再把 Better DSH 的精确依赖指向已发布版本，推已验证的发布提交及 tag 并发布 Better DSH Release（本轮为 `v0.12.0`）；
 4. 子包版本可取得前，不要把指向它们的精确依赖推到 Apollo main，否则 `pnpm install` / GitHub 源码安装会 404。
 
 ## 测试与冒烟
 
-### 0.2.2-rc.3 验证契约
+### 0.2.2-rc.2 验证契约
 
-- npm 宿主：`@deepseek-ai/dsh@0.2.2-rc.3`（同时支持 rc.2），Node `>=24.9.0`。`PROFILE_TEMPLATES` 从 `dsh-official-bundles` 导入，不再从 `dsh-app-boot` 导入。
+- 精确 npm 宿主：`@deepseek-ai/dsh@0.2.2-rc.2`，Node `>=24.9.0`。`PROFILE_TEMPLATES` 从 `dsh-official-bundles` 导入，不再从 `dsh-app-boot` 导入。
 - 工具准入：先 `tools.resolve({ agent, modelSelection, signal })`，再将同一 `toolSet` 传入 prompt assemble 与 batch `tools.execute({ calls, agent, signal, toolSet })`；结束后 dispose。presentation waterfall 不得改写工具定义。
 - projection 注册必须等待完成再读取；turn boundary 改走 AgentRegistry 的公开接口。compact 不通过覆盖宿主私有 `compactPressure` 扩展行为。
 - 两套预设对齐新版 planning、`tool-fs.applyPatch:false`、`modelSelection/modelDiscovery`；PTC 使用 `tool-executor-ptc`。`list_agents` 由原生 control 提供，不再挂已删除的额外子路径。
 - 临时 profile 禁用 headless parser 后，需显式替换 `sandbox-policy` 的 `inject` 与配置，否则新版 headless bundle 引入的 `headlessStartup` 依赖会让 fs/shell/PTC 一直 pending。测试 profile 使用 `danger-full-access` 并显式固定 `permission.defaultPreset`，避免无 workspace-write 后端的主机拒绝执行或产生 `custom` 权限组合。
-- `engines.dsh` 是硬门禁：根 bundle 不匹配会被 Loader 跳过；profile preflight 还会逐行检查插入的插件包，五个子包的 `engines.dsh` 不匹配时对应行会被禁用。根包与五个子包统一声明 `>=0.2.2-rc.2 <0.3.0`（验收 rc.3）；改宿主版本必须同步改全部清单并重跑真实装配。
+- `engines.dsh` 是硬门禁：根 bundle 不匹配会被 Loader 跳过；profile preflight 还会逐行检查插入的插件包，子包的 `engines.dsh` 不匹配时对应行会被禁用。根包与五个子包统一声明 `>=0.2.2-rc.2 <0.3.0`（验收 rc.3）；lazy-session-list 声明 `>=0.2.1-rc.2 <0.3.0`；改宿主版本必须同步改全部清单并重跑真实装配。
 - rc.3 相对 rc.2 的 host 包差异是增量的（官方 bundle、图标、错误码、文档），预设未变。本地验证 rc.3 时设置 `APOLLO_PLUGIN_SOURCE_ROOT=$PWD/packages`，让临时 profile 使用已放宽范围的子包源码。
 - rc.2 子代理是具名、多层协作：原生 `subagent` 工具返回 `{kind:'activation', name}`；`list_agents` 展示树内名字；`send_message` 按名字寻址；`interrupt_agent` 在预设中默认关闭。Better Subagent 的 `wait_subagent` 同时接受名字与 durable id，并通过 `resolveName` 解析。
 - rc.2 PTC 按运行时限限制工具调用总量，并支持显式环境 reset；`dsh-better-ptc` 的 deadline 暂停包装不得绕过 host 在调用前算出的 `maxSubCalls`，超限中止也不能被误报成 PTC 超时。
@@ -415,6 +423,8 @@ dsh plugin --profile <profile> remove @menghuan1918/dsh-apollo   # 旧包；新�
 
 ```sh
 pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm build:all
 pnpm test:all
 
 # 严格指定真实 DSH 安装（漂移、真实迁移测试）
@@ -508,7 +518,7 @@ APOLLO_PLUGIN_SOURCE_ROOT=/path/to/Code node scripts/ptc-smoke.mjs
 
 ### 版本范围
 
-根包与五个子包的 `engines.dsh` 统一为 `>=0.2.2-rc.2 <0.3.0`，验收基线 `0.2.2-rc.3`；Node `>=24.9.0`，Cordis `~4.1.0`、Schemastery `~3.19.0`。升级 DSH 后仍须重新运行漂移与真实运行时测试，不能仅放宽版本声明。历史配置键、包名、row ID、预设 ID 和兼容 URL 别名保留，不等于维护旧宿主 API 分支。本轮已提升五个子包版本（ptc 0.2.2、ask-user 0.3.6、subagent 0.5.4、compact 0.4.2、goal 0.4.5）与根 bundle 0.11.7；发布顺序仍是先子包、后根包。
+根包与五个子包的 `engines.dsh` 统一为 `>=0.2.2-rc.2 <0.3.0`，验收基线 `0.2.2-rc.3`；Node `>=24.9.0`，Cordis `~4.1.0`、Schemastery `~3.19.0`。升级 DSH 后仍须重新运行漂移与真实运行时测试，不能仅放宽版本声明。历史配置键、包名、row ID、预设 ID 和兼容 URL 别名保留，不等于维护旧宿主 API 分支。当前根 bundle 为 `0.12.0`（TypeScript 重构版），五个依赖已指向 registry 上的已发布精确版本；发布顺序仍是先子包、后根包。
 
 ## 实现入口、打包与发布
 
@@ -519,14 +529,14 @@ APOLLO_PLUGIN_SOURCE_ROOT=/path/to/Code node scripts/ptc-smoke.mjs
 | [package.json](../package.json) | 包元数据、bundle patch 顺序、浏览器注入、精确依赖 |
 | [cordis.patch.yml](../cordis.patch.yml) | 原生 goal/compaction/官方 Web 提问卡片禁用；goal、compact companion/engine、subagent、shared ptc、ask-user、`apollo-skills` 顶层行 |
 | [presets/eng.patch.yml](../presets/eng.patch.yml) / [presets/eng-ptc.patch.yml](../presets/eng-ptc.patch.yml) | 两套预设的行清单唯一事实源 |
-| [presets/eng/plugins/exit-guard/index.js](../presets/eng/plugins/exit-guard/index.js) | job-only 退出守卫 |
-| [presets/eng/plugins/mode-instructions/index.js](../presets/eng/plugins/mode-instructions/index.js) | 工程纪律 + job 守卫提示词 |
-| [src/index.js](../src/index.js) | 主宿主行入口：技能 provider、settings、迁移 |
-| [src/config.js](../src/config.js) | 正式配置 schema、deprecated 字段、规整与活配置读取 |
-| [src/settings.js](../src/settings.js) | 行页面策略、旧文件导入、legacyImport 就绪 Promise |
-| [src/owns-host.js](../src/owns-host.js) | `declareOwnsHost` index tap（唯一 web helper） |
-| [src/migrate.js](../src/migrate.js) | 子代理/压缩迁移、有界等待、重读验证、pending/ambiguity |
-| [src/client.js](../src/client.js) | 通用行设置与集成设置工作台；宿主主题令牌、响应式图标导航、共享表单订阅，无构建闭包工厂 |
+| [presets/eng/plugins/exit-guard/src/index.ts](../presets/eng/plugins/exit-guard/src/index.ts) | job-only 退出守卫（构建到 `lib/index.js`） |
+| [presets/eng/plugins/mode-instructions/src/index.ts](../presets/eng/plugins/mode-instructions/src/index.ts) | 工程纪律 + job 守卫提示词（构建到 `lib/index.js`） |
+| [src/index.ts](../src/index.ts) | 主宿主行入口：技能 provider、settings、迁移 |
+| [src/config.ts](../src/config.ts) | 正式配置 schema、deprecated 字段、规整与活配置读取 |
+| [src/settings.ts](../src/settings.ts) | 行页面策略、旧文件导入、legacyImport 就绪 Promise |
+| [src/owns-host.ts](../src/owns-host.ts) | `declareOwnsHost` index tap（唯一 web helper） |
+| [src/migrate.ts](../src/migrate.ts) | 子代理/压缩迁移、有界等待、重读验证、pending/ambiguity |
+| [src/client/index.ts](../src/client/index.ts) | 通用行设置与集成设置工作台；构建为 `lib/client.js` closure |
 | [scripts/render-prompts.mjs](../scripts/render-prompts.mjs) / [prompts/](../prompts/) | 真实装配的系统提示词快照及生成脚本 |
 | [scripts/runtime-smoke.mjs](../scripts/runtime-smoke.mjs) | 三组合真实宿主集成冒烟 |
 | [scripts/lib/profile.mjs](../scripts/lib/profile.mjs) | 临时 profile、发布布局复制、鉴权与行计数 helper |
@@ -536,13 +546,13 @@ APOLLO_PLUGIN_SOURCE_ROOT=/path/to/Code node scripts/ptc-smoke.mjs
 私有设计 Specs（`docs/specs/`）不得进入 Git 或 npm：
 
 - 本仓库 Git 私有排除规则忽略该目录（worktree 共享主仓库 `.git/info/exclude`）；
-- `package.json` 的 `files` 只列 `src`、`docs/DEVELOPMENT.md`、`skills`、`presets`、`third-party`、`cordis.patch.yml`、`README.md`、`LICENSE`；
-- [.npmignore](../.npmignore) 再次排除 `docs/specs/`、tests/scripts/prompts/.github/tarball/package-lock；
+- `package.json` 的 `files` 列出 `lib/**/*.js`、`lib/**/*.d.ts`、`lib/**/*.js.map`、preset 的构建产物、`docs/DEVELOPMENT.md`、`skills`、`third-party`、`cordis.patch.yml`、`README.md`、`LICENSE`；
+- [.npmignore](../.npmignore) 再次排除 `docs/specs/`、tests/scripts/prompts/.github/tarball/package-lock、TS 源码与 `lib/client.cjs`；
 - [tests/packaging.test.mjs](../tests/packaging.test.mjs) 跑真实 `npm pack --dry-run --json` 断言清单。
 
 ### 发布
 
-release workflow 使用 npm trusted publishing：tag 必须等于 `package.json` 版本，先 `pnpm install --frozen-lockfile` / `pnpm test:all` 再 `npm publish --provenance`。子包版本必须先在官方 registry 可取得；不要硬编码 token、假发布或用开发 link 代替正式依赖。
+release workflow 使用 npm trusted publishing：tag 必须等于 `package.json` 版本，先 `pnpm install --frozen-lockfile` / `pnpm typecheck` / `pnpm build:all` / `pnpm test:all` 再 `npm publish --provenance`；`prepare` 会在打包前重建 `lib/`。子包版本必须先在官方 registry 可取得；不要硬编码 token、假发布或用开发 link 代替正式依赖。
 
 ## 许可与致谢
 

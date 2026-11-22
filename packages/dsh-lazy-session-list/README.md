@@ -103,7 +103,7 @@ npm run smoke -- http://127.0.0.1:3384
 | Schemastery | `3.18.5`、`3.19.x` |
 | Node.js | `^22.19.0` 或 `>=24.0.0` |
 
-运行时由宿主提供 peer dependencies。纯 ESM，无构建步骤。0.2.2-rc.1 已在 2,700 个会话的真实实例上验证：列表由 17 个 projection 键减少到 4 个，解压 JSON 从 4.00 MB 降到 1.48 MB（−63%），单会话 `session/projections` 仍返回全部 23 个键。其他 0.2.x 版本未逐一验证。
+运行时由宿主提供 peer dependencies。TypeScript 源码，构建为纯 ESM；浏览器半边由 esbuild 打包。0.2.2-rc.1 已在 2,700 个会话的真实实例上验证：列表由 17 个 projection 键减少到 4 个，解压 JSON 从 4.00 MB 降到 1.48 MB（−63%），单会话 `session/projections` 仍返回全部 23 个键。其他 0.2.x 版本未逐一验证。
 
 插件在**原生授权过滤完成之后、JSON 编码之前**处理列表结果，保留调用方 context、参数、取消信号与错误传播。它只包装当前 `sessionController` 实例的 `list`；完整 history、control baseline 与单会话 projections 继续使用宿主原逻辑。
 
@@ -113,8 +113,11 @@ npm run smoke -- http://127.0.0.1:3384
 
 ```sh
 npm install
+npm run typecheck  # 严格 TypeScript 检查
+npm run build      # 生成 lib/ ESM 与声明
 npm ci --prefix tests/client-support
-npm test
+npm test           # 自动先构建；session-list 套件需要完整 rc.2 host 依赖闭包
+node --test tests/live-smoke.test.mjs   # 本仓可跑的隔离 HTTP 回放
 ```
 
 当前回归套件 **21 项通过，0 跳过**。测试使用真实 Cordis、宿主原始 `SessionController.list` 和真实客户端 `SessionManager`，控制查询源数据与授权策略，覆盖：

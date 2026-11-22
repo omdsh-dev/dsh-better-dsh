@@ -5,7 +5,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { declareOwnsHostTap, installOwnsHostTap } from '../src/owns-host.js'
+import { declareOwnsHostTap, installOwnsHostTap } from '../lib/owns-host.js'
 
 const SCRIPT = '<script>globalThis.__DSH_TRANSPORT__={ownsHost:true}</script>'
 
