@@ -294,6 +294,11 @@
               fetch: true
               searchTimeoutMs: 60000
 
+          # Cordis inspection: 0.2.3-alpha.1 merges the creation tools into
+          # `cordis_inspect` and enables it in the standard mode.
+          - id: tool-cordis
+            name: '@deepseek-ai/dsh-tool-cordis'
+
           # Declares deliverable files to the user (file-card surface). Upstream
           # `standard` mounts it; eng is a fork-copy of that block, so this row has to be
           # carried by hand — `tests/upstream-drift.test.mjs` fails when a shipped

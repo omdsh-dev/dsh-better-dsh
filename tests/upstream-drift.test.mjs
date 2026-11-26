@@ -18,6 +18,9 @@ const ownRows = [
   ['eng-mode-instructions', 'dsh-better-dsh/presets/eng/plugins/mode-instructions/lib/index.js'],
 ]
 const thresholds = { thresholdChars: [16384, 8192], headChars: [8192, 4096], tailChars: [2048, 1024] }
+// The upstream `ptc` preset has not picked up the standard-mode Cordis row yet,
+// while eng-ptc is derived from eng and therefore carries it.
+const ptcAdditions = [['tool-cordis', '@deepseek-ai/dsh-tool-cordis']]
 // Deliberate removals from the upstream standard preset. The real-preset test
 // asserts each still exists upstream before filtering it out, so a renamed or
 // dropped upstream row cannot silently pass. command-goal/tool-goal are now
@@ -89,8 +92,8 @@ function dshLayout(t) {
  * values. The preset-owned compaction engine is normalized back to the native
  * row it replaces so the rest of the preset can be compared byte-for-byte.
  */
-function normalizedEng(rows) {
-  const normalized = structuredClone(rows).filter((row) => !isDropped(row) && !ownRows.some(([id, name]) => row.id === id && row.name === name))
+function normalizedEng(rows, additions = ownRows) {
+  const normalized = structuredClone(rows).filter((row) => !isDropped(row) && !additions.some(([id, name]) => row.id === id && row.name === name))
   for (const row of flatten(normalized)) {
     if (row.id === 'compaction' && row.group === true) {
       row.config = row.config.map((child) => child.id === 'dsh-better-compact-engine' && child.name === 'dsh-better-compact/engine'
@@ -114,7 +117,7 @@ function normalizedEng(rows) {
   return normalized
 }
 
-function assertStandard(eng, standard, { ptcPlanSection = false } = {}) {
+function assertStandard(eng, standard, { ptcPlanSection = false, additions = ownRows } = {}) {
   const upstream = structuredClone(standard).filter((row) => !isDropped(row))
   if (ptcPlanSection) {
     // The PTC preset adds one deliberate instruction: exit_plan_mode is nested
@@ -130,7 +133,7 @@ function assertStandard(eng, standard, { ptcPlanSection = false } = {}) {
       row.disabled = true
     }
   }
-  assert.deepEqual(normalizedEng(eng), upstream, '预设存在白名单外差异（含嵌套配置、scope、disabled 和行序）')
+  assert.deepEqual(normalizedEng(eng, additions), upstream, '预设存在白名单外差异（含嵌套配置、scope、disabled 和行序）')
 }
 
 test('两份预设 patch 结构合法：身份稳定、bundle 引用唯一、无第二份行清单', () => {
@@ -162,8 +165,9 @@ test('eng / eng-ptc 分别与上游 standard / ptc 完整对齐，差异只有�
     for (const [id, name] of droppedRows) {
       assert.ok(upstream.some(([rowId, rowName]) => rowId === id && rowName === name), `剔除行必须仍存在于上游 ${base}：${id}`)
     }
-    assert.deepEqual(identities(eng).filter(([id]) => !upstream.some(([reference]) => reference === id)), ownRows, base)
-    assertStandard(eng, standard, { ptcPlanSection: base === 'ptc.patch.yml' })
+    const additions = base === 'ptc.patch.yml' ? [ownRows[0], ...ptcAdditions, ...ownRows.slice(1)] : ownRows
+    assert.deepEqual(identities(eng).filter(([id]) => !upstream.some(([reference]) => reference === id)), additions, base)
+    assertStandard(eng, standard, { ptcPlanSection: base === 'ptc.patch.yml', additions })
   }
 })
 
@@ -200,10 +204,6 @@ test('eng-ptc 恰为 eng + PTC 呈现 + 禁用 workflow', () => {
   const expected = structuredClone(rowsOf(ENG))
   for (const row of flatten(expected)) {
     if (row.id === 'workflow-ptc' || row.id === 'tool-workflow') row.disabled = true
-    // rc.2 upstream standard adds the agent-preset skill directory; upstream ptc
-    // does not. eng-ptc mirrors ptc, so this one key is the known upstream
-    // standard/ptc difference rather than an Apollo preset difference.
-    if (row.id === 'skill-filesystem') delete row.config
   }
   expected.splice(expected.findIndex((row) => row.id === 'present'), 0, {
     id: 'tool-executor-ptc', name: '@deepseek-ai/dsh-tool-executor-ptc',
@@ -237,8 +237,8 @@ test('engines.dsh 覆盖已验证的 0.2.x 候选范围', (t) => {
   const layout = dshLayout(t)
   if (!layout) return
   const range = manifest().engines.dsh
-  assert.equal(range, '>=0.2.2-rc.2 <0.3.0')
+  assert.equal(range, '>=0.2.3-alpha.2 <0.3.0')
   assert.equal(layout.semver.satisfies(layout.version, range, { includePrerelease: true }), true)
-  for (const version of ['0.2.2-rc.2', '0.2.2-rc.3', '0.2.2']) assert.equal(layout.semver.satisfies(version, range, { includePrerelease: true }), true, version)
-  for (const version of ['0.2.2-rc.1', '0.2.1-rc.5', '0.2.2-alpha.3', '0.3.0']) assert.equal(layout.semver.satisfies(version, range, { includePrerelease: true }), false, version)
+  for (const version of ['0.2.3-alpha.2', '0.2.3-alpha.3', '0.2.3']) assert.equal(layout.semver.satisfies(version, range, { includePrerelease: true }), true, version)
+  for (const version of ['0.2.2-rc.5', '0.2.2', '0.2.3-alpha.1', '0.3.0']) assert.equal(layout.semver.satisfies(version, range, { includePrerelease: true }), false, version)
 })

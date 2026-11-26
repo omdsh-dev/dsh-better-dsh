@@ -1,5 +1,5 @@
 /**
- * Apollo 0.9.0 / DSH 0.2.2-rc.3 real-profile integration smoke.
+ * Apollo 0.9.0 / DSH 0.2.3-alpha.2 real-profile integration smoke.
  *
  * Boots an isolated headless DSH profile from the installed runtime
  * (DSH_PACKAGE_ROOT), Apollo's shipped files and the five independent plugin
@@ -13,7 +13,7 @@
  *   standalone — the independent bundles without Apollo.
  *   both       — Apollo and the standalone bundles selected explicitly:
  *                Loader still activates one row each, but configEditor/
- *                settings cannot address the duplicated rows (DSH 0.2.2-rc.3
+ *                settings cannot address the duplicated rows (DSH 0.2.3-alpha.2
  *                unaddressable/read-only limitation).
  *
  * Run: DSH_PACKAGE_ROOT=… APOLLO_PLUGIN_SOURCE_ROOT=…/packages \
@@ -486,7 +486,7 @@ async function scenarioBoth() {
     for (const id of ['dsh-better-compact', 'dsh-better-compact-engine', 'dsh-better-subagent', 'apollo-skills']) assertOneRow(counts, id)
     check('both-one-row-each')
 
-    // DSH 0.2.2-rc.3 keeps the rows readable but cannot write a profile
+    // DSH 0.2.3-alpha.2 keeps the rows readable but cannot write a profile
     // override for an id inserted by two explicit bundle sources: configEditor
     // rejects the write as overridden. That is the documented unaddressable /
     // read-only limitation (the Web row manager label itself is UI-only and is

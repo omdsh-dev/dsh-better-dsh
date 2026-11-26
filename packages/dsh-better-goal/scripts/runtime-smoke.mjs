@@ -3,6 +3,7 @@ import { isDeepStrictEqual } from 'node:util'
 import { mkdtemp, mkdir, readFile, writeFile, cp, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
+import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { randomUUID } from 'node:crypto'
 
@@ -19,10 +20,14 @@ const apolloName = apolloRoot ? JSON.parse(await readFile(join(apolloRoot, 'pack
 const home = await mkdtemp(join(tmpdir(), 'dsh-better-goal-smoke-'))
 process.env.DSH_HOME = home
 process.env.DSH_TELEMETRY_DISABLED = '1'
-assert.equal(JSON.parse(await readFile(join(dsh, 'package.json'), 'utf8')).version, '0.2.2-rc.3', 'smoke requires the exact supported host')
-const A = await import(pathToFileURL(join(dirname(dsh), 'dsh-app-boot/lib/index.js')))
-const { PROFILE_TEMPLATES } = await import(pathToFileURL(join(dirname(dsh), 'dsh-official-bundles/lib/index.js')))
-const { symbols } = await import(pathToFileURL(join(dirname(dsh), 'cordis/lib/index.js')))
+assert.equal(JSON.parse(await readFile(join(dsh, 'package.json'), 'utf8')).version, '0.2.3-alpha.2', 'smoke requires the exact supported host')
+const hostRequire = createRequire(join(dsh, 'package.json'))
+// npm installs the host's runtime peers under dsh/node_modules; pnpm may hoist
+// them beside dsh. Resolve the real directory instead of assuming one layout.
+const hostPeerRoot = dirname(dirname(hostRequire.resolve('@deepseek-ai/dsh-web-app/package.json')))
+const A = await import(pathToFileURL(join(hostPeerRoot, 'dsh-app-boot/lib/index.js')))
+const { PROFILE_TEMPLATES } = await import(pathToFileURL(join(hostPeerRoot, 'dsh-official-bundles/lib/index.js')))
+const { symbols } = await import(pathToFileURL(join(hostPeerRoot, 'cordis/lib/index.js')))
 const dir = A.resolveProfileDir('it', home)
 const bundles = [...PROFILE_TEMPLATES.headless.bundles, ...(mode === 'standalone' ? ['dsh-better-goal'] : mode === 'apollo' ? [apolloName] : [apolloName, 'dsh-better-goal'])]
 A.initProfile(dir, bundles)
@@ -37,7 +42,7 @@ await mkdir(plugin)
 for (const name of ['package.json', 'lib', 'docs', 'cordis.patch.yml', 'LICENSE', 'README.md', 'third-party']) {
   await cp(join(root, name), join(plugin, name), { recursive: true })
 }
-await symlink(dirname(dsh), join(modules, '@deepseek-ai'))
+await symlink(hostPeerRoot, join(modules, '@deepseek-ai'))
 await symlink(join(root, 'node_modules/zod'), join(modules, 'zod'))
 await symlink(join(root, 'node_modules/react'), join(modules, 'react'))
 manifest.dependencies['dsh-better-goal'] = `file:${plugin}`
@@ -62,7 +67,7 @@ if (mode !== 'standalone') {
     const dest = join(modules, name)
     await mkdir(dest, { recursive: true })
     const sibling = JSON.parse(await readFile(join(target, 'package.json'), 'utf8'))
-    assert.equal(sibling.engines.dsh, '>=0.2.2-rc.3 <0.3.0', `${name} must target the supported host range`)
+    assert.equal(sibling.engines.dsh, '>=0.2.3-alpha.2 <0.3.0', `${name} must target the supported host range`)
     for (const file of ['package.json', ...sibling.files]) {
       await cp(join(target, file), join(dest, file), { recursive: true })
     }
@@ -70,7 +75,11 @@ if (mode !== 'standalone') {
 }
 await writeFile(packageFile, JSON.stringify(manifest, null, 2))
 const preset = mode === 'standalone' ? 'standard' : 'eng'
-const standalonePatches = mode === 'standalone' ? A.loadOverlayPatches('better-goal-smoke', join(dirname(dsh), 'dsh-web-app/presets/standard.patch.yml')) : []
+const standalonePatches = mode === 'standalone' ? A.loadOverlayPatches('better-goal-smoke', join(hostPeerRoot, 'dsh-web-app/presets/standard.patch.yml')) : []
+// 0.2.3-alpha.2's standard preset adds tool-cordis, which needs cordisInspect; this harness has no such service.
+for (const entry of standalonePatches) for (const row of entry.insert ?? []) {
+  if (row.id === 'preset-standard') row.config.plugins = row.config.plugins.filter((plugin) => plugin.id !== 'tool-cordis')
+}
 if (hot && mode === 'standalone') {
   const standard = standalonePatches.flatMap((patch) => patch.insert ?? []).find((row) => row.id === 'preset-standard')
   standard.config.plugins.find((row) => row.id === 'tool-ask-user').config = { mode: 'timed', timeout: 1 }
@@ -99,7 +108,7 @@ async function boot() {
   const goalLayer = profile.layers.find((layer) => layer.packageName === 'dsh-better-goal')
   if (goalLayer) assert.equal(goalLayer.packageDir, plugin, 'bundle resolves to the staged goal package')
   if (apolloRoot) assert.equal(profile.layers.find((layer) => layer.packageName === apolloName).packageDir, join(modules, apolloName))
-  assert.equal(JSON.parse(await readFile(join(plugin, 'package.json'), 'utf8')).version, '0.4.5')
+  assert.equal(JSON.parse(await readFile(join(plugin, 'package.json'), 'utf8')).version, '0.4.6-alpha.2')
   const booted = await runProfile({ profile: 'it', resolvedProfile: { profile, installAnchor: packageFile }, patchFiles: [], args: [], environment: A.loadLayeredEnv('dsh') })
   assert.equal((await booted.ctx.loader.import('dsh-better-goal')).apply.toString(), (await import('../lib/index.js')).apply.toString(), 'runtime uses the staged goal implementation')
   return booted
@@ -141,7 +150,7 @@ try {
   if (implementation === 'native') {
     assert.equal(ctx.tools.get('goal', agent), undefined, 'enhanced tool is not registered in native mode')
     for (const name of ['get_goal', 'create_goal', 'update_goal']) assert.ok(ctx.tools.get(name, agent), name)
-    const { default: NativeGoalService } = await import(pathToFileURL(join(dirname(dsh), 'dsh-goal/lib/index.js')))
+    const { default: NativeGoalService } = await import(pathToFileURL(join(hostPeerRoot, 'dsh-goal/lib/index.js')))
     assert.ok(ctx.get('goals')[symbols.original] instanceof NativeGoalService, 'the upstream service owns native mode')
     const status = ctx.get('betterGoalConfig').status()
     assert.equal(status.runtime.implementation, 'native')
@@ -175,7 +184,7 @@ try {
     }
     plan.set(agent, false)
     scripted = [() => ({ $tool: 'get_goal' }), null]
-    const { createUserMessage } = await import(pathToFileURL(join(dirname(dsh), 'dsh-llm/lib/index.js')))
+    const { createUserMessage } = await import(pathToFileURL(join(hostPeerRoot, 'dsh-llm/lib/index.js')))
     const read = new Promise((resolve, reject) => {
       const timer = setTimeout(() => { off(); reject(new Error('Timed out reading the native goal')) }, 15000)
       const off = ctx.on('session/event', (session, event) => {
@@ -236,7 +245,7 @@ try {
     control('get'), control('pause'),
     control('resume'), control('complete'), null,
   ]
-  const { createUserMessage } = await import(pathToFileURL(join(dirname(dsh), 'dsh-llm/lib/index.js')))
+  const { createUserMessage } = await import(pathToFileURL(join(hostPeerRoot, 'dsh-llm/lib/index.js')))
   const primed = new Promise((resolve, reject) => {
     const timer = setTimeout(() => { off(); reject(new Error('Timed out committing native plan mode exit')) }, 15000)
     const off = ctx.on('session/event', (session, event) => {

@@ -854,8 +854,12 @@ export function registerCapabilitiesRoute(ctx: Context, configFor: unknown, deps
       }
   }
   ctx.effect(() => {
-    const offCanonical = ctx.webServer.register({ kind: 'prefix', path: CAPABILITIES_PREFIX, handler })
-    const offAlias = ctx.webServer.register({ kind: 'prefix', path: CAPABILITIES_ALIAS_PREFIX, handler })
+    // The handler applies its own loopback/trustedHosts fence, so the host route
+    // stays anonymous. DSH 0.2.3 made web routes required-auth by default; a
+    // required route would answer 503 for trusted loopback callers that carry no
+    // GUI credential.
+    const offCanonical = ctx.webServer.register({ kind: 'prefix', path: CAPABILITIES_PREFIX, handler, auth: 'anonymous' })
+    const offAlias = ctx.webServer.register({ kind: 'prefix', path: CAPABILITIES_ALIAS_PREFIX, handler, auth: 'anonymous' })
     return () => {
       if (typeof offCanonical === 'function') offCanonical()
       if (typeof offAlias === 'function') offAlias()

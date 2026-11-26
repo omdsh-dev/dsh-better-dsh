@@ -23,8 +23,7 @@ declare module '@deepseek-ai/cordis' {
   }
   interface Context {
     settings: { configure(options: { auto: boolean }, fiber: Fiber): () => void }
-    webServer: { register(route: { kind: 'exact'; path: string; handler(req: IncomingMessage, res: ServerResponse): void }): () => void }
-    connection: { requestRejection?(req: IncomingMessage): number | undefined }
+    webServer: { register(route: { kind: 'exact'; path: string; auth?: 'anonymous' | 'required' | 'deny'; handler(req: IncomingMessage, res: ServerResponse): void }): () => void }
     betterGoalConfig?: GoalConfigProvider
   }
 }

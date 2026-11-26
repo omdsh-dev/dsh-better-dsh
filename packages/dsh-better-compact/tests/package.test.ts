@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import yaml from 'js-yaml'
 
@@ -53,7 +54,7 @@ const TYPE_ENTRIES = ['lib/types/index.d.ts', 'lib/types/engine.d.ts']
 
 test('package metadata matches the published contract', () => {
   assert.equal(pkg.name, 'dsh-better-compact')
-  assert.match(pkg.version, /^\d+\.\d+\.\d+$/, 'version must be plain semver')
+  assert.match(pkg.version, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/, 'version must be semver')
   assert.equal(pkg.license, 'Apache-2.0')
   // Pins the exact licence text that ships inside the tarball.
   const license = readFileSync(at('LICENSE'), 'utf8')
@@ -62,18 +63,18 @@ test('package metadata matches the published contract', () => {
   assert.equal(createHash('sha256').update(license).digest('hex'), 'cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30')
   assert.equal(pkg.type, 'module')
   assert.equal(pkg.repository.url, 'git+https://github.com/omdsh-dev/dsh-better-compact.git')
-  assert.equal(pkg.engines.node, '>=24.9.0')
-  assert.equal(pkg.engines.dsh, '>=0.2.2-rc.2 <0.3.0')
-  assert.equal(pkg.dependencies['@deepseek-ai/schemastery'], '~3.19.0')
+  assert.equal(pkg.engines.node, '^24.22.3 || >=26.13.1')
+  assert.equal(pkg.engines.dsh, '>=0.2.3-alpha.2 <0.3.0')
+  assert.equal(pkg.dependencies['@deepseek-ai/schemastery'], '~3.20.0-alpha.1')
   // The summary-image renderer needs this prebuilt native canvas; it stays a
   // runtime dependency (lazily imported), never a devDependency or a bundle.
   assert.equal(typeof pkg.dependencies['@napi-rs/canvas'], 'string', '@napi-rs/canvas must stay in dependencies')
   assert.equal(pkg.devDependencies['@napi-rs/canvas'], undefined)
-  assert.equal(pkg.peerDependencies['@deepseek-ai/cordis'], '~4.1.0')
-  assert.equal(pkg.peerDependencies['@deepseek-ai/dsh-host-webserver'], '>=0.2.2-rc.2 <0.3.0')
+  assert.equal(pkg.peerDependencies['@deepseek-ai/cordis'], '~4.2.0-alpha.1')
+  assert.equal(pkg.peerDependencies['@deepseek-ai/dsh-host-webserver'], '>=0.2.3-alpha.2 <0.3.0')
   assert.equal(pkg.peerDependencies['@deepseek-ai/dsh-web-server'], undefined)
   for (const [name, range] of Object.entries(pkg.peerDependencies)) {
-    if (name.startsWith('@deepseek-ai/dsh-')) assert.equal(range, '>=0.2.2-rc.2 <0.3.0', name)
+    if (name.startsWith('@deepseek-ai/dsh-')) assert.equal(range, '>=0.2.3-alpha.2 <0.3.0', name)
   }
   assert.deepEqual(pkg.dsh.bundle.patch, [
     './cordis.patch.yml',
@@ -238,7 +239,8 @@ test('the preset is a verbatim installed-standard copy with one row replaced', (
     t.skip('set DSH_PACKAGE_ROOT to the installed @deepseek-ai/dsh package directory to compare against the standard preset')
     return
   }
-  const standardPath = join(dshRoot, '..', 'dsh-web-app', 'presets', 'standard.patch.yml')
+  const hostRequire = createRequire(join(dshRoot, 'package.json'))
+  const standardPath = join(dirname(dirname(hostRequire.resolve('@deepseek-ai/dsh-web-app'))), 'presets', 'standard.patch.yml')
   if (!existsSync(standardPath)) {
     t.skip(`installed standard preset not found at ${standardPath}`)
     return

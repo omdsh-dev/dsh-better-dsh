@@ -18,7 +18,7 @@
 
 ## 工具链
 
-- Node `>=24.9.0`，pnpm `11.7.0`，DSH `>=0.2.2-rc.2 <0.3.0`（验收基线 `0.2.2-rc.3`）。
+- Node `^24.22.3 || >=26.13.1`，pnpm `11.7.0`，DSH `>=0.2.3-alpha.2 <0.3.0`（验收基线 `0.2.3-alpha.2`）。
 - 根目录：
   - `pnpm install --frozen-lockfile`
   - `pnpm typecheck`：根包 + 所有迁移包的 TypeScript 严格检查
@@ -34,15 +34,15 @@
 
 ## 依赖与版本
 
-- 根 `dependencies` 当前固定已发布的精确版本（ask-user `0.3.6`、compact `0.5.0`、goal `0.4.5`、subagent `0.5.4`、ptc `0.2.2`）。
+- 根 `dependencies` 当前固定已发布的精确版本（ask-user `0.3.7-alpha.1`、compact `0.5.1-alpha.1`、goal `0.4.6-alpha.2`、subagent `0.5.5-alpha.1`、ptc `0.2.3-alpha.1`）。
 - **不要**把根依赖切成 `workspace:*` 或未发布版本：根依赖必须指向可安装的精确 npm 版本。发布新子包后，再统一 bump 版本并更新根依赖；本地 `packages/*` 与 registry 版本号保持一致。
-- 本地 `packages/*` 是源码真相：ask-user `0.3.6`、compact `0.5.0`、goal `0.4.5`、ptc `0.2.2`、subagent `0.5.4` 已完成 DSH rc.3 适配并发布（compact 的发布由独立仓库负责，本地副本只跟随源码）；发布验证需使用官方 registry，默认 npmmirror 可能滞后。
+- 本地 `packages/*` 是源码真相：ask-user `0.3.7-alpha.1`、compact `0.5.1-alpha.1`、goal `0.4.6-alpha.2`、ptc `0.2.3-alpha.1`、subagent `0.5.5-alpha.1` 已完成 DSH 0.2.3-alpha.2 适配并发布（compact 的发布由独立仓库负责，本地副本只跟随源码）；发布验证需使用官方 registry，默认 npmmirror 可能滞后。
 - 本仓根包与全部子包（含 compact）都已迁移到 TypeScript（源码 `src/*.ts`，产物 `lib/`）。根/子包的 `main`、`types`、`exports` 都指向 `lib/`，`lib/` 不提交；compact 的独立仓库提交预构建 `lib/`（git 安装即用），本仓副本按本仓约定构建产物不提交。
 - 发布前先确认子包版本在 `https://registry.npmjs.org/` 可取得；不要提交 `file:`/`link:`/`git:` 依赖。
 
 ## 发布
 
-- 根 bundle：更新 `package.json` 版本与子包依赖 → `pnpm test:all` → 建 `v<version>` tag 与 GitHub Release。根 `.github/workflows/release.yml` 用 pnpm 安装、测试，并通过 npm trusted publishing（OIDC）发布；仓库里不存 npm token。
+- 根 bundle：更新 `package.json` 版本与子包依赖 → `pnpm test:all` → 建 `v<version>` tag 与 GitHub Release。根 `.github/workflows/release.yml` 用 pnpm 安装、测试，并通过 npm trusted publishing（OIDC）发布；仓库里不存 npm token。预发布版本必须用 `npm publish --tag alpha`，否则 npm 拒绝发布。
 - 子包：目前仍走各子包的独立发布流程；monorepo 统一的子包发布 workflow 尚未完成。ask-user 的发版仓是 `omdsh-dev/dsh-better-ask-user`，本地 `packages/dsh-better-ask-user` 要与其已发布代码保持同步。
 - 不要在基于旧 bundle 版本的分支上直接发 bundle；先把分支 rebase 到最新 `main`/release 基线。
 

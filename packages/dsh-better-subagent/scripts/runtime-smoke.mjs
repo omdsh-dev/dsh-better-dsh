@@ -33,6 +33,7 @@ import { existsSync, readdirSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, writeFile, cp, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
+import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createHash, randomUUID } from 'node:crypto'
 
@@ -44,22 +45,26 @@ const home = await mkdtemp(join(tmpdir(), 'dsh-better-subagent-smoke-'))
 process.env.DSH_HOME = home
 process.env.DSH_TELEMETRY_DISABLED = '1'
 
-const A = await import(pathToFileURL(join(dirname(dsh), 'dsh-app-boot/lib/index.js')))
-const { PROFILE_TEMPLATES } = await import(pathToFileURL(join(dirname(dsh), 'dsh-official-bundles/lib/index.js')))
+const hostRequire = createRequire(join(dsh, 'package.json'))
+// npm installs the host's runtime peers under dsh/node_modules; pnpm may hoist
+// them beside dsh. Resolve the real directory instead of assuming one layout.
+const hostPeerRoot = dirname(dirname(hostRequire.resolve('@deepseek-ai/dsh-web-app/package.json')))
+const A = await import(pathToFileURL(join(hostPeerRoot, 'dsh-app-boot/lib/index.js')))
+const { PROFILE_TEMPLATES } = await import(pathToFileURL(join(hostPeerRoot, 'dsh-official-bundles/lib/index.js')))
 const dir = A.resolveProfileDir('it', home)
 A.initProfile(dir, [...PROFILE_TEMPLATES.headless.bundles, packageName])
 const packageFile = join(dir, 'package.json')
 const manifest = JSON.parse(await readFile(packageFile, 'utf8'))
 const modules = join(dir, 'node_modules')
-await mkdir(join(modules, '@menghuan1918'), { recursive: true })
+await mkdir(dirname(join(modules, ...packageName.split('/'))), { recursive: true })
 // Exercise the published layout: copy only shipped files, with peers resolved
 // from the same runtime the host uses. No copied node_modules or .git.
-const plugin = join(modules, '@menghuan1918', 'dsh-better-subagent')
+const plugin = join(modules, ...packageName.split('/'))
 await mkdir(plugin, { recursive: true })
 for (const name of ['package.json', 'lib', 'docs', 'cordis.patch.yml', 'LICENSE', 'README.md', 'third-party']) {
   await cp(join(root, name), join(plugin, name), { recursive: true })
 }
-await symlink(dirname(dsh), join(modules, '@deepseek-ai'))
+await symlink(hostPeerRoot, join(modules, '@deepseek-ai'))
 // Exercise the complete published bundle, including its shared PTC dependency.
 const ptcRoot = dirname(fileURLToPath(import.meta.resolve('dsh-better-ptc/package.json')))
 await symlink(ptcRoot, join(modules, 'dsh-better-ptc'))
@@ -74,6 +79,8 @@ await writeFile(join(dir, 'cordis.patch.yml'), JSON.stringify([
   { id: 'credentials', disabled: false, config: { watch: false } },
   // A real HTTP listener on a random loopback port for the read-only API test.
   { insert: [{ id: 'webserver', name: '@deepseek-ai/dsh-host-webserver', config: { host: '127.0.0.1', port: 0 } }] },
+  // The headless template leaves interrupt_agent out; the guard test drives it.
+  { insert: [{ id: 'tool-subagent-control', name: '@deepseek-ai/dsh-tool-subagent-control', config: { interrupt: true } }] },
   // Row config: global subagent scope with one (unused) CLI backend so the CLI
   // catalog prompt renders. childExitGuard is enabled later through the real
   // settings service to prove volatile hot apply; nothing spawns codex here.
@@ -94,14 +101,14 @@ await writeFile(join(dir, 'cordis.patch.yml'), JSON.stringify([
 ]))
 
 const { runProfile } = await import(pathToFileURL(join(dsh, 'lib/profile-boot.js')))
-const { createUserMessage } = await import(pathToFileURL(join(dirname(dsh), 'dsh-llm/lib/index.js')))
+const { createUserMessage } = await import(pathToFileURL(join(hostPeerRoot, 'dsh-llm/lib/index.js')))
 let ctx
 try {
   const resolvedProfile = A.loadProfile('dsh', 'it', join(dir, 'package.json'), home)
   assert.deepEqual(resolvedProfile.skippedBundles, [])
   assert.equal(resolvedProfile.layers.find((layer) => layer.packageName === packageName)?.packageDir, plugin, 'load the isolated copied plugin, never an ancestor checkout')
-  assert.equal(JSON.parse(await readFile(join(plugin, 'package.json'), 'utf8')).version, '0.5.4')
-  assert.equal(JSON.parse(await readFile(join(dsh, 'package.json'), 'utf8')).version, '0.2.2-rc.3')
+  assert.equal(JSON.parse(await readFile(join(plugin, 'package.json'), 'utf8')).version, '0.5.5-alpha.1')
+  assert.equal(JSON.parse(await readFile(join(dsh, 'package.json'), 'utf8')).version, '0.2.3-alpha.2')
   const booted = await runProfile({ profile: 'it', resolvedProfile, patchFiles: [], args: [], environment: A.loadLayeredEnv('dsh') })
   ctx = booted.ctx
 
@@ -165,7 +172,7 @@ try {
         guardSeen = true
         if (!guardInterrupted) {
           guardInterrupted = true
-          for (const chunk of toolCall('interrupt_agent', { agent_id: guardTarget })) yield chunk
+          for (const chunk of toolCall('interrupt_agent', { agent: guardName })) yield chunk
           return
         }
         if (!guardWaited) {
@@ -213,7 +220,7 @@ try {
   const disposeLease = (lease) => { try { lease?.[Symbol.dispose]?.() } catch { /* released */ } }
 
   // A conditional native registration must be admitted before CLI around-dispatch.
-  const childrenBeforeAdmission = await ctx.subagents.listChildren(agent.id)
+  const childrenBeforeAdmission = (await ctx.subagents.listDescendants(agent.id)).filter((entry) => entry.depth === 1)
   const stopConditional = agent.ctx.tools.register({ ...tool('subagent') }, { when: () => false })
   const admissionSignal = new AbortController().signal
   const deniedTools = await ctx.tools.resolve({ agent, modelSelection: agent.model.current(), signal: admissionSignal })
@@ -224,7 +231,7 @@ try {
     })
     assert.equal(denied.results[0].result.isError, true)
     assert.equal(denied.results[0].result.error.info.code, 'UNKNOWN_TOOL')
-    assert.deepEqual(await ctx.subagents.listChildren(agent.id), childrenBeforeAdmission)
+    assert.deepEqual((await ctx.subagents.listDescendants(agent.id)).filter((entry) => entry.depth === 1), childrenBeforeAdmission)
   } finally {
     deniedTools.dispose()
     stopConditional()
@@ -280,7 +287,7 @@ try {
   const capabilities = await http('/better-subagent/api/capabilities')
   assert.equal(capabilities.status, 200)
   assert.equal(capabilities.body.ok, true)
-  assert.equal(typeof capabilities.body.value.executables.codex.path, 'string')
+  assert.ok(capabilities.body.value.executables.codex.path === null || typeof capabilities.body.value.executables.codex.path === 'string', 'codex path is a string when installed, otherwise null')
   assert.equal(Array.isArray(capabilities.body.value.codexProfiles), true)
   const routes = await http('/apollo/api/routes')
   assert.equal(routes.status, 200)
@@ -308,8 +315,15 @@ try {
   assert.equal(await forgedGet('proxy.example.com'), 200, 'hot trustedHosts update moves the trust fence without remount')
 
   // ── native create → wait; the settlement notice keeps the child content ───
+  // 0.2.3 exposes the durable child id through the catalog, not the model-facing tool value.
+  const directChildId = async (name) => {
+    const entries = await ctx.subagents.listDescendants(agent.id)
+    return entries.filter((entry) => entry.kind === 'child' && entry.depth === 1 && (name === undefined || entry.name === name)).at(-1)?.id
+  }
   const activation = await call('subagent', { description: 'smoke child', prompt: 'First smoke turn.' })
-  const childId = activation.subagentId
+  const childName = activation.name
+  const childId = await directChildId(childName)
+  assert.ok(childId, 'the created child is visible in the parent catalog')
   childIds.add(childId)
   const firstWait = await call('wait_subagent', { subagent_id: [childId] })
   assert.match(firstWait, new RegExp(`subagent ${childId} done \\(completed\\)`))
@@ -337,14 +351,16 @@ try {
   await agent.whenIdle()
 
   // ── continue the same durable child, then wait again ─────────────────────
-  await call('send_message', { agent_id: childId, message: 'Second smoke turn.' })
+  await call('send_message', { agent: childName, message: 'Second smoke turn.' })
   const secondWait = await call('wait_subagent', { subagent_id: [childId] })
   assert.match(secondWait, new RegExp(`subagent ${childId} done \\(completed\\)`))
   await agent.whenIdle()
 
   // ── childExitGuard intercepts a real turn stop; the model handles it ─────
   const slow = await call('subagent', { description: 'guarded slow child', prompt: 'Slow guarded turn.' })
-  guardTarget = slow.subagentId
+  const guardName = slow.name
+  guardTarget = await directChildId(guardName)
+  assert.ok(guardTarget, 'the guarded child is visible in the parent catalog')
   slowSessions.add(guardTarget)
   childIds.add(guardTarget)
   const runningDeadline = Date.now() + 10_000

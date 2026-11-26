@@ -31,7 +31,6 @@ async function harness(t, config = {}, loader) {
     turnBoundaryOf: (session) => boundaryReader(session),
     withoutInitiator: (fn) => Promise.resolve().then(fn),
   })
-  ctx.provide('connection', { requestRejection: () => undefined })
   ctx.provide('webServer', { register(route) { routes.set(route.path, route); return () => routes.delete(route.path) } })
   if (loader) ctx.provide('loader', loader)
   await ctx.plugin(SessionStore)
@@ -131,28 +130,36 @@ test('owning row volatile commits refresh goal schema without touching question 
   assert.ok('max_goal_rounds' in h.ctx.tools.get('goal', agent).parameters.properties)
 })
 
-test('configuration endpoint uses host fence, GET only, current snapshots and no cache', async (t) => {
+test('configuration endpoint keeps its loopback/Origin fence, GET only, current snapshots and no cache', async (t) => {
   const h = await harness(t)
-  const handler = h.routes.get(CONFIG_PATH).handler
+  const route = h.routes.get(CONFIG_PATH)
+  assert.equal(route.auth, 'anonymous')
+  const handler = route.handler
+  const trusted = (headers = {}) => ({ method: 'GET', headers: { host: '127.0.0.1:3080', ...headers } })
   const res = response()
-  handler({ method: 'GET' }, res)
+  handler(trusted(), res)
   assert.equal(res.statusCode, 200)
   assert.equal(res.headers['cache-control'], 'no-store')
   assert.equal(JSON.parse(res.body).capabilities.questionTimeout, false)
+  const sameOrigin = response()
+  handler(trusted({ origin: 'http://127.0.0.1:3080' }), sameOrigin)
+  assert.equal(sameOrigin.statusCode, 200)
   const post = response()
-  handler({ method: 'POST' }, post)
+  handler({ ...trusted(), method: 'POST' }, post)
   assert.equal(post.statusCode, 405)
   assert.equal(post.headers.allow, 'GET')
-  let reads = 0
-  for (const rejection of [401, 403]) {
+  for (const headers of [
+    {},
+    { host: 'example.com' },
+    { host: '127.0.0.1:3080', origin: 'http://evil.example' },
+    { host: '127.0.0.1:3080', 'sec-fetch-site': 'cross-site' },
+  ]) {
+    let reads = 0
     const denied = response()
-    handleConfig({ get: () => ({ requestRejection: () => rejection }) }, () => { reads++; return {} }, { method: 'GET' }, denied)
-    assert.equal(denied.statusCode, rejection)
+    handleConfig({}, () => { reads++; return {} }, { method: 'GET', headers }, denied)
+    assert.equal(denied.statusCode, 403)
+    assert.equal(reads, 0)
   }
-  const unavailable = response()
-  handleConfig({ get: () => undefined }, () => { reads++; return {} }, { method: 'GET' }, unavailable)
-  assert.equal(unavailable.statusCode, 503)
-  assert.equal(reads, 0)
 })
 
 test('ownership conflicts and unavailable native imports fail before mounting anything', async () => {
@@ -270,6 +277,7 @@ nativeTest('isolated real profile switches both backends and preserves the same 
     else process.env.DSH_TELEMETRY_DISABLED = previousTelemetry
   })
   const require = createRequire(pathToFileURL(hostRoot + '/package.json'))
+  const hostPeerRoot = dirname(dirname(require.resolve('@deepseek-ai/dsh-web-app/package.json')))
   const A = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')))
   const profile = A.resolveProfileDir('native-test', home)
   const { PROFILE_TEMPLATES } = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-official-bundles')))
@@ -279,7 +287,7 @@ nativeTest('isolated real profile switches both backends and preserves the same 
   await mkdir(plugin, { recursive: true })
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
   for (const name of ['package.json', 'lib', 'cordis.patch.yml']) await cp(join(root, name), join(plugin, name), { recursive: true })
-  await symlink(dirname(hostRoot), join(modules, '@deepseek-ai'))
+  await symlink(hostPeerRoot, join(modules, '@deepseek-ai'))
   const localRequire = createRequire(import.meta.url)
   await symlink(dirname(localRequire.resolve('zod/package.json')), join(modules, 'zod'))
   await symlink(dirname(localRequire.resolve('react/package.json')), join(modules, 'react'))
@@ -288,8 +296,13 @@ nativeTest('isolated real profile switches both backends and preserves the same 
   manifest.dependencies['dsh-better-goal'] = 'file:' + plugin
   await writeFile(manifestPath, JSON.stringify(manifest))
   const patchPath = join(profile, 'cordis.patch.yml')
+  const overlay = A.loadOverlayPatches('native-test', join(hostPeerRoot, 'dsh-web-app/presets/standard.patch.yml'))
+  // 0.2.3-alpha.2's standard preset adds tool-cordis, which needs cordisInspect; the headless harness has no such service.
+  for (const entry of overlay) for (const row of entry.insert ?? []) {
+    if (row.id === 'preset-standard') row.config.plugins = row.config.plugins.filter((plugin) => plugin.id !== 'tool-cordis')
+  }
   const patch = [
-    ...A.loadOverlayPatches('native-test', join(dirname(hostRoot), 'dsh-web-app/presets/standard.patch.yml')),
+    ...overlay,
     { id: 'headless-startup', disabled: true }, { id: 'headless-runner', disabled: true },
     { id: 'sandbox-policy', inject: [], config: { mode: 'workspace-write', workspaceRoot: home, additionalWritableRoots: [] } },
     { id: 'credentials', disabled: false, config: { watch: false } },
