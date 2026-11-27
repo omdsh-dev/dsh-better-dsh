@@ -50,19 +50,19 @@ declare const require: (id: string) => any
 		const HUB_ROWS = [
 			{ rowId: 'apollo-skills', icon: 'M4 5h16M4 12h16M4 19h16M8 3v4m8 3v4M10 17v4', titleKey: 'pluginBetterDsh' },
 			{ rowId: 'dsh-better-subagent', icon: 'M8 7V4h8v3M6 17H3v-6h6v6H6Zm12 0h-3v-6h6v6h-3ZM6 11V8h12v3M6 17v3m12-3v3', titleKey: 'pluginSubagent' },
-			{ rowId: 'dsh-better-compact', icon: 'M4 4h16v16H4ZM8 9l4 4 4-4M12 6v7M8 17h8', titleKey: 'pluginCompact' },
+			{ rowId: 'dsh-better-compact', icon: 'M4 4h16v16H4ZM8 9l4 4 4-4M12 6v7M8 17h8', titleKey: 'pluginCompact', wide: true },
 			{ rowId: 'dsh-better-goal', icon: 'M12 8a4 4 0 1 0 4 4M12 3a9 9 0 1 0 9 9M12 12l8-8m-4 0h4v4', titleKey: 'pluginGoal' },
 			{ rowId: 'dsh-better-ask-user', icon: 'M21 11a8 8 0 0 1-8 8H8l-5 3V11a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8ZM9 9a3 3 0 0 1 6 0c0 2-3 2-3 4m0 3h.01', titleKey: 'pluginAskUser' },
 		];
 
 		const zh = {
-			summary: '后台任务与远程访问设置',
+			summary: '回合结束等待与远程访问设置',
 			title: '通用',
-			purpose: '控制助手在后台任务运行时如何收尾，以及是否允许受信任的反向代理修改设置。',
+			purpose: '设置回合结束时如何等待后台命令，以及是否允许可信反向代理写入设置。',
 			connectionTitle: '远程访问',
 			guardTitle: '后台任务',
-			ownsHostLabel: '允许通过反向代理修改设置',
-			ownsHostHint: '仅在你控制访问权限的可信反向代理后启用。这会允许该页面写入宿主设置；不改变子代理 API 的可信地址列表。',
+			ownsHostLabel: '允许可信反向代理修改设置',
+			ownsHostHint: '只在你控制访问权限的反代后面开启；不改变子代理 API 的可信地址。',
 			ownsHostReload: '保存后需重载 profile 并刷新页面。',
 			savedReload: '已保存；重载 profile 并刷新页面后生效。',
 			loading: '正在读取配置…',
@@ -70,12 +70,12 @@ declare const require: (id: string) => any
 			noFormHint: '暂时无法读取设置。请重新连接后再试。',
 			unavailable: '当前地址无法修改设置。请使用本机地址打开，或在服务器上允许此地址访问设置。',
 			readonly: '当前连接仅支持查看设置。',
-			exitGuardLabel: '等待后台任务完成',
-			exitGuardDescription: '后台命令尚未结束时，让助手继续跟进。',
-			ownsHostDescription: '仅对你控制访问权限的反向代理开启；保存后需重载。',
-			exitGuardHint: '回合结束时仍有运行中的后台命令会注入提醒继续处理，最多持续下面设定的时长；超时后照常结束，命令继续运行。Esc 中断始终放行。goal 回合由 goal 插件自己等待，不在这里拦截。',
-			exitGuardWaitLabel: '最长拦截时长（秒）',
-			exitGuardWaitDescription: '超过该时长后放行回合结束，后台命令不被取消。0 表示无限期拦截。',
+			exitGuardLabel: '回合结束时等待后台命令',
+			exitGuardDescription: '回合结束时仍有后台命令在跑，就继续等待，最多到你设定的时长。',
+			ownsHostDescription: '页面经反向代理访问时也能写入宿主设置。',
+			exitGuardHint: '超过最长等待时长就放行回合，命令继续在后台运行、不会被取消；按 Esc 中断始终放行；goal 回合由目标插件自己等待。',
+			exitGuardWaitLabel: '最长等待时长（秒）',
+			exitGuardWaitDescription: '超过后放行回合，后台命令照常运行；0 表示一直等待。',
 			save: '保存',
 			saving: '保存中…',
 			reset: '放弃改动',
@@ -102,13 +102,13 @@ declare const require: (id: string) => any
 		};
 
 		const en = {
-			summary: 'Background work and remote access settings',
+			summary: 'Turn-end waiting and remote access',
 			title: 'General',
-			purpose: 'Control how the assistant finishes while background work runs, and whether a trusted reverse proxy may change settings.',
+			purpose: 'Set how the end of a turn waits for background commands, and whether a trusted reverse proxy may write settings.',
 			connectionTitle: 'Remote access',
 			guardTitle: 'Background work',
-			ownsHostLabel: 'Allow settings changes through a reverse proxy',
-			ownsHostHint: 'Enable only behind a trusted proxy whose access you control. This allows the page to write host settings; it does not change the subagent API’s trusted authorities.',
+			ownsHostLabel: 'Allow a trusted reverse proxy to change settings',
+			ownsHostHint: 'Enable only behind a proxy whose access you control; this does not change the subagent API’s trusted authorities.',
 			ownsHostReload: 'Save, then reload the profile and refresh the page.',
 			savedReload: 'Saved. Reload the profile and refresh the page to apply.',
 			loading: 'Loading configuration…',
@@ -116,12 +116,12 @@ declare const require: (id: string) => any
 			noFormHint: 'Settings could not be loaded. Reconnect and try again.',
 			unavailable: 'Settings cannot be changed from this address. Open the local address or allow this address on the server.',
 			readonly: 'Settings can only be viewed on this connection.',
-			exitGuardLabel: 'Wait for background work',
-			exitGuardDescription: 'Keep the assistant working while background commands are still running.',
-			ownsHostDescription: 'Enable for a reverse proxy whose access you control. Reload after saving.',
-			exitGuardHint: 'Blocks turn end while background commands still run, for at most the duration below; after that the turn ends and the commands keep running. Esc always passes through. Goal rounds are waited on by the goal plugin, not here.',
-			exitGuardWaitLabel: 'Longest block (seconds)',
-			exitGuardWaitDescription: 'After this the turn is released and background commands are not cancelled. 0 blocks forever.',
+			exitGuardLabel: 'Wait for background commands at turn end',
+			exitGuardDescription: 'If background commands are still running when the turn ends, keep waiting, up to the limit below.',
+			ownsHostDescription: 'Lets the page write host settings when it is served through a reverse proxy.',
+			exitGuardHint: 'After the limit the turn is released and the commands keep running; they are not cancelled. Esc always passes through. Goal rounds are waited on by the goal plugin.',
+			exitGuardWaitLabel: 'Longest wait (seconds)',
+			exitGuardWaitDescription: 'After this the turn is released and commands keep running; 0 waits forever.',
 			save: 'Save',
 			saving: 'Saving…',
 			reset: 'Discard',
@@ -159,11 +159,11 @@ declare const require: (id: string) => any
 /* UI-KIT v1 — keep in sync with docs/UI-KIT.md. Flat surfaces, 1px lines, one accent. */
 .apollo-cfg,.apollo-root,.apollo-hub,.apollo-modal,.apollo-modalCard,.apollo-button[data-apollo-hub=trigger]{--cfg-accent:var(--dsw-alias-state-business-primary,#4176e6);--cfg-accent-solid:var(--dsw-alias-button-primary-fill,#0f1115);--cfg-accent-text:color-mix(in srgb,var(--cfg-accent) 70%,var(--dsw-alias-label-primary));--cfg-accent-fg:var(--dsw-alias-label-primary-foreground,#fff);--cfg-accent-soft:color-mix(in srgb,var(--cfg-accent) 10%,transparent);--cfg-accent-ink:color-mix(in srgb,var(--cfg-accent) 70%,var(--dsw-alias-label-primary));--cfg-surface:var(--dsw-alias-bg-layer-1);--cfg-raised:var(--dsw-alias-bg-layer-2);--cfg-overlay:var(--dsw-alias-bg-layer-3);--cfg-sunken:color-mix(in srgb,var(--dsw-alias-label-primary) 4%,var(--cfg-surface));--cfg-ink:var(--dsw-alias-label-primary);--cfg-ink-2:var(--dsw-alias-label-secondary);--cfg-ink-3:color-mix(in srgb,var(--dsw-alias-label-tertiary) 80%,var(--dsw-alias-label-primary));--cfg-border:var(--dsw-alias-border-l2,color-mix(in srgb,currentColor 14%,transparent));--cfg-border-strong:var(--dsw-alias-border-l3,color-mix(in srgb,currentColor 22%,transparent));--cfg-line:var(--dsw-alias-border-l1,color-mix(in srgb,currentColor 8%,transparent));--cfg-hover:var(--dsw-alias-interactive-bg-hover,color-mix(in srgb,currentColor 6%,transparent));--cfg-danger:color-mix(in srgb,var(--dsw-alias-state-error-primary) 60%,var(--dsw-alias-label-primary));--cfg-success:color-mix(in srgb,var(--dsw-alias-state-success-primary) 60%,var(--dsw-alias-label-primary));--cfg-warn:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 60%,var(--dsw-alias-label-primary));--cfg-mono:ui-monospace,SFMono-Regular,Menlo,monospace;--cfg-control:32px;--cfg-radius:8px;--cfg-dur:140ms;font-size:13px;line-height:20px;color:var(--cfg-ink);font-variant-numeric:tabular-nums}
 [data-ds-dark-theme] :is(.apollo-cfg,.apollo-root,.apollo-hub,.apollo-modal,.apollo-modalCard,.apollo-button[data-apollo-hub=trigger]){--cfg-accent:var(--dsw-alias-state-business-primary,#a6c4ff);--cfg-accent-solid:var(--dsw-alias-button-primary-fill,#e4e4e9);--cfg-accent-text:color-mix(in srgb,var(--cfg-accent) 70%,var(--dsw-alias-label-primary));--cfg-accent-fg:var(--dsw-alias-label-primary-foreground,#000);--cfg-accent-soft:color-mix(in srgb,var(--cfg-accent) 14%,transparent);--cfg-accent-ink:var(--cfg-accent-text)}
-.apollo-cfg{display:flex;flex-direction:column;gap:20px;max-width:960px;width:100%;margin:0 auto;min-width:0}
-.apollo-pageTitleBlock{display:flex;flex-direction:column;gap:4px;min-width:0}
-.apollo-pageSub{margin:0;color:var(--cfg-ink-3);font-size:13px;line-height:20px}
-.apollo-pageHead{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
-.apollo-pageTitle{margin:0;font-size:20px;line-height:28px;font-weight:500;letter-spacing:-.01em;color:var(--cfg-ink)}
+.apollo-cfg{display:flex;flex-direction:column;gap:0;max-width:none;width:100%;margin:0;min-width:0}
+.apollo-pageTitleBlock{display:flex;flex-direction:column;gap:2px;min-width:0}
+.apollo-pageSub{margin:0;color:var(--cfg-ink-3);font-size:12px;line-height:18px}
+.apollo-pageHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0;padding:2px 0 14px}
+.apollo-pageTitle{margin:0;font-size:15px;line-height:22px;font-weight:500;letter-spacing:0;color:var(--cfg-ink)}
 .apollo-badge{display:inline-flex;align-items:center;height:20px;padding:0 8px;border:1px solid var(--cfg-border);border-radius:999px;background:var(--cfg-raised);font-size:11px;line-height:18px;color:var(--cfg-ink-3);white-space:nowrap}
 .apollo-note{margin:0;padding:8px 10px;border:1px solid var(--cfg-border);border-radius:8px;font-size:12px;line-height:18px;background:var(--cfg-sunken);color:var(--cfg-ink-2)}
 .apollo-note[data-tone=error]{border-color:color-mix(in srgb,var(--cfg-danger) 35%,var(--cfg-border));background:color-mix(in srgb,var(--cfg-danger) 8%,var(--cfg-surface));color:var(--cfg-danger)}
@@ -172,16 +172,19 @@ declare const require: (id: string) => any
 @keyframes apollo-pulse{0%{opacity:1}40%{opacity:.6}80%,to{opacity:1}}
 .apollo-hint{margin:0;font-size:12px;line-height:18px;color:var(--cfg-ink-3)}
 .apollo-mono{font-family:var(--cfg-mono);font-variant-numeric:tabular-nums}
-.apollo-card{display:flex;flex-direction:column;gap:4px;min-width:0;padding:0;border:0;border-radius:0;background:transparent}
-.apollo-sectionTitle{margin:0;padding-bottom:0;border-bottom:0;font-size:12px;line-height:18px;font-weight:500;color:var(--cfg-ink-3)}
-.apollo-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:10px 8px;margin:0 -8px;min-width:0;border-bottom:0;border-radius:8px}
-.apollo-numberInput{width:96px;height:var(--cfg-control);padding:0 10px;border:1px solid var(--cfg-border-strong);border-radius:var(--cfg-radius);background:var(--cfg-surface);color:var(--cfg-ink);font:inherit;font-variant-numeric:tabular-nums;text-align:end}
+.apollo-card{display:block;min-width:0;padding:0;border:0;border-radius:0;background:transparent}
+.apollo-sectionTitle{margin:18px 0 0;padding-bottom:0;border-bottom:0;font-size:14px;line-height:22px;font-weight:500;color:var(--cfg-ink)}
+.apollo-row{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;padding:14px 0;min-width:0;border-bottom:1px solid var(--cfg-line)}
+.apollo-row>.apollo-switch,.apollo-row>.apollo-numberInput,.apollo-row>.apollo-button{margin-top:0}
+.apollo-card+.apollo-card{border-top:0;padding-top:0}
+.apollo-numberInput{box-sizing:border-box;width:96px;height:var(--cfg-control);padding:0 10px;border:1px solid transparent;border-radius:var(--cfg-radius);background:var(--cfg-sunken);color:var(--cfg-ink);font:inherit;font-size:13px;font-variant-numeric:tabular-nums;text-align:end}
+.apollo-numberInput:hover:not(:disabled){border-color:var(--cfg-border)}
+.apollo-numberInput:focus{outline:none;border-color:var(--cfg-accent);box-shadow:0 0 0 2px var(--cfg-accent-soft)}
 .apollo-numberInput:disabled{opacity:.5;cursor:not-allowed}
-.apollo-row:hover{background:var(--cfg-hover)}
-.apollo-row:last-child{padding-bottom:10px}
+.apollo-card:last-of-type .apollo-row:last-child{padding-bottom:10px;border-bottom:0}
 .apollo-rowText{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
-.apollo-rowTitle{font-size:13px;line-height:20px;font-weight:500;color:var(--cfg-ink);cursor:default}
-.apollo-rowDesc{max-width:560px;font-size:12px;line-height:18px;color:var(--cfg-ink-3)}
+.apollo-rowTitle{font-size:14px;line-height:22px;font-weight:400;color:var(--cfg-ink);cursor:default}
+.apollo-rowDesc{max-width:440px;font-size:12px;line-height:18px;color:var(--cfg-ink-2)}
 .apollo-rowLabel{display:flex;align-items:center;gap:6px;min-width:0}
 .apollo-help{position:relative;flex:none;font-size:12px}
 .apollo-help>button{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:0;border-radius:999px;background:transparent;color:var(--cfg-ink-3);cursor:pointer;appearance:none}
@@ -209,45 +212,50 @@ declare const require: (id: string) => any
 .apollo-input:focus{outline:none;border-color:var(--cfg-accent);box-shadow:0 0 0 2px var(--cfg-accent-soft)}
 .apollo-input:disabled{opacity:.4;cursor:not-allowed}
 .apollo-input[aria-invalid=true]{border-color:var(--cfg-danger)}
-.apollo-footer{position:sticky;bottom:0;z-index:10;display:flex;align-items:center;gap:8px;padding:12px 0;border-top:1px solid var(--cfg-border);background:var(--cfg-surface)}
+.apollo-footer{position:sticky;bottom:0;z-index:50;display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 0 18px;border-top:1px solid var(--cfg-line);background:var(--cfg-surface)}
 .apollo-status{flex:1;min-width:0;font-size:12px;line-height:18px;color:var(--cfg-ink-3)}
 .apollo-status[data-tone=ok]{color:var(--cfg-success)}
 .apollo-status[data-tone=error]{color:var(--cfg-danger)}
 .apollo-status[data-tone=warn]{color:var(--cfg-warn)}
 .apollo-hubGlyph{flex:none;color:var(--cfg-ink-3)}
-.apollo-closeConfirm{box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:16px;min-height:280px;width:100%;padding:32px}
+.apollo-modal.apollo-modal.apollo-modal--confirm{width:min(440px,calc(100vw - 32px));max-width:calc(100vw - 32px);height:auto}
+.apollo-closeConfirm{box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-start;gap:12px;min-height:0;width:100%;padding:16px 20px 20px}
 .apollo-closeConfirm p{margin:0;color:var(--cfg-ink-2);font-size:13px;line-height:20px}
 .apollo-closeActions{display:flex;justify-content:flex-end;gap:8px}
-.apollo-modal.apollo-modal{width:min(1240px,calc(100vw - 32px));max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);padding-bottom:0;border:1px solid var(--cfg-border);border-radius:10px}
-.apollo-hubModalContent>:first-child{margin:0;padding:14px 20px;border-bottom:1px solid var(--cfg-border)}
-.apollo-hubModalContent>:first-child h2{font-size:15px;line-height:22px;font-weight:500}
-.apollo-hubModalContent>:last-child{margin:0;padding:0}
-.apollo-hub{display:flex;gap:0;height:min(760px,calc(100dvh - 96px));min-height:320px;width:100%;overflow:hidden}
-.apollo-hubNav{box-sizing:border-box;flex:none;width:188px;display:flex;flex-direction:column;gap:2px;padding:12px 8px;border-right:1px solid var(--cfg-border);background:color-mix(in srgb,var(--cfg-ink) 2%,var(--cfg-surface));overflow-y:auto;scrollbar-width:thin}
-.apollo-hubNavItem{display:flex;align-items:center;gap:10px;flex-shrink:0;min-height:32px;padding:0 10px;border:1px solid transparent;border-radius:8px;background:transparent;font:inherit;font-size:13px;line-height:20px;text-align:left;cursor:pointer;color:var(--cfg-ink-2);transition:background var(--cfg-dur) ease,color var(--cfg-dur) ease,border-color var(--cfg-dur) ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.apollo-hubNavItem:hover{background:var(--cfg-hover);color:var(--cfg-ink)}
-.apollo-hubNavItem[data-active]{background:var(--cfg-accent-soft);border-color:color-mix(in srgb,var(--cfg-accent) 25%,var(--cfg-border));color:var(--cfg-accent-ink);font-weight:500}
-.apollo-hubNavItem svg{flex:none;opacity:.7}
-.apollo-hubNavItem[data-active] svg{opacity:1;color:var(--cfg-accent-ink)}
+.apollo-modal.apollo-modal{width:min(824px,calc(100vw - 32px));max-width:calc(100vw - 32px);height:min(800px,calc(100dvh - 32px));max-height:calc(100dvh - 32px);padding:0;border:0;border-radius:28px;overflow:hidden}
+.apollo-modal.apollo-modal:not(.apollo-modal--confirm):has(.apollo-hubPane--wide:not([hidden])){width:min(1240px,calc(100vw - 32px))}
+.apollo-hubModalContent{display:flex;flex-direction:column;height:100%;min-height:0}
+.apollo-hubModalContent>:first-child{margin:0;padding:18px 16px 8px;border-bottom:0}
+.apollo-hubModalContent>:first-child h2{font-size:14px;line-height:22px;font-weight:500}
+.apollo-hubModalContent>:last-child{display:flex;flex-direction:column;flex:1;min-height:0;margin:0;padding:0}
+.apollo-hub{display:flex;flex:1;min-height:0;gap:0;height:auto;width:100%;overflow:hidden}
+.apollo-hubNav{box-sizing:border-box;flex:none;width:200px;display:flex;flex-direction:column;gap:2px;padding:4px 0 12px 12px;border:0;background:transparent;overflow-y:auto;scrollbar-width:thin}
+.apollo-hubNavItem{display:flex;align-items:center;gap:10px;flex-shrink:0;min-height:40px;padding:0 12px;border:0;border-radius:12px;background:transparent;font:inherit;font-size:14px;line-height:20px;text-align:left;cursor:pointer;color:var(--cfg-ink);transition:background var(--cfg-dur) ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.apollo-hubNavItem:hover{background:var(--cfg-hover)}
+.apollo-hubNavItem[data-active]{background:color-mix(in srgb,var(--cfg-ink) 10%,var(--cfg-surface));color:var(--cfg-ink);font-weight:400}
+.apollo-hubNavItem svg{flex:none;opacity:.72}
+.apollo-hubNavItem[data-active] svg{opacity:1;color:var(--cfg-ink)}
 .apollo-hubNavItem:focus-visible{outline:2px solid var(--cfg-accent);outline-offset:1px}
-.apollo-hubContent{flex:1;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:24px 28px 32px;scrollbar-width:thin;scrollbar-gutter:stable}
+.apollo-hubContent{flex:1;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 24px 0 36px;scrollbar-width:thin}
 .apollo-hubContent .apollo-footer{position:sticky;bottom:-1px;background:var(--cfg-surface);padding-bottom:12px;margin-top:auto}.apollo-hubPane{display:flex;flex-direction:column;min-height:100%}.apollo-hubPane>:first-child{flex:1 0 auto;min-height:0;display:flex;flex-direction:column}.apollo-root{flex:1;min-height:0;display:flex;flex-direction:column}.apollo-cfg{flex:1;min-height:0}.apollo-footer{margin-top:auto}
 .apollo-hubModalContent{padding:0!important;overflow:hidden}
 .apollo-hubPane{min-width:0;width:100%;overflow-wrap:anywhere}
-.apollo-modalBodyWrap{min-width:0;flex:1}
+.apollo-modalBodyWrap{display:flex;flex-direction:column;min-width:0;flex:1;min-height:0;overflow:hidden}
 .apollo-modalBodyWrap[hidden],.apollo-hubPane[hidden],.apollo-footer[hidden],.apollo-button[hidden]{display:none}
 .apollo-cfg button:active:not(:disabled){filter:brightness(.96)}
 .apollo-mask{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:rgb(0 0 0/.4)}
-.apollo-modalCard{display:flex;flex-direction:column;width:min(1240px,100%);max-height:calc(100vh - 64px);box-sizing:border-box;border:1px solid var(--cfg-border);border-radius:12px;background:var(--cfg-surface);box-shadow:0 12px 48px rgb(0 0 0/.22)}
+.apollo-modalCard{display:flex;flex-direction:column;width:min(824px,100%);max-height:calc(100vh - 64px);box-sizing:border-box;border:0;border-radius:28px;background:var(--cfg-surface);box-shadow:0 0 0 .5px rgb(0 0 0/.16),0 3px 8px rgb(0 0 0/.04),0 0 20px rgb(0 0 0/.05)}
+.apollo-modalCard:not(:has(.apollo-closeConfirm)):has(.apollo-hubPane--wide:not([hidden])){width:min(1240px,100%)}
 .apollo-modalHead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--cfg-border)}
 .apollo-modalTitle{margin:0;font-size:15px;font-weight:500;line-height:22px}
 .apollo-modalBody{flex:1;min-height:0;overflow:hidden;display:flex}
 .apollo-iconBtn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--cfg-ink-3);font-size:16px;line-height:1;cursor:pointer}
 .apollo-iconBtn:hover{background:var(--cfg-hover);color:var(--cfg-ink)}
 .apollo-iconBtn:focus-visible{outline:2px solid var(--cfg-accent);outline-offset:1px}
-@media (max-width:800px){.apollo-help>p{position:static;width:auto;max-width:none;margin-top:6px}.apollo-hub{flex-direction:column;height:min(80dvh,calc(100dvh - 24px))}.apollo-hubNav{width:auto;flex-direction:row;gap:4px;padding:8px;border-right:0;border-bottom:1px solid var(--cfg-border);overflow-x:auto}.apollo-hubNavItem{min-height:44px;flex:none}.apollo-hubContent{padding:20px 16px 24px}.apollo-cfg{gap:24px}.apollo-pageTitle{font-size:18px}.apollo-hubContent .apollo-footer{bottom:0}.apollo-mask{padding:12px}.apollo-modalCard{max-height:calc(100dvh - 24px)}}
-@media (max-width:640px){.apollo-row{gap:12px;margin:0;padding:10px 0}.apollo-rowText{min-width:0;position:relative}.apollo-help{position:static}.apollo-row .apollo-switch{align-self:center}.apollo-footer{flex-wrap:wrap}.apollo-status{flex-basis:100%}.apollo-mask{padding:0}.apollo-modal.apollo-modal,.apollo-modalCard{flex-shrink:0;width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border:0;border-radius:0}.apollo-hubModalContent>:first-child button{width:44px;height:44px}.apollo-hub{height:calc(100dvh - 73px);min-height:0}.apollo-hubNav{scrollbar-width:none}.apollo-hubNav::-webkit-scrollbar{display:none}.apollo-help>button{width:44px;height:44px}.apollo-help>p{position:absolute;top:100%;left:0;right:auto;width:100%;max-width:none;box-sizing:border-box}}
+@media (max-width:800px){.apollo-help>p{position:static;width:auto;max-width:none;margin-top:6px}.apollo-hub{flex-direction:column;height:auto;min-height:0}.apollo-hubNav{width:auto;flex-direction:row;gap:4px;padding:8px 16px 4px;border:0;overflow-x:auto}.apollo-hubNavItem{min-height:40px;flex:none}.apollo-hubContent{padding:8px 16px 0}.apollo-hubContent .apollo-footer{bottom:0}.apollo-mask{padding:12px}.apollo-modalCard{max-height:calc(100dvh - 24px)}}
+@media (max-width:640px){.apollo-footer{justify-content:flex-end}.apollo-status{text-align:left}.apollo-row{gap:12px;margin:0;padding:12px 0}.apollo-rowText{min-width:0;position:relative}.apollo-help{position:static}.apollo-row .apollo-switch{align-self:center}.apollo-footer{flex-wrap:wrap}.apollo-status{flex-basis:100%}.apollo-mask{padding:0}.apollo-modal.apollo-modal,.apollo-modalCard,.apollo-modal.apollo-modal:not(.apollo-modal--confirm):has(.apollo-hubPane--wide:not([hidden])){flex-shrink:0;width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border:0;border-radius:0}.apollo-hubModalContent>:first-child button{width:44px;height:44px}.apollo-hub{flex:1;height:auto;min-height:0}.apollo-hubNav{scrollbar-width:none}.apollo-hubNav::-webkit-scrollbar{display:none}.apollo-help>button{width:44px;height:44px}.apollo-help>p{position:absolute;top:100%;left:0;right:auto;width:100%;max-width:none;box-sizing:border-box}}
 @media (pointer:coarse),(max-width:640px){.apollo-iconBtn{width:44px;height:44px}.apollo-button{height:44px}}
+@media (max-width:640px){.apollo-modal.apollo-modal.apollo-modal--confirm{height:auto;max-height:calc(100dvh - 32px);align-self:center}}
 @media (prefers-reduced-motion:reduce){.apollo-pulse{animation:none}.apollo-switch,.apollo-switchThumb,.apollo-button,.apollo-hubNavItem,.apollo-help>button{transition:none}}
 		`.trim();
 
@@ -586,6 +594,12 @@ declare const require: (id: string) => any
 				return undefined;
 			}, []);
 
+			// 窄屏横排导航：选中项在窗口变窄或切换后仍要留在可视区。
+			useEffect(() => {
+				if (!narrow) return;
+				tabRefs.current[current?.rowId]?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+			}, [current?.rowId, narrow]);
+
 			if (items.length === 0) {
 				return h('p', { className: 'apollo-note', role: 'status' }, t('hubEmpty'));
 			}
@@ -641,7 +655,7 @@ declare const require: (id: string) => any
 				h('div', { className: 'apollo-hubContent', ref: contentRef },
 					items.map((item: any) => h('div', {
 						key: item.rowId,
-						className: 'apollo-hubPane',
+						className: item.wide === true ? 'apollo-hubPane apollo-hubPane--wide' : 'apollo-hubPane',
 						role: 'tabpanel',
 						id: prefix + '-panel-' + item.rowId,
 						'aria-labelledby': prefix + '-tab-' + item.rowId,
@@ -777,7 +791,7 @@ declare const require: (id: string) => any
 				onClose: requestClose,
 				title,
 				closeLabel: t('close'),
-				className: 'apollo-modal',
+				className: confirm ? 'apollo-modal apollo-modal--confirm' : 'apollo-modal',
 				contentClassName: 'apollo-hubModalContent',
 			}, body);
 		}

@@ -354,7 +354,7 @@ test('同一 act 内连续编辑 → 单次 mutate（真实 hooks 状态队列�
   ])
   await page.update()
   assert.match(pageText(renderer), /saved/)
-  assert.equal(saveButton(renderer), undefined)
+  assert.equal(saveButton(renderer).props.hidden, true)
 })
 
 test('委派提示词开关：缺省即开启、显式 false 才渲染为关、只在变化时写入', async () => {
@@ -402,7 +402,7 @@ test('saving 与 conflict：挂起态、false 回退宿主值、抛错保留草�
   assert.equal(refusing.calls.length, 1)
   assert.equal(byId(back, 'bs-child-exit-guard').props['aria-checked'], false)
   assert.match(pageText(back), /conflict/)
-  assert.equal(saveButton(back), undefined)
+  assert.equal(saveButton(back).props.hidden, true)
 
   // 抛错：保留草稿、显示失败详情、可再次保存。
   const failing = makeForm({ behavior: 'reject' })
@@ -772,29 +772,20 @@ test('模型分档：白名单关闭/为空给出提醒；读取失败降级但�
   }
 })
 
-test('页签：键盘循环、ARIA关联、切换保留未保存输入，只读允许导航', async () => {
+test('单页：所有分区同时渲染，只读仍可查看，未保存输入保留', async () => {
   const page = await mountPage({ form: { writable: false } })
   const renderer = page.renderer
-  const tab = (id) => byId(renderer, 'bs-settings-tab-' + id)
-  assert.equal(tab('general').props['aria-selected'], true)
-  assert.equal(tab('cli').props.tabIndex, -1)
-  let prevented = false
-  await page.run(async () => tab('general').props.onKeyDown({ key: 'End', preventDefault() { prevented = true } }))
-  assert.equal(prevented, true)
-  assert.equal(tab('connection').props['aria-selected'], true)
-  assert.equal(byId(renderer, tab('connection').props['aria-controls']).props.hidden, false)
-  await page.run(async () => tab('connection').props.onKeyDown({ key: 'ArrowRight', preventDefault() {} }))
-  assert.equal(tab('general').props['aria-selected'], true)
+  for (const id of ['bs-section-routing', 'bs-section-backends', 'bs-section-scope', 'bs-section-behavior', 'bs-section-diagnostics', 'bs-section-trusted']) {
+    assert.ok(byId(renderer, id), id)
+  }
   assert.equal(byId(renderer, 'bs-trusted-hosts').props.disabled, true)
   assert.deepEqual(page.controller.calls, [])
 
   const editable = await mountPage()
   const tree = editable.renderer
   await editable.run(async () => setControlValue(byLabel(tree, 'modelEffortsPlaceholder 1'), 'low, high, '))
-  await editable.run(async () => byId(tree, 'bs-settings-tab-cli').props.onClick())
-  await editable.run(async () => byId(tree, 'bs-backend-tab-claude').props.onClick())
-  assert.equal(byId(tree, 'bs-backend-panel-codex').props.hidden, true)
-  await editable.run(async () => byId(tree, 'bs-backend-tab-codex').props.onClick())
+  assert.equal(byId(tree, 'bs-codex-enabled').props['aria-checked'], true)
+  assert.equal(byId(tree, 'bs-claude-enabled').props['aria-checked'], false)
   assert.equal(byLabel(tree, 'modelEffortsPlaceholder 1').props.value, 'low, high, ')
 })
 
@@ -813,9 +804,8 @@ test('连接：受信主机完整编辑、保留换行、验证格式并原子�
     assert.equal(saveButton(renderer).props.disabled, true, value)
     assert.match(pageText(renderer), /invalidTrustedHosts/)
   }
-  const error = byType(renderer, 'button').find((node) => node.props.className?.includes('bs-errorLink'))
-  await page.run(async () => error.props.onClick())
-  assert.equal(byId(renderer, 'bs-settings-panel-connection').props.hidden, false)
+  const error = byType(renderer, 'a').find((node) => node.props.className?.includes('bs-errorLink'))
+  assert.equal(error.props.href, '#bs-section-trusted')
 })
 
 test('模型默认依赖：重命名跟随默认、移除默认清空、禁用后依赖项不渲染且可保存', async () => {
@@ -865,9 +855,8 @@ test('模型分档：已保存但失效的effort阻止保存，点击错误进�
     await page.run(async () => byId(renderer, 'bs-child-exit-guard').props.onClick())
     assert.equal(saveButton(renderer).props.disabled, true)
     assert.match(pageText(renderer), /invalidTierEffort/)
-    const error = byType(renderer, 'button').find((node) => node.props.className?.includes('bs-errorLink'))
-    await page.run(async () => error.props.onClick())
-    assert.equal(byId(renderer, 'bs-settings-panel-tiers').props.hidden, false)
+    const error = byType(renderer, 'a').find((node) => node.props.className?.includes('bs-errorLink'))
+    assert.equal(error.props.href, '#bs-section-routing')
     await page.run(async () => setControlValue(byId(renderer, 'bs-tier-fast-effort'), 'max'))
     assert.equal(saveButton(renderer).props.disabled, false)
   } finally { restore() }
@@ -1025,9 +1014,10 @@ test('保存状态：无差异不渲染保存栏，dirty/busy与真实快照一�
   await page.update()
   assert.equal(root().props['data-settings-dirty'], false)
   assert.equal(root().props['data-settings-busy'], false)
-  assert.equal(footer(), undefined)
   assert.match(pageText(renderer), /saved/)
-  assert.ok(renderer.root.findAll((node) => host(node) && node.props.className === 'bs-feedback').length)
+  assert.equal(footer().children[0].props['data-tone'], 'ok')
+  assert.match(textOf(footer().children[0]), /saved/)
+  assert.equal(saveButton(renderer).props.hidden, true)
 })
 
 test('高级与依赖：默认折叠并给出非默认摘要，停用CLI保留配置，诊断使用已保存路径', async () => {
@@ -1050,7 +1040,7 @@ test('高级与依赖：默认折叠并给出非默认摘要，停用CLI保留�
   assert.equal(handled.currentTarget.open, true, 'inner combobox handles Escape before the outer disclosure')
   assert.equal(byId(renderer, 'bs-claude-permission'), undefined)
   await page.run(async () => setControlValue(byId(renderer, 'bs-codex-executable'), '/draft/codex'))
-  const diagnostics = byId(renderer, 'bs-settings-panel-connection')
+  const diagnostics = byId(renderer, 'bs-section-diagnostics')
   assert.match(textOf(diagnostics), /detected.*opt.*bin.*codex/)
   assert.doesNotMatch(textOf(diagnostics), /draft[/]codex/)
   assert.match(pageText(renderer), /saveBeforeDiscover/)
@@ -1058,10 +1048,7 @@ test('高级与依赖：默认折叠并给出非默认摘要，停用CLI保留�
   assert.equal(byId(renderer, 'bs-codex-executable'), undefined)
   await page.run(async () => byId(renderer, 'bs-codex-enabled').props.onClick())
   assert.equal(byId(renderer, 'bs-codex-executable').props.value, '/draft/codex')
-  const overview = byId(renderer, 'bs-open-codex')
-  assert.equal(overview.type, 'button')
-  assert.match(textOf(overview), /modelCount.*1.*gpt-5/)
-  assert.ok(overview.findByProps({ className: 'bs-overviewGlyph' }))
+  assert.equal(byId(renderer, 'bs-codex-default-model').props.value, 'gpt-5')
 })
 
 test('放弃大量改动：需要第二次点击，继续编辑后确认复位', async () => {

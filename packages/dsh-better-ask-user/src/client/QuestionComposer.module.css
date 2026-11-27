@@ -1,9 +1,12 @@
 /* Keep both takeovers on the host composer's content axis. */
 .frame {
   --cfg-line: var(--dsw-alias-border-l2);
+  --cfg-line-strong: var(--dsw-alias-border-l3);
   --cfg-surface: var(--dsw-alias-bg-layer-3);
+  --cfg-raised: var(--dsw-alias-bg-layer-2);
   --cfg-ink: var(--dsw-alias-label-primary);
   --cfg-muted: var(--dsw-alias-label-secondary);
+  --cfg-faint: var(--dsw-alias-label-tertiary);
   --cfg-accent: var(--dsw-alias-state-business-primary, #3388bb);
   --cfg-accent-text: color-mix(in srgb, var(--cfg-accent) 70%, var(--cfg-ink));
   --cfg-hover: var(--dsw-alias-interactive-bg-hover);
@@ -29,11 +32,13 @@
   max-height: min(75vh, 640px);
   max-height: min(75dvh, 640px);
   overflow: hidden;
-  border: 1px solid var(--dsw-alias-border-l3);
-  border-radius: 10px;
+  border: 1px solid var(--cfg-line-strong);
+  border-radius: 12px;
   background: var(--cfg-surface);
   color: var(--cfg-ink);
-  font-size: inherit;
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
 }
@@ -53,7 +58,8 @@
   justify-content: space-between;
   flex-shrink: 0;
   gap: 12px;
-  padding: 10px 12px 6px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--cfg-line);
 }
 
 .headingBlock {
@@ -73,6 +79,7 @@
   max-height: 24vh;
   max-height: 24dvh;
   overflow-y: auto;
+  color: var(--cfg-ink);
   font-size: 14px;
   line-height: 20px;
   font-weight: 500;
@@ -167,15 +174,18 @@
 }
 
 .detail {
-  margin: 0 16px 8px;
+  margin: 0;
+  padding: 12px 16px 0;
   color: var(--cfg-muted);
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .options {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 0 6px 6px;
+  padding: 8px 16px 12px;
 }
 
 .option,
@@ -186,7 +196,7 @@
   gap: 8px;
   width: 100%;
   min-height: 32px;
-  padding: 4px 8px;
+  padding: 6px 8px;
   border: 1px solid transparent;
   border-radius: 8px;
 }
@@ -228,7 +238,7 @@
   grid-area: 1 / 1;
   width: 16px;
   height: 16px;
-  border: 1px solid var(--dsw-alias-border-l4);
+  border: 1px solid var(--cfg-line-strong);
 }
 .radio::before { border-radius: 50%; }
 .radioChecked::before { border-color: var(--cfg-accent); }
@@ -254,15 +264,15 @@
 
 .optionLabel {
   display: block;
-  font-size: inherit;
+  font-size: 13px;
   font-weight: 500;
   line-height: 20px;
 }
 
 .badge {
-  padding: 0 4px;
+  padding: 0 6px;
   border: 1px solid var(--cfg-line);
-  border-radius: 4px;
+  border-radius: 999px;
   color: var(--cfg-muted);
   font-size: 11px;
   font-weight: 400;
@@ -273,24 +283,24 @@
   display: block;
   color: var(--cfg-muted);
   font-size: 12px;
-  line-height: 20px;
+  line-height: 18px;
   font-weight: 400;
 }
 
-.reviewStatus { margin: 0; padding: 0 16px 8px; color: var(--cfg-muted); font-size: 12px; line-height: 20px; }
+.reviewStatus { margin: 0; padding: 8px 16px 0; color: var(--cfg-muted); font-size: 12px; line-height: 18px; }
 
 .reviewNote {
   margin: 0;
   padding: 6px 8px;
   color: var(--cfg-muted);
   font-size: 12px;
-  line-height: 20px;
+  line-height: 18px;
 }
 
 .customRow {
   margin-top: 8px;
   border-color: var(--cfg-line);
-  background: var(--dsw-alias-bg-layer-1);
+  background: color-mix(in srgb, var(--cfg-ink) 3%, transparent);
 }
 
 .customRow:has(.fieldInput:focus-visible),
@@ -312,7 +322,7 @@
   min-width: 0;
   padding: var(--dsh-answer-field-padding);
   font: inherit;
-  font-size: inherit;
+  font-size: 13px;
   line-height: 20px;
   white-space: pre-wrap;
   word-break: break-word;
@@ -337,7 +347,7 @@
 }
 
 .fieldInput::placeholder {
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--cfg-faint);
 }
 
 .customInline {
@@ -359,7 +369,7 @@
   justify-content: space-between;
   flex-shrink: 0;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 8px 16px;
   border-top: 1px solid var(--cfg-line);
 }
 
@@ -403,13 +413,13 @@
   cursor: pointer;
 }
 .button:hover:not(:disabled) { background: var(--cfg-hover); }
-.primary { min-width: 128px; border-color: transparent; background: var(--cfg-solid); color: var(--cfg-on-solid); }
+.primary { min-width: 96px; border-color: transparent; background: var(--cfg-solid); color: var(--cfg-on-solid); }
 .primary:hover:not(:disabled) { background: var(--cfg-solid-hover); }
 .iconButton, .option { appearance: none; box-shadow: none; }
 .spinner { width: 12px; height: 12px; border: 1px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 800ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.feedback:empty {
+.feedback:empty, .reviewNote:empty {
   display: none;
 }
 
@@ -423,7 +433,7 @@
 
   .header {
     gap: 8px;
-    padding: 12px 16px 8px;
+    padding: 12px 16px 10px;
   }
 
   .field > * {

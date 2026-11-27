@@ -50,25 +50,40 @@ Rules:
 
 ### Hub
 
-- Dialog max width 1240px, content height `min(760px, 100dvh - 96px)`.
-- Header 56px: brand mark + wordmark (14/500) + 28px close. No subtitle.
-- Rail 200px: 36px items, 8px radius. Active = accent-soft background +
-  accent-text + 1px line; no left decoration bar.
-- Content padding 24px 32px; each page is a max-920px column, centered.
+- Dialog 824 x 800px (max `100dvh - 32px`), 28px radius, overlay shadow.
+  Header 54px: 14/500 title at 16px inset, 28px close; no rule under it.
+- Data-heavy pages keep the same frame but widen it to 1240px (currently the
+  compaction page); nav, header and footer do not change.
+- A confirm inside the hub (unsaved changes) is its own 440px dialog with auto
+  height, never the full hub frame; on `<= 640px` it stays auto-height.
+- Rail: 12px inset + 188px items; 40px items, 12px radius, 14px text, 16px
+  icon. Active = 10% ink fill; no accent border and no rail background or rule.
+- Content: 36px gap after the rail, 24px right padding, so the page column is
+  564px at 1440. No page-level card boxes.
+- Footer appears only with a draft or a notice: sticky to the bottom at
+  z-index 50, 1px top rule, status on the left, actions on the right (discard,
+  then save). It stays above the scrolling page whenever it is shown.
 - Narrow `<= 800px`: rail becomes a horizontal scrolling tab strip; content
-  padding 16px. At `<= 640px` the dialog fills the viewport with no outer
+  padding 16px. The active item is centered in the strip after the window
+  narrows and after a tab change, so the current page is never off-screen. At `<= 640px` the dialog fills the viewport with no outer
   margin or corner radius.
 
 ### Settings page
 
-- Content column `max-width: 920px; margin: 0 auto`.
-- Page title 20/28/500, letter-spacing -0.01em.
-- Section label 12/500, ink-3, no rule; section spacing 24px.
-- Setting row: label 13/500; control right-aligned. Add one neutral consequence
-  line (12/ink-3) only when the label cannot explain the choice. Row padding
-  10–12px with a hover surface; no per-row divider. Explain model recommendations
-  and their scope where they are edited; do not hide essential effects in
-  screen-reader-only text.
+- Page column follows the surface: 564px inside the hub; long pages may use
+  their own max width (the compaction page 920px) inside a wide frame.
+- Page title 15/22/500; one 12/18 subtitle line.
+- Section label 14/22/500, ink; section spacing 18px.
+- Setting row: label 14/22/400; 12/18 ink-2 description; control right-aligned
+  on the first line; 14px vertical padding; 1px divider between rows; no row
+  hover surface. Add a consequence line only when the label cannot explain the
+  choice. Explain model recommendations and their scope where they are edited;
+  do not hide essential effects in screen-reader-only text.
+- Save footer (hub and compaction): sticky to the bottom of the dialog at
+  z-index 50, status or error text on the left, discard then save on the right.
+- A settings page is one scroll: related sections in work order, no inner tab
+  strip and no jump buttons to other tabs. The hub rail is the only page
+  navigation.
 - Dividers are reserved for group boundaries (footer, cards, inputs,
   selectable rows). A form of anonymous horizontal rules between every row is a
   bug, not a style.
@@ -82,22 +97,36 @@ Rules:
 
 ### Editable compaction process
 
-- Use one bold visualization as the primary surface: a capacity bar with drag
-  handles, four strategy cards (native, goal-aware, handoff, custom), a compact
-  generation row, and a custom-prompt editor. Edit the existing configuration
-  draft through these controls; saving and discarding use the same form.
-- The capacity bar supports pointer dragging and keyboard adjustment
-  (`role=slider`), with one synchronized numeric field per value. Do not repeat
-  the bar as full-width range sliders. If the model window is unknown, show a
-  proportional schematic and say so; never invent token totals.
-- The four strategy cards are compact choices: title, tag and one-line effect,
-  no repeated mini-diagrams. On wide screens they sit in a two-column
-  **选择 | 示意图** layout: choices on the left, one shared SVG process drawing on
-  the right, capped at 400px so it fits beside the choices. It uses labeled
-  nodes and arrows for context, trigger, summary and continuation; it stacks
-  below the choices on narrow screens.
-  Selected state uses accent border + accent-soft + check; keyboard arrows,
-  Home/End and Space/Enter work.
+- One page, one reading order: **capacity → strategy → generation → advanced → diagnostics**.
+  Observation (what the engine currently reports) is never mixed into an editable
+  control: the capacity block states the draft's effect in one sentence, the
+  numbers below it are inputs.
+- Capacity is one bar plus one sentence plus one row per number:
+  - The bar is the only visualization: labelled segments (待压缩 / 保留 / 余量),
+    one drag handle for retention, and the configured trigger handle.
+  - When headroom caps the trigger below the configured ratio, draw the real cut
+    as a 1px ink line labelled `压缩点 <ratio>`; the sentence says
+    `（受额外余量限制）`. Values are always the effective ones, never a promise.
+  - Below the bar: one 3-column fact grid (message budget, effective trigger,
+    retained target, summary budget, current usage, model window). Unknown values
+    stay unknown and say so; never print a 0 for a missing measurement.
+  - Below the facts: setting rows (label left, control right, hover surface, no
+    per-row divider) for trigger ratio, retention (segmented + number) and
+    headroom. The capacity bar supports pointer dragging and keyboard adjustment
+    (`role=slider`); the same values are editable as numbers.
+- Strategy: four compact cards in a 2×2 grid — title, tag, one-line effect — and
+  one shared SVG process drawing for the selected mode, capped at 400px. On wide
+  panes the drawing sits beside the cards; it drops below them under 760px and
+  the cards become one column under 560px. No mini-diagram per card.
+- Generation is three setting rows: summary model, reasoning effort (hidden in
+  native mode) and output cap. The model scope explanation lives under the model
+  row, not in the section header.
+- Keep only genuinely rare advanced policies (`高级规则`) and long read-only
+  diagnostics (`会话诊断`) expandable, collapsed by default. Behavior and effect
+  settings are always visible. Do not put a second copy of the observed budget in
+  the capacity block: the diagnostics section owns every measured number.
+- The draft state is a chip (`未保存`) on the capacity heading while dirty; the
+  save footer appears only when dirty, busy or showing a notice.
 - Custom mode is the fourth strategy: its expanded prompt is the only
   instruction sent to the summary model. It appends no built-in structure,
   state block or safety rules; the ten `{{variable}}` chips are the only
@@ -105,20 +134,52 @@ Rules:
   **goal-mode default instruction** as an editable template; never overwrite an
   existing prompt. Clearing the pre-filled text blocks saving; output must be
   non-empty. Built-in modes never use the custom prompt.
-- Capacity, reserved output and measured usage are observations. Unknown values
-  stay unknown; do not present active-engine estimates as a prediction of
-  unsaved settings.
-- Keep only genuinely rare advanced policies and long read-only diagnostics
-  expandable. Behavior and effect settings are always visible.
+
+### Goal and question settings
+
+Both row-config pages use the skeleton above: 15/22 page title, one 12/18
+subtitle, 14/22 section labels, rows with the label and its 12/18 consequence on
+the left and the control on the right, a 1px divider only between adjacent rows,
+and the sticky save bar (z-index 50) with status left, discard and save right.
+
+- Goal: a runtime status strip sits under the page header, then continuation
+  mode cards, the round policy as a three-item segmented control, and the fixed
+  limit or the native parameters as rows. Round pacing (idle-spin threshold,
+  background-job wait) follows as rows. The lone disclosure is the 12px
+  `设置说明` summary under the runtime strip; it never folds an editable control.
+  Switching the driver saves and restarts the profile; the footer states that
+  with the pending count and keeps the save disabled while a field is invalid.
+- Ask-user: wait mode is a segmented control on the section heading; the
+  duration row holds the number and four presets; timeout behavior is one
+  bordered group of two radio rows, repeated for active goals, and each row
+  keeps its consequence sentence. Unlimited hides the duration and the normal
+  timeout group but keeps the goal group. The footer appears only while dirty,
+  busy or showing a saved/conflict/error notice, pinned above the content.
+
+### Ask-user conversation cards
+
+- The composer takeover is a 12px-radius card on layer 3 with a 1px line-3
+  border. Header 12/16 padding, title 14/20, icon buttons 28. The wait bar is a
+  full-width band, not a card inside the card: 1px bottom line, 3% ink tint,
+  20px ring, 12/18 status and a ghost `take time` action.
+- Options and the custom answer row share the 16px body inset; selected rows use
+  a 1px accent border and an 8% accent tint. The footer is a 1px-top band with
+  feedback left and skip/next right; targets grow to 44px under 720px.
+- Plan review uses the same wait band and footer. The plan summary is a 16px
+  inset block with a 14/20 title and a two-line 12/18 description.
+- History rows stay 32px summaries; the late-reply bubble is right-aligned,
+  10px radius, at most 85% wide, with a 12/16 label and 13/20 summary.
 
 ### Narrow `<= 640px`
 
 - Field rows stack: label above, control full width, touch targets 44px.
 - Binary switches stay beside their labels, with a 44px hit area. Help buttons
   are 44px, with descriptions contained inside the content column.
-- Tables become cards. Read-only diagrams may become value rows. The editable
-  compaction process reflows into connected vertical stages and keeps its controls
-  available; never shrink the entire diagram into unreadable labels.
+- Tables become cards. Read-only diagrams may become value rows. The compaction
+  page stacks: setting rows go label-above-control, the capacity fact grid drops
+  to one column, strategy cards to one column, and the shared drawing moves below
+  them. Never shrink the drawing into unreadable labels, and never hide the
+  segment labels on the capacity bar.
 - No horizontal scrolling at 390px.
 
 ## 3. Controls
@@ -148,6 +209,25 @@ Keyboard:
 Visible copy is only: label, current value, unit, state, action, error or
 dependency. Move mechanism explanations into `title`, `aria-describedby` or a
 collapsed details region.
+
+A label says what the setting does; a description says what the user gets or
+loses by changing it. Never name an internal mechanism (`checkpoint`, `checkpoint
+bracket`, `native event`) when a plain noun exists.
+
+Compaction glossary — use these words everywhere, in Chinese and English:
+
+| Concept | 中文 | English |
+| --- | --- | --- |
+| The point where compaction starts | 触发点 | trigger point |
+| The configured share of the window | 触发比例 | trigger ratio |
+| Space kept free above the trigger point | 压缩余量 | headroom |
+| Text kept verbatim | 保留近期原文 | keep recent text |
+| The budget for the summary request itself | 摘要预算 / 摘要输出上限 | summary budget / output cap |
+| The checkpoint rendered as images | 压缩结果以图片传给模型 | send the checkpoint as images |
+| The message that replaces folded history | 摘要记录 | summary record |
+| The host's own compaction structure | 宿主原生 | host native |
+| Goal/todo-aware summary | 目标增强 | goal-aware |
+| Handoff document, same session continues | 文件交接 | file handoff |
 
 Remove:
 

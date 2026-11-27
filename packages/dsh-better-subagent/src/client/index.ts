@@ -12,7 +12,7 @@
 
 import { createElement, cloneElement, isValidElement, useEffect, useId, useRef, useState } from 'react';
 import type { AriaAttributes, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactElement } from 'react';
-import type { AdvancedProps, AllowedRoutes, Backend, BackendCardProps, BackendSpec, Cli, ClientContext, Discovery, DiscoveryRequest, Dispose, Draft, Endpoint, EndpointState, FieldProps, FormValue, HostListProps, Latest, Model, ModelRowProps, Notice, Option, PageProps, PanelProps, Route, SelectProps, SetOperation, SwitchRowProps, TabsProps, Tier, TierRowProps, TierValue, Translate, Validation } from './types';
+import type { AdvancedProps, AllowedRoutes, Backend, BackendCardProps, BackendSpec, Cli, ClientContext, Discovery, DiscoveryRequest, Dispose, Draft, Endpoint, EndpointState, FieldProps, FormValue, HostListProps, Latest, Model, ModelRowProps, Notice, Option, PageProps, PanelProps, Route, SelectProps, SetOperation, SwitchRowProps, Tier, TierRowProps, TierValue, Translate, Validation } from './types';
 
 // Select consumes option descriptors as children instead of rendering them as React nodes.
 const h = createElement as typeof createElement & ((type: typeof Select, props: Omit<SelectProps, 'children'>, children: Option[]) => ReactElement<SelectProps>);
@@ -129,7 +129,7 @@ const zh: Record<string, string> = {
 	globalOverrides: "所有预设已包含工程预设。",
 	summary: "子代理模型、本机 Codex / Claude 与运行设置",
 	title: '子代理',
-	intro: "保存后即时生效。",
+	intro: "决定子代理使用哪个模型、何时等待，以及本机 Codex / Claude 是否可用。",
 	loading: "正在加载设置…",
 	waitingForm: "正在加载设置…",
 	noFormHint: "暂时无法加载设置，请刷新页面或检查连接。",
@@ -150,7 +150,7 @@ const zh: Record<string, string> = {
 	tierRouteLabel: "{tier}模型",
 	tierEffortLabel: "{tier}思考强度",
 	tierOffList: "(不可用) {route}",
-	tiersInactive: "请先在「插件 → 子代理 → 模型选择」启用并添加可用模型；当前仍可沿用主会话模型。",
+	tiersInactive: "当前没有可用的模型名单，两档只能沿用主会话模型；在宿主的模型设置里启用后可在这里选择具体模型。",
 	routesLoading: "正在读取可用模型…",
 	routesError: "暂时无法读取可用模型，请刷新重试。",
 	invalidTierRoute: "{backend}所选模型不可用，请改选或沿用主会话模型。",
@@ -292,7 +292,7 @@ const en: Record<string, string> = {
 	globalOverrides: "All presets already includes engineering presets.",
 	summary: "Subagent models, local Codex / Claude and run settings",
 	title: 'Subagents',
-	intro: "Changes apply after saving.",
+	intro: "Set which models subagents use, when to wait for them, and whether local Codex / Claude is available.",
 	loading: "Loading settings…",
 	waitingForm: "Loading settings…",
 	noFormHint: "Settings are not loading. Refresh the page or check your connection.",
@@ -313,7 +313,7 @@ const en: Record<string, string> = {
 	tierRouteLabel: "{tier} model",
 	tierEffortLabel: "{tier} thinking effort",
 	tierOffList: "(unavailable) {route}",
-	tiersInactive: "Enable and add models in Plugins → Subagent → Model selection first. You can still use the main conversation model.",
+	tiersInactive: "No models are allowed right now, so both tiers inherit the main conversation model. Allow models in the host model settings to choose one here.",
 	routesLoading: "Loading available models…",
 	routesError: "Available models could not be loaded. Refresh to try again.",
 	invalidTierRoute: "The {backend} model is unavailable. Choose another or use the main conversation model.",
@@ -408,35 +408,25 @@ const STYLE_ID = '@oh-my-dsh/dsh-better-subagent/settings.css';
 const CSS = `.bs-root{--cfg-accent:var(--dsw-alias-state-business-primary,#4176e6);--cfg-accent-solid:var(--dsw-alias-button-primary-fill,#0f1115);--cfg-accent-fg:var(--dsw-alias-label-primary-foreground,#fff);--cfg-accent-text:color-mix(in srgb,var(--cfg-accent) 72%,var(--cfg-ink));--cfg-accent-hover:color-mix(in srgb,var(--cfg-accent-solid) 88%,var(--cfg-bg));--cfg-accent-soft:color-mix(in srgb,var(--cfg-accent) 10%,transparent);--cfg-bg:var(--dsw-alias-bg-layer-1);--cfg-raised:var(--dsw-alias-bg-layer-2);--cfg-overlay:var(--dsw-alias-bg-layer-3);--cfg-sunken:color-mix(in srgb,var(--dsw-alias-label-primary) 4%,var(--dsw-alias-bg-layer-1));--cfg-ink:var(--dsw-alias-label-primary);--cfg-muted:var(--dsw-alias-label-secondary);--cfg-dim:color-mix(in srgb,var(--dsw-alias-label-tertiary) 80%,var(--cfg-ink));--cfg-line:var(--dsw-alias-border-l2);--cfg-line-strong:var(--dsw-alias-border-l3);--cfg-hover:var(--dsw-alias-interactive-bg-hover);--cfg-danger:var(--dsw-alias-state-error-primary);--cfg-warn:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 60%,var(--cfg-ink));--cfg-success:color-mix(in srgb,var(--dsw-alias-state-success-primary) 60%,var(--cfg-ink));--cfg-mono:var(--dsw-font-family-mono,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);color:var(--cfg-ink);font:inherit;font-size:13px;line-height:20px;font-variant-numeric:tabular-nums;min-width:0;width:100%;--bs-action-size:32px;container:bs-settings / inline-size}
 .bs-root *{box-sizing:border-box}
 .bs-root [hidden]{display:none!important}
-.bs-cfg{display:flex;flex-direction:column;gap:20px;max-width:960px;width:100%;margin:0 auto;min-width:0}
-.bs-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-height:32px}
+.bs-cfg{display:flex;flex-direction:column;gap:0;max-width:none;width:100%;margin:0;min-width:0}
+.bs-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-height:0;padding:2px 0 14px}
 .bs-headerMain{display:flex;flex-direction:column;gap:2px;min-width:0}
 .bs-headerIntro{color:var(--cfg-dim);font-size:12px;line-height:18px}
 .bs-headerMeta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .bs-title{margin:0;font-size:12px;line-height:18px;font-weight:500;color:var(--cfg-dim)}
-.bs-header .bs-title{font-size:20px;line-height:28px;letter-spacing:-.01em;color:var(--cfg-ink)}
-.bs-sectionTitle{margin:0;font-size:12px;line-height:18px;font-weight:500;color:var(--cfg-dim)}
-.bs-cardTitle{margin:0;font-size:13px;line-height:20px;font-weight:500;color:var(--cfg-ink)}
+.bs-header .bs-title{font-size:15px;line-height:22px;font-weight:500;letter-spacing:0;color:var(--cfg-ink)}
+.bs-sectionTitle{margin:18px 0 0;font-size:14px;line-height:22px;font-weight:500;color:var(--cfg-ink)}
+.bs-cardTitle{margin:0;font-size:14px;line-height:22px;font-weight:500;color:var(--cfg-ink)}
 .bs-hint,.bs-status{margin:0;color:var(--cfg-dim);font-size:12px;line-height:18px}
 .bs-hintWarn{color:var(--cfg-warn)}
 .bs-note{margin:0;padding:8px 10px;border:1px solid var(--cfg-line);border-radius:8px;background:var(--cfg-sunken);color:var(--cfg-muted);font-size:12px;line-height:18px}
 .bs-note[data-tone=error],.bs-hint[data-tone=error],.bs-status[data-tone=error]{color:var(--cfg-danger)}
 .bs-note[data-tone=warn]{border-color:var(--cfg-warn);color:var(--cfg-warn)}
 .bs-hint[data-tone=ok],.bs-status[data-tone=ok]{color:var(--cfg-success)}
-.bs-tabs{display:flex;gap:20px;padding:0;border-bottom:1px solid var(--cfg-line);overflow-x:auto;scrollbar-width:thin}
-.bs-tab{appearance:none;position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:32px;padding:0 0 8px;border:0;border-radius:0;background:transparent;color:var(--cfg-muted);font:inherit;font-weight:500;cursor:pointer;white-space:nowrap}
-.bs-tab:hover{color:var(--cfg-ink)}
-.bs-tab[aria-selected=true]{color:var(--cfg-ink)}
-.bs-tab[aria-selected=true]::after{content:"";position:absolute;inset-inline:0;bottom:0;height:1px;background:var(--cfg-accent)}
-.bs-subtabs{align-self:flex-start;gap:16px;padding:0;border:0;border-bottom:1px solid var(--cfg-line);border-radius:0;background:transparent}
-.bs-subtabs .bs-tab{height:32px;padding:0 0 7px;border:0;border-radius:0;font-weight:400}
-.bs-subtabs .bs-tab:hover{background:transparent;color:var(--cfg-ink)}
-.bs-subtabs .bs-tab[aria-selected=true]{background:transparent;border:0;color:var(--cfg-ink);font-weight:500}
-.bs-tabpanel{display:flex;flex-direction:column;gap:20px;min-width:0}
-.bs-section{display:flex;flex-direction:column;gap:6px;min-width:0}
-.bs-sectionHead,.bs-cardHead{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:28px}
+.bs-section{display:flex;flex-direction:column;gap:4px;min-width:0}
+.bs-sectionHead,.bs-cardHead{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:22px}
 .bs-toolbar{display:flex;align-items:center;gap:8px;min-width:0}
-.bs-card{display:flex;flex-direction:column;gap:8px;min-width:0;padding:12px 14px;border:1px solid var(--cfg-line);border-radius:8px;background:var(--cfg-raised)}
+.bs-card{display:flex;flex-direction:column;gap:10px;min-width:0;padding:14px 16px;border:1px solid var(--cfg-line);border-radius:12px;background:var(--cfg-raised)}
 .bs-cardBody{display:flex;flex-direction:column;gap:8px;min-width:0}
 .bs-cardHead .bs-switchRow{padding:0;gap:10px}
 .bs-cardHead .bs-switchLabel{color:var(--cfg-muted);font-weight:400}
@@ -468,9 +458,9 @@ const CSS = `.bs-root{--cfg-accent:var(--dsw-alias-state-business-primary,#4176e
 .bs-option[aria-selected=true]{color:var(--cfg-accent-text);background:var(--cfg-accent-soft)}
 .bs-optionCheck{width:12px;flex:none}
 .bs-optionLabel{min-width:0}
-.bs-switchRow{position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:4px 0}
+.bs-switchRow{position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:4px 0}.bs-section>.bs-switchRow{padding:12px 0;border-bottom:1px solid var(--cfg-line)}.bs-section>.bs-switchRow:last-of-type{border-bottom:0;padding-bottom:8px}
 .bs-switchMain{flex:1;min-width:0}
-.bs-switchLabel{font-weight:500}
+.bs-switchLabel{font-weight:400;font-size:14px;line-height:22px}
 .bs-switch{appearance:none;display:flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;padding:0;border:0;border-radius:6px;background:transparent;cursor:pointer}
 .bs-switchTrack{display:block;width:32px;height:18px;padding:2px;border:1px solid var(--cfg-line-strong);border-radius:9px;background:var(--cfg-sunken)}
 .bs-switch:hover:not(:disabled) .bs-switchTrack{border-color:var(--cfg-muted)}
@@ -508,25 +498,11 @@ const CSS = `.bs-root{--cfg-accent:var(--dsw-alias-state-business-primary,#4176e
 .bs-badge[data-active=true]{border-color:var(--cfg-accent);color:var(--cfg-accent-text)}
 .bs-dot{width:6px;height:6px;flex:none;border-radius:50%;background:var(--cfg-dim)}
 .bs-dot[data-active=true]{background:var(--cfg-accent)}
-.bs-overview{display:flex;flex-direction:column;gap:2px}
-.bs-overviewGlyph{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;flex:none;border:1px solid var(--cfg-line);border-radius:6px;background:var(--cfg-raised);color:var(--cfg-muted)}
-.bs-overviewMeta{font-size:12px;line-height:18px;color:var(--cfg-dim);overflow-wrap:anywhere}
-.bs-overviewRow{appearance:none;display:flex;align-items:center;gap:12px;width:100%;padding:8px 6px;margin-inline:-6px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;cursor:pointer;text-align:left}
-.bs-overviewRow:hover,.bs-overviewRow:active{background:var(--cfg-hover)}
-.bs-overviewName{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
-.bs-overviewName>span:first-child{font-weight:500}
-.bs-overviewRow>svg{color:var(--cfg-dim);flex:none}
-.bs-routingDiagram{display:flex;flex-direction:column;gap:2px;padding:2px 0 0;min-width:0}
+.bs-routingDiagram{display:flex;flex-direction:column;gap:10px;padding:2px 0 0;min-width:0}
 .bs-routingSource{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;border:1px solid var(--cfg-line);border-radius:8px;background:var(--cfg-sunken);min-width:0}
 .bs-routingSourceLabel{display:inline-flex;align-items:center;gap:6px;font-weight:500}
 .bs-routingSourceLabel::before{content:"";width:6px;height:6px;flex:none;border-radius:50%;background:var(--cfg-accent)}
-.bs-routing{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1.1fr) auto;gap:8px 12px;align-items:center;padding:8px 8px 8px 12px;border:0;border-radius:8px;min-width:0}
-.bs-routing:hover{background:var(--cfg-hover)}
-.bs-routingBranchGlyph{color:var(--cfg-dim);font-family:var(--cfg-mono)}
-.bs-routingLabel{font-weight:500}
-.bs-routingModel{font-size:12px;line-height:18px;color:var(--cfg-muted);overflow-wrap:anywhere}
 .bs-routingNote{margin:2px 0 0}
-.bs-tierGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start;min-width:0}
 .bs-tierCard{min-width:0}
 .bs-tierHead{display:flex;flex-direction:column;gap:2px;min-width:0}
 .bs-empty{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border:1px solid var(--cfg-line);border-radius:6px;background:var(--cfg-sunken)}
@@ -536,17 +512,17 @@ const CSS = `.bs-root{--cfg-accent:var(--dsw-alias-state-business-primary,#4176e
 .bs-metric{display:flex;flex-direction:column;gap:2px;min-width:0;padding:8px 10px;border:1px solid var(--cfg-line);border-radius:6px;background:var(--cfg-sunken)}
 .bs-metricLabel{font-size:12px;line-height:18px;color:var(--cfg-dim)}
 .bs-metricValue{font-size:13px;line-height:20px;font-weight:500;overflow-wrap:anywhere}
-.bs-footer{position:sticky;bottom:0;z-index:10;display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 0;border-top:1px solid var(--cfg-line);background:var(--cfg-bg)}
+.bs-footer{position:sticky;bottom:0;z-index:50;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:14px 0 18px;border-top:1px solid var(--cfg-line);background:var(--cfg-bg)}
 .bs-footer .bs-status{flex:1;min-width:140px;font-size:12px;line-height:18px;color:var(--cfg-dim)}
 .bs-errorLink{color:var(--cfg-danger);text-align:left;white-space:normal;height:auto;min-height:28px}
-.bs-feedback{min-height:20px}
 .bs-spinner{width:12px;height:12px;flex:none;border:1.5px solid currentColor;border-right-color:transparent;border-radius:50%;animation:bs-spin .7s linear infinite}
 @keyframes bs-spin{to{transform:rotate(360deg)}}
 .bs-pulse{animation:bs-pulse 2s ease infinite}
 @keyframes bs-pulse{50%{opacity:.55}}
-@container bs-settings (max-width:760px){.bs-fieldGrid,.bs-tierGrid{grid-template-columns:minmax(0,1fr)}.bs-metricGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@container bs-settings (max-width:640px){.bs-header .bs-title{font-size:18px}.bs-sectionHead,.bs-cardHead,.bs-toolbar{flex-wrap:wrap}.bs-field{grid-template-columns:minmax(0,1fr);gap:4px}.bs-fieldLabel{padding:0}.bs-modelHead{display:none}.bs-model{grid-template-columns:minmax(0,1fr) var(--bs-action-size);gap:8px}.bs-modelCell{grid-column:1}.bs-cellLabel{display:block;font-size:12px;line-height:18px}.bs-model .bs-iconButton{grid-column:2;grid-row:1}.bs-footer .bs-status{flex-basis:100%}.bs-connectionRow{align-items:flex-start;flex-direction:column;gap:4px;padding:6px 0}.bs-connectionRow .bs-hint{text-align:start}.bs-routing{grid-template-columns:minmax(0,1fr);gap:4px;padding:8px}.bs-routingBranchGlyph{display:none}.bs-overviewRow{flex-wrap:wrap}.bs-overviewRow>.bs-badge{white-space:normal}.bs-advancedSummary{white-space:normal}}
-@media(pointer:coarse),(max-width:640px){.bs-root{--bs-action-size:44px}.bs-input,.bs-select,.bs-button,.bs-iconButton,.bs-switch,.bs-tab,.bs-subtabs .bs-tab{height:44px;min-height:44px}.bs-textarea{min-height:88px}.bs-switch,.bs-iconButton{width:44px}.bs-option,.bs-advanced>summary{min-height:44px}}
+@container bs-settings (max-width:520px){.bs-metricGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@container bs-settings (max-width:760px){.bs-fieldGrid{grid-template-columns:minmax(0,1fr)}}
+@container bs-settings (max-width:640px){.bs-header .bs-title{font-size:15px}.bs-sectionHead,.bs-cardHead,.bs-toolbar{flex-wrap:wrap}.bs-field{grid-template-columns:minmax(0,1fr);gap:4px}.bs-fieldLabel{padding:0}.bs-modelHead{display:none}.bs-model{grid-template-columns:minmax(0,1fr) var(--bs-action-size);gap:8px}.bs-modelCell{grid-column:1}.bs-cellLabel{display:block;font-size:12px;line-height:18px}.bs-model .bs-iconButton{grid-column:2;grid-row:1}.bs-connectionRow{align-items:flex-start;flex-direction:column;gap:4px;padding:6px 0}.bs-connectionRow .bs-hint{text-align:start}.bs-advancedSummary{white-space:normal}}
+@media(pointer:coarse),(max-width:640px){.bs-root{--bs-action-size:44px}.bs-input,.bs-select,.bs-button,.bs-iconButton,.bs-switch{height:44px;min-height:44px}.bs-textarea{min-height:88px}.bs-switch,.bs-iconButton{width:44px}.bs-option,.bs-advanced>summary{min-height:44px}}
 @media(prefers-reduced-motion:reduce){.bs-root *{animation:none!important;transition:none!important}}`;
 
 
@@ -799,9 +775,6 @@ function detectionOf(capabilities: EndpointState, spec: BackendSpec, backend: Ba
 // ── 基础控件 ───────────────────────────────────────────────────────────
 
 
-function Chevron() {
-	return h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, 'aria-hidden': true }, h('path', { d: 'm9 5 7 7-7 7' }));
-}
 
 function Advanced({ summary, children, detailsRef, label }: AdvancedProps) {
 	return h('details', { className: 'bs-advanced', ref: detailsRef, onKeyDown: (event: KeyboardEvent<HTMLDetailsElement>) => {
@@ -887,30 +860,6 @@ function Select({ children: options, value, onChange, disabled, id, className, .
 				ref: (node: HTMLDivElement | null): void => { items.current[index] = node; },
 				onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.preventDefault(), onPointerMove: () => setActive(index), onClick: () => choose(index),
 			}, h('span', { className: 'bs-optionCheck', 'aria-hidden': true }, option.value === value ? '✓' : ''), h('span', { className: 'bs-optionLabel' }, option.label)))));
-}
-
-/** Controls stay mounted across tabs to preserve in-progress text. */
-function Tabs({ id, label, items, value, onChange, compact, tabRefs }: TabsProps) {
-	const refs = useRef<Record<string, HTMLButtonElement | null>>({});
-	return h('div', { className: compact ? 'bs-tabs bs-subtabs' : 'bs-tabs', role: 'tablist', 'aria-label': label },
-		items.map((item, index) => h('button', {
-			key: item.id, type: 'button', className: 'bs-tab', role: 'tab',
-			id: id + '-tab-' + item.id, 'aria-controls': id + '-panel-' + item.id,
-			'aria-selected': value === item.id, tabIndex: value === item.id ? 0 : -1,
-			ref: (node: HTMLButtonElement | null): void => { refs.current[item.id] = node; if (tabRefs) tabRefs.current[item.id] = node; },
-			onClick: () => onChange(item.id),
-			onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => {
-				let next;
-				if (event.key === 'ArrowRight') next = (index + 1) % items.length;
-				else if (event.key === 'ArrowLeft') next = (index + items.length - 1) % items.length;
-				else if (event.key === 'Home') next = 0;
-				else if (event.key === 'End') next = items.length - 1;
-				else return;
-				event.preventDefault();
-				onChange(items[next].id);
-				refs.current[items[next].id]?.focus();
-			},
-		}, item.active === undefined ? null : h('span', { className: 'bs-dot', 'data-active': item.active, 'aria-hidden': true }), item.label)));
 }
 
 function Field({ id, label, hint, showHint = true, wide, children }: FieldProps) {
@@ -1074,9 +1023,7 @@ function TierRow({ tier, value, allowed, disabled, t: translate, onPatch }: Tier
 		h('div', { className: 'bs-cardHead' },
 			h('div', { className: 'bs-tierHead' },
 				h('h3', { className: 'bs-cardTitle' }, title),
-				h('p', { className: 'bs-hint' }, translate(TIER_HINT_KEYS[tier]))),
-			h('span', { className: 'bs-badge', 'data-active': current !== '' },
-				current === '' ? translate('tierInherit') : (selected?.model ?? value.model))),
+				h('p', { className: 'bs-hint' }, translate(TIER_HINT_KEYS[tier])))),
 		h(Field, { id: 'bs-tier-' + tier + '-route', label: translate('route') },
 			h(Select, {
 				className: 'bs-select',
@@ -1185,9 +1132,6 @@ function BetterSubagentConfigPage({ form, t: translate }: PageProps) {
 	}, [notice]);
 	/** 每个后端的发现状态：`{ status: 'loading' | 'ok' | 'error', text? }`。 */
 	const [discovery, setDiscovery] = useState<Discovery>({});
-	const [tab, setTab] = useState('general');
-	const [backendTab, setBackendTab] = useState('codex');
-	const navigationTabs = useRef<Record<string, HTMLButtonElement | null>>({});
 	const latest = useRef<Latest>(null!);
 	const requests = useRef<Partial<Record<Cli, DiscoveryRequest>>>({});
 
@@ -1358,7 +1302,6 @@ function BetterSubagentConfigPage({ form, t: translate }: PageProps) {
 			if (accepted) {
 				// 草稿保留：mirror 折叠后 revision 前进、草稿自动失效（避免回显旧值闪烁）。
 				setNotice({ tone: 'ok', text: translate('saved') });
-				navigationTabs.current[tab]?.focus();
 			} else {
 				setDraft(null);
 				setGeneration((value) => value + 1);
@@ -1373,7 +1316,6 @@ function BetterSubagentConfigPage({ form, t: translate }: PageProps) {
 	const reset = () => {
 		if (changeCount > 3 && discardFor !== dirtyKey) { setDiscardFor(dirtyKey); return; }
 		setDiscardFor(null);
-		navigationTabs.current[tab]?.focus();
 		requests.current = {};
 		setDiscovery({});
 		setDraft(null);
@@ -1382,20 +1324,11 @@ function BetterSubagentConfigPage({ form, t: translate }: PageProps) {
 	};
 
 	const scopeActive = currentLive.subagents.eng || currentLive.subagents.global;
-	const navigate = (next: string, cli?: Cli) => {
-		setTab(next); if (cli) setBackendTab(cli);
-		navigationTabs.current[next]?.focus();
+	const invalidSection = invalid?.titleKey?.startsWith('tier') ? 'routing' : invalid?.titleKey ? 'backends' : 'trusted';
+	const scrollToSection = (id: string) => {
+		const doc = globalThis['document'];
+		doc?.getElementById('bs-section-' + id)?.scrollIntoView?.({ block: 'start' });
 	};
-	const invalidTab = invalid?.titleKey?.startsWith('tier') ? 'tiers' : invalid?.titleKey ? 'cli' : 'connection';
-	const status = notice !== null
-		? h('span', { className: 'bs-status', 'data-tone': notice.tone, role: notice.tone === 'error' ? 'alert' : 'status' }, notice.text)
-		: invalid !== null
-			? h('span', { className: 'bs-status', role: 'alert' }, h('button', { type: 'button', className: 'bs-button bs-errorLink',
-				onClick: () => navigate(invalidTab, invalid.titleKey === 'claudeTitle' ? 'claude' : 'codex') },
-				translate(invalid.key, { backend: invalid.titleKey ? translate(invalid.titleKey) : '' })))
-			: null;
-	const panelProps = (name: string) => ({ id: 'bs-settings-panel-' + name, className: 'bs-tabpanel', role: 'tabpanel',
-		'aria-labelledby': 'bs-settings-tab-' + name, tabIndex: 0, hidden: tab !== name });
 	return h('div', { className: 'bs-cfg', 'data-settings-dirty': dirty, 'data-settings-busy': busy },
 		h('div', { className: 'bs-header' },
 			h('div', { className: 'bs-headerMain' },
@@ -1404,109 +1337,74 @@ function BetterSubagentConfigPage({ form, t: translate }: PageProps) {
 			h('div', { className: 'bs-headerMeta' },
 				dirty ? h('span', { className: 'bs-badge' }, translate('draftPreview')) : null,
 				writable ? null : h('span', { className: 'bs-badge', role: 'status', title: translate('readonly') }, translate('readonlyShort')))),
-		h(Tabs, { id: 'bs-settings', label: translate('title'), value: tab, onChange: setTab, tabRefs: navigationTabs, items: [
-			{ id: 'general', label: translate('tabGeneral') }, { id: 'cli', label: translate('tabCli') },
-			{ id: 'tiers', label: translate('tabTiers') }, { id: 'connection', label: translate('tabConnection') }] }),
-		h('div', panelProps('general'),
-			h('section', { className: 'bs-section', 'aria-label': translate('routingTitle') },
-				h('div', { className: 'bs-sectionHead' }, h('h3', { className: 'bs-sectionTitle' }, translate('routingTitle'))),
-				h('p', { className: 'bs-hint' }, translate('modelRecommendations')),
-				h('div', { className: 'bs-routingDiagram', 'data-routing': 'main-agent' },
-					h('div', { className: 'bs-routingSource', id: 'bs-routing-source' },
-						h('span', { className: 'bs-routingSourceLabel' }, translate('mainAgent')),
-						h('span', { className: 'bs-hint' }, translate('mainAgentNote'))),
-					...TIERS.map((tier) => {
-						const value = currentLive.tiers[tier];
-						const current = routeKey(value);
-						const title = translate(TIER_TITLE_KEYS[tier]);
-						return h('div', { key: tier, className: 'bs-routing' },
-							h('span', { className: 'bs-routingBranchGlyph', 'aria-hidden': true }, '↳'),
-							h('div', { className: 'bs-overviewName' },
-								h('span', { className: 'bs-routingLabel' }, title),
-								h('span', { className: 'bs-overviewMeta' }, translate(TIER_HINT_KEYS[tier]))),
-							h('span', { className: 'bs-routingModel bs-mono' }, current === '' ? translate('tierInherit') : current),
-							h('button', { type: 'button', id: 'bs-tier-' + tier + '-change', className: 'bs-button', 'data-variant': 'outline',
-								'data-tier-change': tier, onClick: () => navigate('tiers') },
-								translate(current === '' ? 'chooseModel' : 'changeModel')));
-					})),
-				h('p', { className: 'bs-hint bs-routingNote' }, translate('routingNote'))),
-			h('section', { className: 'bs-section' },
-				h('div', { className: 'bs-sectionHead' }, h('h3', { className: 'bs-sectionTitle' }, translate('backendsTitle'))),
-				h('p', { className: 'bs-hint' }, translate('backendsIntro')),
-				h('div', { className: 'bs-overview' }, BACKENDS.map((spec) => {
-					const backend = currentLive.subagents[spec.cli];
-					const title = spec.cli === 'codex' ? 'Codex' : 'Claude';
-					return h('button', { key: spec.cli, type: 'button', id: 'bs-open-' + spec.cli, className: 'bs-overviewRow',
-						'aria-label': translate('configureBackend', { backend: title }), onClick: () => navigate('cli', spec.cli) },
-						h('span', { className: 'bs-overviewGlyph', 'aria-hidden': true }, h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M4 5h16v14H4Zm4 5 2 2-2 2m5 0h3' }))),
-						h('span', { className: 'bs-overviewName' }, h('span', null, title),
-							h('span', { className: 'bs-overviewMeta bs-mono' }, backend.enabled ? (translate('modelCount', { count: backend.models.length }) + (backend.defaultModel ? ' · ' + backend.defaultModel : '')) : '')),
-						h('span', { className: 'bs-badge', 'data-active': backend.enabled && scopeActive }, h('span', { className: 'bs-dot', 'data-active': backend.enabled && scopeActive, 'aria-hidden': true }),
-							translate(!backend.enabled ? 'inactive' : !scopeActive ? 'scopeInactive' : 'configured')), h(Chevron));
-				})))),
-		h('div', panelProps('cli'),
-			h(Tabs, { id: 'bs-backend', label: translate('tabCli'), compact: true, value: backendTab, onChange: setBackendTab,
-				items: BACKENDS.map((spec) => ({ id: spec.cli, label: spec.cli === 'codex' ? 'Codex' : 'Claude', active: currentLive.subagents[spec.cli].enabled && scopeActive })) }),
-			...BACKENDS.map((spec) => h('div', { key: spec.cli, id: 'bs-backend-panel-' + spec.cli, role: 'tabpanel',
-				'aria-labelledby': 'bs-backend-tab-' + spec.cli, tabIndex: 0, hidden: backendTab !== spec.cli },
-				h(BackendCard, { spec, backend: currentLive.subagents[spec.cli], disabled: !writable || busy, capabilities, discovery,
-					discoveryMatches: currentLive.subagents[spec.cli].executable === host.subagents[spec.cli].executable && currentLive.subagents[spec.cli].profile === host.subagents[spec.cli].profile,
-					scopeActive, t: translate, generation, onPatch: (patch) => patchBackend(spec, patch), onModelPatch: (index, patch) => patchModel(spec, index, patch),
-					onModelAdd: () => addModel(spec), onModelRemove: (index) => removeModel(spec, index), onDiscover: () => discoverModels(spec), onDiagnostics: () => navigate('connection') })))),
-		h('div', panelProps('tiers'),
-			h('section', { className: 'bs-section' },
-				h('div', { className: 'bs-sectionHead' }, h('h3', { className: 'bs-sectionTitle' }, translate('tiersTitle'))),
-				h('p', { className: 'bs-hint' }, translate('tiersIntro')),
-				routesState.status === 'loading' ? h('p', { className: 'bs-hint', role: 'status' }, translate('routesLoading'))
-					: allowed === null ? h('p', { className: 'bs-note', 'data-tone': 'warn' }, translate('routesError'))
-						: !allowed.enabled || allowed.routes.length === 0 ? h('p', { className: 'bs-note', 'data-tone': 'warn' }, translate('tiersInactive')) : null,
-				h('div', { className: 'bs-tierGrid' }, ...TIERS.map((tier) => h(TierRow, { key: tier, tier, value: currentLive.tiers[tier], allowed, disabled: !writable || busy,
-					t: translate, onPatch: (patch) => patchTier(tier, patch) }))))),
-		h('div', panelProps('connection'),
-			h('section', { className: 'bs-section' },
-				h('div', { className: 'bs-sectionHead' }, h('h3', { className: 'bs-sectionTitle' }, translate('scopeTitle'))),
-				h(SwitchRow, { id: 'bs-scope-eng', label: currentLive.subagents.global ? translate('scopeEngIncluded') : translate('scopeEng'),
-					hint: currentLive.subagents.global ? translate('globalOverrides') : translate('scopeEngHint'),
-					checked: currentLive.subagents.global ? true : currentLive.subagents.eng, disabled: !writable || busy || currentLive.subagents.global,
-					onChange: (eng) => edit((current) => ({ ...current, subagents: { ...current.subagents, eng } })) }),
-				h(SwitchRow, { id: 'bs-scope-global', label: translate('scopeGlobal'), hint: translate('scopeGlobalHint'), checked: currentLive.subagents.global,
-					disabled: !writable || busy, onChange: (global) => edit((current) => ({ ...current, subagents: { ...current.subagents, global } })) }),
-				!scopeActive ? h('p', { className: 'bs-note', 'data-tone': 'warn' }, translate('scopeNone')) : null),
-			h('section', { className: 'bs-section' },
-				h('div', { className: 'bs-sectionHead' }, h('h3', { className: 'bs-sectionTitle' }, translate('behaviorTitle'))),
-				h(SwitchRow, { id: 'bs-delegation-prompt', label: translate('delegationPromptLabel'), hint: translate('delegationPromptHint'),
-					checked: currentLive.delegationPrompt, disabled: !writable || busy, onChange: (delegationPrompt) => edit((current) => ({ ...current, delegationPrompt })) }),
-				h(SwitchRow, { id: 'bs-child-exit-guard', label: translate('childExitGuardLabel'), hint: translate('childExitGuardHint'),
-					checked: currentLive.childExitGuard, disabled: !writable || busy, onChange: (childExitGuard) => edit((current) => ({ ...current, childExitGuard })) })),
-			h('section', { className: 'bs-section', 'aria-label': translate('readonlyDiagnostics') },
-				h('div', { className: 'bs-sectionHead' }, h('h3', { className: 'bs-sectionTitle' }, translate('readonlyDiagnostics')),
-					h('button', { type: 'button', id: 'bs-refresh', className: 'bs-button', 'data-variant': 'outline',
-						disabled: capabilities.status === 'loading' || routesState.status === 'loading', 'aria-busy': capabilities.status === 'loading' || routesState.status === 'loading',
-						onClick: () => { capabilities.reload(); routesState.reload(); } }, translate('refresh'))),
-				h('div', { className: 'bs-metricGrid' },
-					h('div', { className: 'bs-metric' }, h('span', { className: 'bs-metricLabel' }, translate('connectionMode')),
-						h('span', { className: 'bs-metricValue' }, translate(writable ? 'connectionWritable' : 'connectionReadonly'))),
-					h('div', { className: 'bs-metric' }, h('span', { className: 'bs-metricLabel' }, translate('capabilitiesLabel')),
-						h('span', { className: 'bs-metricValue', role: 'status' }, capabilities.status === 'ready' ? translate('ready') : capabilities.status === 'loading' ? translate('loading') : translate('failed'))),
-					h('div', { className: 'bs-metric' }, h('span', { className: 'bs-metricLabel' }, translate('routesLabel')),
-						h('span', { className: 'bs-metricValue', role: 'status' }, routesState.status === 'loading' ? translate('loading')
-							: allowed === null ? translate('failed') : !allowed.enabled ? translate('inactive') : translate('modelCount', { count: allowed.routes.length })))),
-				...BACKENDS.map((spec) => h('div', { key: spec.cli, className: 'bs-connectionRow', 'data-backend': spec.cli },
-					h('span', null, spec.cli === 'codex' ? 'Codex' : 'Claude'),
-					h('p', { className: 'bs-hint bs-mono', role: 'status' }, detectionOf(capabilities, spec, host.subagents[spec.cli], translate))))),
-			h('section', { className: 'bs-section' },
-				h(Advanced, { label: translate('trustedHostsAdvanced'), summary: currentLive.trustedHosts.length ? translate('trustedCount', { count: currentLive.trustedHosts.length }) : translate('trustedDefault') },
-					h(Field, { id: 'bs-trusted-hosts', label: translate('trustedHostsLabel'), hint: translate('trustedHostsHint') },
-						h(HostList, { key: generation, hosts: currentLive.trustedHosts, disabled: !writable || busy, t: translate,
-							onChange: (trustedHosts) => edit((current) => ({ ...current, trustedHosts })) }))))),
-		notice !== null || invalid !== null ? h('div', { className: 'bs-feedback' }, status) : null,
-		dirty ? h('div', { className: 'bs-footer' },
-			h('span', { className: 'bs-status' }, translate('changeCount', { count: changeCount })),
-			h('button', { type: 'button', className: 'bs-button', 'data-variant': 'outline', disabled: busy, onClick: reset },
+		h('section', { className: 'bs-section', id: 'bs-section-routing', 'aria-label': translate('routingTitle') },
+			h('div', { className: 'bs-sectionHead' }, h('h3', { className: 'bs-sectionTitle' }, translate('routingTitle'))),
+			h('p', { className: 'bs-hint' }, translate('modelRecommendations')),
+			routesState.status === 'loading' ? h('p', { className: 'bs-hint', role: 'status' }, translate('routesLoading'))
+				: allowed === null ? h('p', { className: 'bs-note', 'data-tone': 'warn' }, translate('routesError'))
+					: !allowed.enabled || allowed.routes.length === 0 ? h('p', { className: 'bs-note', 'data-tone': 'warn' }, translate('tiersInactive')) : null,
+			h('div', { className: 'bs-routingDiagram', 'data-routing': 'main-agent' },
+				h('div', { className: 'bs-routingSource', id: 'bs-routing-source' },
+					h('span', { className: 'bs-routingSourceLabel' }, translate('mainAgent')),
+					h('span', { className: 'bs-hint' }, translate('mainAgentNote'))),
+				...TIERS.map((tier) => h(TierRow, { key: tier, tier, value: currentLive.tiers[tier], allowed, disabled: !writable || busy,
+					t: translate, onPatch: (patch) => patchTier(tier, patch) }))),
+			h('p', { className: 'bs-hint bs-routingNote' }, translate('routingNote'))),
+		h('section', { className: 'bs-section', id: 'bs-section-backends', 'aria-label': translate('backendsTitle') },
+			h('div', { className: 'bs-sectionHead' }, h('h3', { className: 'bs-sectionTitle' }, translate('backendsTitle'))),
+			h('p', { className: 'bs-hint' }, translate('backendsIntro')),
+			...BACKENDS.map((spec) => h(BackendCard, { key: spec.cli, spec, backend: currentLive.subagents[spec.cli], disabled: !writable || busy, capabilities, discovery,
+				discoveryMatches: currentLive.subagents[spec.cli].executable === host.subagents[spec.cli].executable && currentLive.subagents[spec.cli].profile === host.subagents[spec.cli].profile,
+				scopeActive, t: translate, generation, onPatch: (patch) => patchBackend(spec, patch), onModelPatch: (index, patch) => patchModel(spec, index, patch),
+				onModelAdd: () => addModel(spec), onModelRemove: (index) => removeModel(spec, index), onDiscover: () => discoverModels(spec), onDiagnostics: () => scrollToSection('diagnostics') }))),
+		h('section', { className: 'bs-section', id: 'bs-section-scope', 'aria-label': translate('scopeTitle') },
+			h('div', { className: 'bs-sectionHead' }, h('h3', { className: 'bs-sectionTitle' }, translate('scopeTitle'))),
+			h(SwitchRow, { id: 'bs-scope-eng', label: currentLive.subagents.global ? translate('scopeEngIncluded') : translate('scopeEng'),
+				hint: currentLive.subagents.global ? translate('globalOverrides') : translate('scopeEngHint'),
+				checked: currentLive.subagents.global ? true : currentLive.subagents.eng, disabled: !writable || busy || currentLive.subagents.global,
+				onChange: (eng) => edit((current) => ({ ...current, subagents: { ...current.subagents, eng } })) }),
+			h(SwitchRow, { id: 'bs-scope-global', label: translate('scopeGlobal'), hint: translate('scopeGlobalHint'), checked: currentLive.subagents.global,
+				disabled: !writable || busy, onChange: (global) => edit((current) => ({ ...current, subagents: { ...current.subagents, global } })) }),
+			!scopeActive ? h('p', { className: 'bs-note', 'data-tone': 'warn' }, translate('scopeNone')) : null),
+		h('section', { className: 'bs-section', id: 'bs-section-behavior', 'aria-label': translate('behaviorTitle') },
+			h('div', { className: 'bs-sectionHead' }, h('h3', { className: 'bs-sectionTitle' }, translate('behaviorTitle'))),
+			h(SwitchRow, { id: 'bs-delegation-prompt', label: translate('delegationPromptLabel'), hint: translate('delegationPromptHint'),
+				checked: currentLive.delegationPrompt, disabled: !writable || busy, onChange: (delegationPrompt) => edit((current) => ({ ...current, delegationPrompt })) }),
+			h(SwitchRow, { id: 'bs-child-exit-guard', label: translate('childExitGuardLabel'), hint: translate('childExitGuardHint'),
+				checked: currentLive.childExitGuard, disabled: !writable || busy, onChange: (childExitGuard) => edit((current) => ({ ...current, childExitGuard })) })),
+		h('section', { className: 'bs-section', id: 'bs-section-diagnostics', 'aria-label': translate('readonlyDiagnostics') },
+			h('div', { className: 'bs-sectionHead' }, h('h3', { className: 'bs-sectionTitle' }, translate('readonlyDiagnostics')),
+				h('button', { type: 'button', id: 'bs-refresh', className: 'bs-button', 'data-variant': 'outline',
+					disabled: capabilities.status === 'loading' || routesState.status === 'loading', 'aria-busy': capabilities.status === 'loading' || routesState.status === 'loading',
+					onClick: () => { capabilities.reload(); routesState.reload(); } }, translate('refresh'))),
+			h('div', { className: 'bs-metricGrid' },
+				h('div', { className: 'bs-metric' }, h('span', { className: 'bs-metricLabel' }, translate('connectionMode')),
+					h('span', { className: 'bs-metricValue' }, translate(writable ? 'connectionWritable' : 'connectionReadonly'))),
+				h('div', { className: 'bs-metric' }, h('span', { className: 'bs-metricLabel' }, translate('capabilitiesLabel')),
+					h('span', { className: 'bs-metricValue', role: 'status' }, capabilities.status === 'ready' ? translate('ready') : capabilities.status === 'loading' ? translate('loading') : translate('failed'))),
+				h('div', { className: 'bs-metric' }, h('span', { className: 'bs-metricLabel' }, translate('routesLabel')),
+					h('span', { className: 'bs-metricValue', role: 'status' }, routesState.status === 'loading' ? translate('loading')
+						: allowed === null ? translate('failed') : !allowed.enabled ? translate('inactive') : translate('modelCount', { count: allowed.routes.length })))),
+			...BACKENDS.map((spec) => h('div', { key: spec.cli, className: 'bs-connectionRow', 'data-backend': spec.cli },
+				h('span', null, spec.cli === 'codex' ? 'Codex' : 'Claude'),
+				h('p', { className: 'bs-hint bs-mono', role: 'status' }, detectionOf(capabilities, spec, host.subagents[spec.cli], translate))))),
+		h('section', { className: 'bs-section', id: 'bs-section-trusted', 'aria-label': translate('trustedHostsAdvanced') },
+			h(Advanced, { label: translate('trustedHostsAdvanced'), summary: currentLive.trustedHosts.length ? translate('trustedCount', { count: currentLive.trustedHosts.length }) : translate('trustedDefault') },
+				h(Field, { id: 'bs-trusted-hosts', label: translate('trustedHostsLabel'), hint: translate('trustedHostsHint') },
+					h(HostList, { key: generation, hosts: currentLive.trustedHosts, disabled: !writable || busy, t: translate,
+						onChange: (trustedHosts) => edit((current) => ({ ...current, trustedHosts })) })))),
+		dirty || notice !== null || invalid !== null ? h('div', { className: 'bs-footer' },
+			h('span', { className: 'bs-status', 'data-tone': notice?.tone, role: notice?.tone === 'error' ? 'alert' : 'status' },
+				notice !== null ? notice.text
+					: invalid !== null ? h('a', { className: 'bs-errorLink', href: '#bs-section-' + invalidSection },
+						translate(invalid.key, { backend: invalid.titleKey ? translate(invalid.titleKey) : '' }))
+						: translate('changeCount', { count: changeCount })),
+			h('button', { type: 'button', className: 'bs-button', 'data-variant': 'outline', hidden: !dirty, disabled: busy, onClick: reset },
 				translate(discardFor === dirtyKey ? 'resetConfirm' : 'reset')),
-			h('button', { type: 'button', className: 'bs-button', 'data-variant': 'primary', disabled: !writable || busy || invalid !== null,
+			h('button', { type: 'button', className: 'bs-button', 'data-variant': 'primary', hidden: !dirty, disabled: !writable || busy || invalid !== null,
 				'aria-busy': busy, onClick: () => void save() }, busy ? h('span', { className: 'bs-spinner', 'aria-hidden': true }) : null,
 				busy ? translate('saving') : translate('save'))) : null);
+
 }
 
 /**

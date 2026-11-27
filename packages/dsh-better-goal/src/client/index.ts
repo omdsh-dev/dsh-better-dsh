@@ -23,7 +23,7 @@
 
 import * as React from 'react'
 import type { GoalRef } from '@deepseek-ai/dsh-goal/client'
-import type { Translate, GoalConfig, GoalDraft, NativeField, ParseResult, ConfigOp, ConfigProps, RuntimeConfig, GoalActions, GoalBarProps, GoalHistoryProps, GoalHistoryEntry, ActivationSnapshot, ActivationDeps, Dispose, GoalContext, GoalDockProps, IconButtonProps, ChoiceProps, FieldProps, ActionResult, Implementation, RoundLimitMode } from './types.js'
+import type { Translate, GoalConfig, GoalDraft, ParseResult, ConfigOp, ConfigProps, RuntimeConfig, GoalActions, GoalBarProps, GoalHistoryProps, GoalHistoryEntry, ActivationSnapshot, ActivationDeps, Dispose, GoalContext, GoalDockProps, IconButtonProps, ChoiceProps, ActionResult, Implementation, RoundLimitMode } from './types.js'
 const {
   createElement: h,
   useCallback,
@@ -84,23 +84,22 @@ const zh: Record<string, string> = {
   modeLabel: '轮数策略',
   roundDefinition: '一轮指目标的一次自动续跑。',
   modeAgent: '由 Agent 决定',
-  modeAgentFlow: '目标 → 由 Agent 决定 → 上限',
-  modeAgentStop: '达到 Agent 设定的上限、目标完成或受阻时停止。',
+  modeAgentHint: 'Agent 每轮自行决定是否继续；达到它设定的上限、目标完成或受阻时停止。',
   modeUnlimited: '无上限',
-  modeUnlimitedFlow: '目标 → 第 1 轮 → 第 2 轮 → …',
-  modeUnlimitedStop: '仅在目标完成或受阻时停止。',
+  modeUnlimitedHint: '不设轮数上限，只在目标完成或受阻时停止。',
   modeFixed: '固定轮数',
-  modeFixedFlow: '目标 → 第 1 轮 → … → 第 N 轮',
-  modeFixedStop: '达到第 N 轮后停止。',
-  modeStop: '停止条件',
+  modeFixedHint: '跑满设定的轮数后停止。',
   roundSpan: '第 1 轮 → … → 第 {rounds} 轮',
   roundLimitLabel: '轮数上限',
   roundLimitHint: '达到上限后停止续跑。',
   roundLimitUnlimited: '当前值等于兼容哨兵，界面显示为无上限。',
-  spinHintLabel: '空转提示阈值（秒）',
-  spinHintHint: '上一轮 goal 回合短于该值时，下一轮提示会写清 goal 无延迟投递、需要在回合内阻塞等待。0 表示关闭。',
-  jobWaitLabel: '等待后台任务（秒）',
-  jobWaitHint: '回合结束到开始下一轮 goal 之间，最多等本会话的后台任务这么久；超时则照常开轮，并在提示词里列出仍在运行的任务。任务不会被取消。0 表示不等待。',
+  rhythmSection: '回合节奏',
+  spinHintLabel: '空转提示阈值',
+  spinHintHint: '上一轮短于这个时长时，下一轮会提醒 Agent 在回合内阻塞等待。0 表示关闭。',
+  jobWaitLabel: '等待后台任务',
+  jobWaitHint: '上一轮结束后，最多等本会话的后台任务这么久再开下一轮；超时照常开轮，任务不会被取消。0 表示不等待。',
+  unitSeconds: '秒',
+  unitRounds: '轮',
   questionTimeoutLabel: '目标提问超时（秒）',
   questionTimeoutHint: '-1 表示永不超时；否则为 1 到 2147483 的整数。热设置只影响新发起的等待，不改变当前等待。',
   questionTimeoutNever: '当前设置：永不超时。',
@@ -112,7 +111,7 @@ const zh: Record<string, string> = {
   readonlyNote: '只读：当前无法写入宿主配置。',
   unavailableNote: '不可写：当前连接下该配置不可用。',
   settingsTitle: '目标与续跑',
-  settingsIntro: '管理目标自动续跑的方式、轮数上限与受阻判定。',
+  settingsIntro: '决定目标的续跑方式、轮数上限，以及每轮之间等多久。',
   'phase.active': '进行中',
   'phase.active.disarmed': '已暂停',
   'phase.paused': '已暂停',
@@ -129,24 +128,18 @@ const zh: Record<string, string> = {
   'meta.rounds': '第 {rounds} / {max} 轮',
   nativeSection: 'DSH 续跑策略',
   nativeDefaultLabel: '默认轮数上限',
-  nativeDefaultHint: '新目标未指定上限时使用此值。',
+  nativeDefaultHint: '新目标没有指定上限时使用。',
   nativeBlockedLabel: '报告受阻门槛',
-  nativeBlockedHint: '达到该轮数后 Agent 可报告受阻。',
+  nativeBlockedHint: '连续这么多轮后，Agent 可以报告受阻。',
   invalidImplementation: '请选择续跑模式。',
   invalidNative: '请输入 1 到 9007199254740991 之间的整数。',
-  help: '了解设置',
+  help: '设置说明',
   implementation: '续跑模式',
-  implementationHint: '切换模式需保存后重启当前 profile。',
+  implementationHint: '切换后续跑由另一套驱动接管；保存并重启当前 profile 后生效。',
   implEnhancedTag: '本插件驱动',
   implNativeTag: '宿主原生',
-  implEnhancedFlow: '目标 → 第 1 轮 → 第 2 轮 → … → 上限/完成/受阻',
-  implNativeFlow: '目标 → DSH 原生驱动 → 宿主轮数策略',
-  implEnhancedBullet1: '每轮自动推进',
-  implEnhancedBullet2: '达到上限/完成/受阻时停止',
-  implEnhancedBullet3: '支持 Agent/无上限/固定轮数',
-  implNativeBullet1: '使用原生 goal 服务与工具',
-  implNativeBullet2: '本页只设置原生默认轮数与受阻门槛',
-  implNativeBullet3: '切换后需重载',
+  implEnhancedDesc: '每一轮由本插件推进，可按 Agent 决定、无上限或固定轮数停止。',
+  implNativeDesc: '每一轮交给 DSH 宿主；这里只设置默认上限与受阻门槛。',
   replaceNative: '替换原生 Goal',
   replaceHint: '关闭后由宿主原生 Goal 管理目标与续跑。保存后重启当前 profile。',
   reloadRequired: '重启 profile 后生效',
@@ -204,23 +197,22 @@ const en: Record<string, string> = {
   modeLabel: 'Round policy',
   roundDefinition: 'A round is one automatic continuation of the goal.',
   modeAgent: 'Agent-decided',
-  modeAgentFlow: 'Goal → Agent decides → cap',
-  modeAgentStop: 'Stops at the agent-set cap, on completion, or when blocked.',
+  modeAgentHint: 'The agent decides each round; stops at its own cap, on completion, or when blocked.',
   modeUnlimited: 'Unlimited',
-  modeUnlimitedFlow: 'Goal → Round 1 → Round 2 → …',
-  modeUnlimitedStop: 'Stops only on completion or when blocked.',
+  modeUnlimitedHint: 'No round cap; stops only on completion or when blocked.',
   modeFixed: 'Fixed rounds',
-  modeFixedFlow: 'Goal → Round 1 → … → Round N',
-  modeFixedStop: 'Stops after round N.',
-  modeStop: 'Stop condition',
+  modeFixedHint: 'Stops after the configured number of rounds.',
   roundSpan: 'Round 1 → … → Round {rounds}',
   roundLimitLabel: 'Round limit',
   roundLimitHint: 'Automatic continuation stops at the limit.',
   roundLimitUnlimited: 'This value is the compatibility sentinel; the UI renders it as unlimited.',
-  spinHintLabel: 'Idle-spin hint threshold (seconds)',
-  spinHintHint: 'When the previous goal turn was shorter than this, the next round says goal rounds arrive with no delay and that waits must block inside the turn. 0 turns it off.',
-  jobWaitLabel: 'Wait for background jobs (seconds)',
-  jobWaitHint: 'Between a finished turn and the next goal round, wait this long at most for this session’s background jobs. When it expires the round starts anyway and the prompt lists the jobs still running. Nothing is cancelled. 0 never waits.',
+  rhythmSection: 'Round pacing',
+  spinHintLabel: 'Idle-spin hint threshold',
+  spinHintHint: 'When the previous round was shorter than this, the next round tells the agent to block inside the turn. 0 turns it off.',
+  jobWaitLabel: 'Wait for background jobs',
+  jobWaitHint: 'After a round ends, wait this long at most for this session’s background jobs before starting the next; when it expires the round starts anyway and nothing is cancelled. 0 never waits.',
+  unitSeconds: 'sec',
+  unitRounds: 'rounds',
   questionTimeoutLabel: 'Goal-question timeout (seconds)',
   questionTimeoutHint: '-1 never times out; otherwise an integer from 1 to 2147483. Hot changes affect only newly started waits, never the current one.',
   questionTimeoutNever: 'Current setting: never times out.',
@@ -232,7 +224,7 @@ const en: Record<string, string> = {
   readonlyNote: 'Read-only: host configuration cannot be written.',
   unavailableNote: 'Not writable: this configuration is unavailable on the current connection.',
   settingsTitle: 'Goals and continuation',
-  settingsIntro: 'Manage how goals continue automatically, including rounds and blocked reporting.',
+  settingsIntro: 'Choose who drives each round, how many rounds are allowed, and how long to wait between them.',
   'phase.active': 'Running',
   'phase.active.disarmed': 'Paused',
   'phase.paused': 'Paused',
@@ -250,23 +242,17 @@ const en: Record<string, string> = {
   nativeSection: 'DSH continuation policy',
   nativeDefaultLabel: 'Default round cap',
   nativeDefaultHint: 'Used for new goals without an explicit cap.',
-  nativeBlockedLabel: 'Minimum rounds to report blocked',
-  nativeBlockedHint: 'The agent may report blocked after this many rounds.',
+  nativeBlockedLabel: 'Rounds before blocked reports',
+  nativeBlockedHint: 'After this many rounds the agent may report blocked.',
   invalidImplementation: 'Choose a continuation mode.',
   invalidNative: 'Enter a whole number from 1 to 9007199254740991.',
   help: 'About these settings',
   implementation: 'Continuation mode',
-  implementationHint: 'Save and restart the current profile to switch modes.',
+  implementationHint: 'Switching hands continuation to the other driver; save and restart the current profile to apply.',
   implEnhancedTag: 'Plugin-driven',
   implNativeTag: 'Host-native',
-  implEnhancedFlow: 'Goal → Round 1 → Round 2 → … → limit/complete/blocked',
-  implNativeFlow: 'Goal → DSH native driver → host round policy',
-  implEnhancedBullet1: 'Advances automatically each round',
-  implEnhancedBullet2: 'Stops at the cap, on completion, or when blocked',
-  implEnhancedBullet3: 'Supports agent-set, unlimited, and fixed rounds',
-  implNativeBullet1: 'Uses the native goal service and tools',
-  implNativeBullet2: 'This page sets only the native default cap and blocked threshold',
-  implNativeBullet3: 'Reload required after switching',
+  implEnhancedDesc: 'This plugin drives each round: Agent-decided, unlimited, or a fixed count.',
+  implNativeDesc: 'The DSH host drives each round; here you set only the default cap and blocked threshold.',
   replaceNative: 'Replace native Goal',
   replaceHint: 'When off, the host’s native Goal manages goals and continuation. Save, then restart the profile.',
   reloadRequired: 'Restart the profile to apply',
@@ -408,20 +394,20 @@ const GOAL_CSS = `.dbg-dock{--cfg-accent:var(--dsw-alias-state-business-primary,
 [data-ds-dark-theme] .dbg-dock{--cfg-accent:var(--dsw-alias-state-business-primary,#4eb0e8);--cfg-solid:var(--dsw-alias-button-primary-fill,#4eb0e8);--cfg-on-solid:var(--dsw-alias-label-primary-foreground,#0e1014);--cfg-accent-soft:color-mix(in srgb,var(--cfg-accent) 14%,transparent)}
 @media(prefers-reduced-motion:reduce){.dbg-dock *{animation:none!important;transition:none!important}}`
 
-const SETTINGS_CSS = `.dbg-cfg{--cfg-accent:var(--dsw-alias-state-business-primary,#3388bb);--cfg-solid:var(--dsw-alias-button-primary-fill,#20709e);--cfg-accent-text:color-mix(in srgb,var(--cfg-accent) 70%,var(--cfg-ink));--cfg-accent-soft:color-mix(in srgb,var(--cfg-accent) 10%,transparent);--cfg-ink:var(--dsw-alias-label-primary);--cfg-muted:var(--dsw-alias-label-secondary);--cfg-faint:color-mix(in srgb,var(--dsw-alias-label-tertiary) 80%,var(--dsw-alias-label-primary));--cfg-line:var(--dsw-alias-border-l1);--cfg-line-2:var(--dsw-alias-border-l2);--cfg-line-strong:var(--dsw-alias-border-l3);--cfg-base:var(--dsw-alias-bg-layer-1);--cfg-raised:var(--dsw-alias-bg-layer-2);--cfg-overlay:var(--dsw-alias-bg-layer-3,var(--dsw-alias-bg-layer-2));--cfg-hover:var(--dsw-alias-interactive-bg-hover);--cfg-danger:color-mix(in srgb,var(--dsw-alias-state-error-primary) 60%,var(--cfg-ink));--cfg-warn:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 60%,var(--cfg-ink));--cfg-success:color-mix(in srgb,var(--dsw-alias-state-success-primary) 60%,var(--cfg-ink));--cfg-on-solid:var(--dsw-alias-label-primary-foreground,#fff);display:flex;flex-direction:column;gap:20px;max-width:960px;min-width:0;margin:0 auto;width:100%;flex:1;min-height:0;container-type:inline-size;container-name:better-goal-settings;font-size:13px;line-height:20px;color:var(--cfg-ink);font-variant-numeric:tabular-nums}
+const SETTINGS_CSS = `.dbg-cfg{--cfg-accent:var(--dsw-alias-state-business-primary,#3388bb);--cfg-solid:var(--dsw-alias-button-primary-fill,#20709e);--cfg-accent-text:color-mix(in srgb,var(--cfg-accent) 70%,var(--cfg-ink));--cfg-accent-soft:color-mix(in srgb,var(--cfg-accent) 10%,transparent);--cfg-ink:var(--dsw-alias-label-primary);--cfg-muted:var(--dsw-alias-label-secondary);--cfg-faint:color-mix(in srgb,var(--dsw-alias-label-tertiary) 80%,var(--dsw-alias-label-primary));--cfg-line:var(--dsw-alias-border-l1);--cfg-line-2:var(--dsw-alias-border-l2);--cfg-line-strong:var(--dsw-alias-border-l3);--cfg-base:var(--dsw-alias-bg-layer-1);--cfg-raised:var(--dsw-alias-bg-layer-2);--cfg-overlay:var(--dsw-alias-bg-layer-3,var(--dsw-alias-bg-layer-2));--cfg-hover:var(--dsw-alias-interactive-bg-hover);--cfg-danger:color-mix(in srgb,var(--dsw-alias-state-error-primary) 60%,var(--cfg-ink));--cfg-warn:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 60%,var(--cfg-ink));--cfg-success:color-mix(in srgb,var(--dsw-alias-state-success-primary) 60%,var(--cfg-ink));--cfg-on-solid:var(--dsw-alias-label-primary-foreground,#fff);display:flex;flex-direction:column;gap:18px;max-width:960px;min-width:0;width:100%;margin:0 auto;color:var(--cfg-ink);font-size:13px;line-height:20px;font-variant-numeric:tabular-nums;container-type:inline-size;container-name:better-goal-settings}
 .dbg-cfg *{box-sizing:border-box}
-.dbg-pageHead{display:flex;flex-direction:column;gap:4px;min-width:0}
-.dbg-title{margin:0;font-size:20px;line-height:28px;font-weight:500;letter-spacing:-.01em}
-.dbg-pagePurpose{margin:0;color:var(--cfg-muted);font-size:13px;line-height:20px}
-.dbg-note{margin:0;padding:6px 10px;border:1px solid var(--cfg-line-2);border-radius:6px;background:var(--cfg-raised);color:var(--cfg-muted);font-size:12px;line-height:18px}
+.dbg-pageHead{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dbg-title{margin:0;font-size:15px;line-height:22px;font-weight:500;letter-spacing:0}
+.dbg-pagePurpose{margin:0;color:var(--cfg-muted);font-size:12px;line-height:18px}
+.dbg-note{margin:0;padding:6px 10px;border:1px solid var(--cfg-line-2);border-radius:8px;background:var(--cfg-base);color:var(--cfg-muted);font-size:12px;line-height:18px}
 .dbg-note[data-tone=error],.dbg-status[data-tone=error],.dbg-fieldError{color:var(--cfg-danger)}
-.dbg-note[data-tone=warn]{color:var(--cfg-warn)}
+.dbg-note[data-tone=warn],.dbg-status[data-tone=warn]{color:var(--cfg-warn)}
+.dbg-status[data-tone=ok]{color:var(--cfg-success)}
 .dbg-section{display:flex;flex-direction:column;gap:10px;min-width:0;border:0;padding:0;margin:0}
-.dbg-section>legend{display:block;width:100%;margin:0;padding:0 0 8px;border-bottom:1px solid var(--cfg-line);color:var(--cfg-faint);font-size:12px;line-height:18px;font-weight:500;letter-spacing:.02em}
-.dbg-hint{margin:0;color:var(--cfg-faint);font-size:12px;line-height:18px}
+.dbg-sectionTitle{margin:0;color:var(--cfg-ink);font-size:14px;line-height:22px;font-weight:500}
+.dbg-hint{margin:0;color:var(--cfg-muted);font-size:12px;line-height:18px;overflow-wrap:anywhere}
 .dbg-modeCards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.dbg-optionCards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.dbg-modeCard{position:relative;display:flex;flex-direction:column;gap:10px;min-width:0;padding:14px;border:1px solid var(--cfg-line-2);border-radius:10px;background:var(--cfg-raised);cursor:pointer;transition:background-color 140ms ease,border-color 140ms ease}
+.dbg-modeCard{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0;padding:12px;border:1px solid var(--cfg-line-2);border-radius:10px;background:var(--cfg-raised);cursor:pointer;transition:background-color 140ms ease,border-color 140ms ease}
 .dbg-modeCard:hover{background:var(--cfg-hover)}
 .dbg-modeCard[data-disabled=true]{opacity:.4;cursor:not-allowed}
 .dbg-modeCard[data-checked=true]{border-color:var(--cfg-accent);background:var(--cfg-accent-soft)}
@@ -429,61 +415,69 @@ const SETTINGS_CSS = `.dbg-cfg{--cfg-accent:var(--dsw-alias-state-business-prima
 .dbg-modeCardHead{display:flex;align-items:center;gap:8px;min-width:0}
 .dbg-modeCardGlyph{display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;border:1px solid var(--cfg-line-2);border-radius:8px;background:var(--cfg-base);color:var(--cfg-muted)}
 .dbg-modeCard[data-checked=true] .dbg-modeCardGlyph{border-color:color-mix(in srgb,var(--cfg-accent) 30%,transparent);color:var(--cfg-accent-text)}
-.dbg-modeCardTitle{min-width:0;font-size:13px;line-height:20px;font-weight:500;color:var(--cfg-ink)}
+.dbg-modeCardTitle{min-width:0;font-size:13px;line-height:20px;font-weight:500;color:var(--cfg-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dbg-modeCardCheck{flex:none;display:inline-flex;align-items:center;justify-content:center;width:16px;height:20px;margin-left:auto;color:var(--cfg-accent)}
-.dbg-modeCardFlow{display:block;padding:7px 9px;border:1px solid var(--cfg-line);border-radius:6px;background:var(--cfg-base);color:var(--cfg-muted);font-size:12px;line-height:18px;overflow-wrap:anywhere}
-.dbg-modeCardBullets{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;color:var(--cfg-muted);font-size:12px;line-height:18px}
-.dbg-modeCardBullet{display:block;padding-left:12px;position:relative}
-.dbg-modeCardBullet:before{content:'·';position:absolute;left:2px;color:var(--cfg-faint)}
-.dbg-modeCardStop{display:block;color:var(--cfg-muted);font-size:12px;line-height:18px}
-.dbg-modeCardStopLabel{color:var(--cfg-faint)}
-.dbg-segmentInput{appearance:none;position:absolute;width:1px;height:1px;opacity:0;margin:0}
-.dbg-chip{display:inline-flex;align-items:center;height:20px;padding:0 7px;border:1px solid var(--cfg-line-2);border-radius:10px;color:var(--cfg-muted);font-size:11px;line-height:18px;white-space:nowrap}
+.dbg-modeCardDesc{display:block;color:var(--cfg-muted);font-size:12px;line-height:18px;overflow-wrap:anywhere}
+.dbg-chip{display:inline-flex;align-items:center;flex:none;height:20px;padding:0 7px;border:1px solid var(--cfg-line-2);border-radius:999px;color:var(--cfg-muted);font-size:11px;line-height:18px;white-space:nowrap}
 .dbg-chip[data-tone=accent]{color:var(--cfg-accent-text);border-color:color-mix(in srgb,var(--cfg-accent) 30%,transparent);background:var(--cfg-accent-soft)}
-.dbg-roundSpan{display:inline-flex;align-items:center;align-self:flex-start;min-height:28px;padding:0 10px;border:1px solid var(--cfg-line-2);border-radius:6px;background:var(--cfg-base);color:var(--cfg-muted);font-size:12px;line-height:18px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow-wrap:anywhere}
-.dbg-field{display:grid;grid-template-columns:minmax(120px,180px) minmax(0,1fr);gap:8px 20px;padding:4px 0;align-items:start}
-.dbg-fieldHeading{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;padding-top:4px}
-.dbg-fieldLabel{font-size:13px;line-height:20px;font-weight:500;color:var(--cfg-ink)}
-.dbg-fieldBody{display:flex;flex-direction:column;gap:6px;min-width:0}
+.dbg-seg{display:inline-flex;align-items:center;align-self:flex-start;gap:2px;padding:2px;border:1px solid var(--cfg-line-2);border-radius:8px;background:color-mix(in srgb,var(--cfg-ink) 4%,var(--cfg-base))}
+.dbg-segItem{position:relative;display:inline-flex;min-width:0}
+.dbg-segItem>span{display:flex;align-items:center;justify-content:center;height:28px;padding:0 12px;border:1px solid transparent;border-radius:6px;color:var(--cfg-muted);font-size:13px;line-height:20px;white-space:nowrap;cursor:pointer}
+.dbg-segItem:hover>span{background:var(--cfg-hover);color:var(--cfg-ink)}
+.dbg-segItem[data-checked=true]>span{border-color:var(--cfg-line-2);background:var(--cfg-raised);color:var(--cfg-accent-text);font-weight:500}
+.dbg-segItem:has(.dbg-segmentInput:focus-visible){outline:2px solid var(--cfg-accent);outline-offset:2px;border-radius:6px}
+.dbg-segItem[data-disabled=true]{opacity:.4}
+.dbg-segItem[data-disabled=true]>span{cursor:not-allowed}
+.dbg-segmentInput{appearance:none;position:absolute;width:1px;height:1px;opacity:0;margin:0}
+.dbg-rows{display:flex;flex-direction:column;min-width:0}
+.dbg-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;padding:14px 0;min-width:0}
+.dbg-rows>.dbg-row+.dbg-row{border-top:1px solid var(--cfg-line)}
+.dbg-rowText{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dbg-rowLabel{color:var(--cfg-ink);font-size:14px;line-height:22px;font-weight:400}
+.dbg-rowHint{margin:0;color:var(--cfg-muted);font-size:12px;line-height:18px;overflow-wrap:anywhere}
 .dbg-fieldError{margin:0;font-size:12px;line-height:18px}
-.dbg-input{appearance:none;box-sizing:border-box;width:100%;min-width:0;height:32px;padding:0 10px;font:inherit;font-size:13px;line-height:20px;color:var(--cfg-ink);background:var(--cfg-raised);border:1px solid var(--cfg-line-2);border-radius:8px;font-variant-numeric:tabular-nums}
+.dbg-control{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0}
+.dbg-number{display:inline-flex;align-items:center;gap:6px;flex:none}
+.dbg-unit{color:var(--cfg-muted);font-size:12px;white-space:nowrap}
+.dbg-input{appearance:none;box-sizing:border-box;width:88px;min-width:0;height:32px;padding:0 8px;font:inherit;font-size:13px;line-height:20px;color:var(--cfg-ink);background:var(--cfg-raised);border:1px solid var(--cfg-line-2);border-radius:8px;font-variant-numeric:tabular-nums;text-align:right}
 .dbg-input::-webkit-inner-spin-button,.dbg-input::-webkit-outer-spin-button{appearance:none;margin:0}
 .dbg-input[type=number]{-moz-appearance:textfield}
 .dbg-input:hover:not(:disabled){border-color:var(--cfg-line-strong)}
 .dbg-input[aria-invalid=true]{border-color:var(--cfg-danger)}
 .dbg-input:focus-visible{outline:2px solid var(--cfg-accent);outline-offset:2px}
-.dbg-iconBtn{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;padding:0;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--cfg-muted);cursor:pointer}
-.dbg-iconBtn:hover:not(:disabled){background:var(--cfg-hover);color:var(--cfg-ink)}
-.dbg-iconBtn:disabled{opacity:.4;cursor:not-allowed}
-.dbg-help{margin:0;font-size:12px;line-height:18px}
-.dbg-help>summary{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border-radius:6px;color:var(--cfg-faint);cursor:pointer;list-style:none}
-.dbg-help>summary::-webkit-details-marker{display:none}.dbg-help>summary::marker{content:''}
-.dbg-help>summary:hover,.dbg-help[open]>summary{background:var(--cfg-hover);color:var(--cfg-ink)}
-.dbg-helpText>summary{width:auto;height:auto;min-height:32px;padding:4px 8px;border-radius:6px;color:var(--cfg-muted);font-size:12px;line-height:18px}
-.dbg-helpBody{display:flex;flex-direction:column;gap:6px;margin-top:6px;max-width:64ch}
-.dbg-helpBody p{margin:0;color:var(--cfg-muted);font-size:12px;line-height:18px;overflow-wrap:anywhere}
-.dbg-runtime{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:36px;padding:8px 10px;border:1px solid var(--cfg-line-2);border-radius:8px;background:var(--cfg-base);color:var(--cfg-muted);font-size:12px;line-height:18px}
+.dbg-runtime{display:flex;align-items:center;gap:8px;min-height:34px;padding:4px 4px 4px 10px;border:1px solid var(--cfg-line-2);border-radius:8px;background:var(--cfg-base);color:var(--cfg-muted);font-size:12px;line-height:18px}
 .dbg-runtimeDot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--cfg-muted)}
 .dbg-runtimeDot[data-tone=active]{background:var(--cfg-accent)}
 .dbg-runtimeDot[data-tone=error]{background:var(--cfg-danger)}
-.dbg-runtimeLabel{margin:0;color:var(--cfg-ink);font-size:13px;line-height:20px}
+.dbg-runtimeLabel{margin:0;color:var(--cfg-ink);font-size:13px;line-height:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dbg-runtimeRefresh{margin-left:auto}
-.dbg-footer{position:sticky;bottom:0;z-index:2;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--cfg-line-2);background:var(--cfg-base);margin-top:auto}
+.dbg-iconBtn{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;padding:0;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--cfg-muted);cursor:pointer}
+.dbg-iconBtn:hover:not(:disabled){background:var(--cfg-hover);color:var(--cfg-ink)}
+.dbg-iconBtn:disabled{opacity:.4;cursor:not-allowed}
+.dbg-help{margin:0;font-size:12px;line-height:18px;color:var(--cfg-muted)}
+.dbg-helpText>summary{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:4px 0;color:var(--cfg-muted);font-size:12px;line-height:18px;list-style:none;cursor:pointer;width:auto;border-radius:6px}
+.dbg-helpChevron{display:inline-block;flex:none;width:6px;height:6px;margin-left:2px;border-right:1px solid currentColor;border-bottom:1px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform 100ms ease}
+.dbg-helpText[open] .dbg-helpChevron{transform:translateY(1px) rotate(225deg)}
+.dbg-helpText>summary::-webkit-details-marker{display:none}.dbg-helpText>summary::marker{content:''}
+.dbg-helpText>summary:hover,.dbg-helpText[open]>summary{color:var(--cfg-ink)}
+.dbg-helpText>summary:focus-visible{outline:2px solid var(--cfg-accent);outline-offset:2px}
+.dbg-helpBody{display:flex;flex-direction:column;gap:6px;margin-top:6px;max-width:64ch}
+.dbg-helpBody p{margin:0;color:var(--cfg-muted);font-size:12px;line-height:18px;overflow-wrap:anywhere}
+.dbg-footer{position:sticky;margin-top:auto;bottom:0;z-index:50;display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:12px 0 14px;border-top:1px solid var(--cfg-line);background:var(--cfg-base)}
 .dbg-status{flex:1;min-width:140px;margin:0;color:var(--cfg-faint);font-size:12px;line-height:18px;overflow-wrap:anywhere}
-.dbg-status[data-tone=ok]{color:var(--cfg-success)}
-.dbg-status[data-tone=warn]{color:var(--cfg-warn)}
 .dbg-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 12px;border:1px solid transparent;border-radius:8px;font:inherit;font-size:13px;line-height:20px;font-weight:500;color:var(--cfg-ink);background:transparent;cursor:pointer}
 .dbg-button:hover:not(:disabled){background:var(--cfg-hover)}
 .dbg-button[data-variant=primary]{background:var(--cfg-solid);color:var(--cfg-on-solid);min-width:80px}
 .dbg-button[data-variant=primary]:hover:not(:disabled){background:color-mix(in srgb,var(--cfg-solid) 88%,var(--cfg-on-solid))}
 .dbg-button[data-variant=outline]{border-color:var(--cfg-line-2)}
+.dbg-dock :is(button,input,textarea,summary):focus-visible,.dbg-cfg :is(input,button,summary):focus-visible{outline:2px solid var(--cfg-accent);outline-offset:2px}
+.dbg-cfg :disabled{opacity:.4;cursor:not-allowed}
 .dbg-spinner{box-sizing:border-box;display:inline-block;flex:none;width:12px;height:12px;border:1px solid currentColor;border-right-color:transparent;border-radius:50%;animation:dbg-spin .7s linear infinite}@keyframes dbg-spin{to{transform:rotate(360deg)}}
-@container better-goal-settings (max-width:640px){.dbg-modeCards,.dbg-optionCards{grid-template-columns:1fr}.dbg-field{grid-template-columns:minmax(0,1fr);gap:6px}.dbg-fieldHeading{padding-top:0}.dbg-footer .dbg-status{flex-basis:100%}.dbg-cfg :is(.dbg-input,.dbg-button,.dbg-iconBtn,.dbg-help>summary,.dbg-helpText>summary){min-height:44px}.dbg-cfg .dbg-iconBtn{width:44px}}
-@media(max-width:640px){.dbg-modeCards,.dbg-optionCards{grid-template-columns:1fr}.dbg-field{grid-template-columns:minmax(0,1fr);gap:6px}.dbg-fieldHeading{padding-top:0}.dbg-footer .dbg-status{flex-basis:100%}.dbg-cfg :is(.dbg-input,.dbg-button,.dbg-iconBtn,.dbg-help>summary,.dbg-helpText>summary){min-height:44px}.dbg-cfg .dbg-iconBtn{width:44px}}
-@media(pointer:coarse){.dbg-cfg :is(.dbg-input,.dbg-button,.dbg-iconBtn,.dbg-help>summary,.dbg-helpText>summary){min-height:44px}.dbg-cfg .dbg-iconBtn{width:44px}}
+@container better-goal-settings (max-width:520px){.dbg-modeCards{grid-template-columns:minmax(0,1fr)}.dbg-row{grid-template-columns:minmax(0,1fr);align-items:start;gap:8px}.dbg-control{justify-content:flex-start}.dbg-seg{align-self:stretch}.dbg-segItem{flex:1}.dbg-segItem>span{width:100%;padding:0 6px}.dbg-footer .dbg-status{flex-basis:100%}.dbg-cfg :is(.dbg-input,.dbg-button,.dbg-iconBtn,.dbg-helpText>summary){min-height:44px}.dbg-cfg .dbg-iconBtn{width:44px}.dbg-input{width:112px;text-align:left}}
+@media(max-width:640px){.dbg-modeCards{grid-template-columns:minmax(0,1fr)}.dbg-row{grid-template-columns:minmax(0,1fr);align-items:start;gap:8px}.dbg-control{justify-content:flex-start}.dbg-seg{align-self:stretch}.dbg-segItem{flex:1}.dbg-segItem>span{width:100%;padding:0 6px}.dbg-footer .dbg-status{flex-basis:100%}.dbg-cfg :is(.dbg-input,.dbg-button,.dbg-iconBtn,.dbg-helpText>summary){min-height:44px}.dbg-cfg .dbg-iconBtn{width:44px}.dbg-input{width:112px;text-align:left}}
+@media(pointer:coarse){.dbg-cfg :is(.dbg-input,.dbg-button,.dbg-iconBtn,.dbg-helpText>summary){min-height:44px}.dbg-cfg .dbg-iconBtn{width:44px}}
 [data-ds-dark-theme] .dbg-cfg{--cfg-accent:var(--dsw-alias-state-business-primary,#4eb0e8);--cfg-solid:var(--dsw-alias-button-primary-fill,#4eb0e8);--cfg-on-solid:var(--dsw-alias-label-primary-foreground,#0e1014);--cfg-accent-soft:color-mix(in srgb,var(--cfg-accent) 14%,transparent)}
-@media(prefers-reduced-motion:reduce){.dbg-cfg *{animation:none!important;transition:none!important}}
-`
+@media(prefers-reduced-motion:reduce){.dbg-cfg *{animation:none!important;transition:none!important}}`
 
 
 // ── Icons (inline SVG keeps this closure dependency-free) ──────────────
@@ -547,13 +541,6 @@ function IconTrash() {
 
 function IconCheck() {
   return iconSvg(h('path', { d: 'm3.5 8.4 3.1 3.1 5.9-6.9', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' }))
-}
-
-function IconInfo() {
-  return iconSvg([
-    h('circle', { key: 'circle', cx: 8, cy: 8, r: 5.5, stroke: 'currentColor', strokeWidth: 1.3 }),
-    h('path', { key: 'stem', d: 'M8 7v4M8 4.8v.1', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' }),
-  ])
 }
 
 function IconHistory() {
@@ -1370,22 +1357,6 @@ function closeDetailsOnEscape(event: React.KeyboardEvent<HTMLDetailsElement>) {
   event.currentTarget.querySelector('summary')?.focus()
 }
 
-function Help({ text, t }: { text: string; t?: Translate }) {
-  return h('details', { className: 'dbg-help dbg-info', onKeyDown: closeDetailsOnEscape },
-    h('summary', { 'aria-label': tr(t, 'help'), title: text }, h(IconInfo)),
-    h('p', null, text))
-}
-
-/** Field with a native label and optional keyboard-accessible help. */
-function Field({ id, label, hint, error, t, children }: FieldProps) {
-  return h('div', { className: 'dbg-field' },
-    h('div', { className: 'dbg-fieldHeading' },
-      h('label', { className: 'dbg-fieldLabel', htmlFor: id }, label),
-      hint === undefined ? null : h(Help, { text: hint, t })),
-    h('div', { className: 'dbg-fieldBody' }, children,
-      error ? h('p', { className: 'dbg-fieldError', id: id + '-error', role: 'alert' }, error) : null))
-}
-
 /** Row configuration page body: every field is a native volatile setting. */
 function GoalConfigPage({ form, t }: ConfigProps) {
   const state = form?.state
@@ -1482,24 +1453,41 @@ function GoalConfigPage({ form, t }: ConfigProps) {
   }
 
   const disabled = !writable || busy
-  const nativeField = (key: NativeField, label: string, hint: string) => {
-    const id = 'dsh-better-goal-' + key
+  const numRow = (options: {
+    key: 'nativeDefaultMaxGoalRounds' | 'nativeBlockedAfterConsecutiveRounds' | 'spinHintSeconds' | 'jobWaitSeconds' | 'roundLimit'
+    id: string
+    label: string
+    hint?: string
+    error?: string
+    min: number
+    max: number
+    unit?: string
+    errorOnly?: boolean
+  }) => {
+    const id = options.id
     const hintId = id + '-hint'
     const errorId = id + '-error'
-    const error = invalid === 'invalidNative' && parsed!.field === key ? tr(t, invalid) : undefined
-    return h('div', { key, className: 'dbg-field' },
-      h('div', { className: 'dbg-fieldHeading' },
-        h('label', { className: 'dbg-fieldLabel', htmlFor: id }, tr(t, label))),
-      h('div', { className: 'dbg-fieldBody' },
-        h('input', {
-          className: 'dbg-input', id, type: 'number', min: 1, max: UNLIMITED_ROUNDS, step: 1, inputMode: 'numeric', value: live![key], disabled,
-          'aria-invalid': Boolean(error) || undefined,
-          'aria-describedby': error ? errorId + ' ' + hintId : hintId,
-          onChange: (event) => edit((current) => ({ ...current, [key]: event.target.value })),
-        }),
-        h('p', { className: 'dbg-hint', id: hintId }, tr(t, hint)),
-        error ? h('p', { className: 'dbg-fieldError', id: errorId, role: 'alert' }, error) : null))
+    const describedBy = options.error === undefined
+      ? (options.hint === undefined ? undefined : hintId)
+      : options.errorOnly === true ? errorId : errorId + ' ' + hintId
+    return h('div', { key: options.key, className: 'dbg-row' },
+      h('div', { className: 'dbg-rowText' },
+        h('label', { className: 'dbg-rowLabel', htmlFor: id }, options.label),
+        options.hint === undefined ? null : h('p', { className: 'dbg-rowHint', id: hintId }, options.hint),
+        options.error === undefined ? null : h('p', { className: 'dbg-fieldError', id: errorId, role: 'alert' }, options.error)),
+      h('div', { className: 'dbg-control' },
+        h('span', { className: 'dbg-number' },
+          h('input', {
+            className: 'dbg-input', id, type: 'number', min: options.min, max: options.max, step: 1, inputMode: 'numeric',
+            value: live![options.key], disabled,
+            'aria-invalid': options.error === undefined ? undefined : true,
+            'aria-describedby': describedBy,
+            onChange: (event) => edit((current) => ({ ...current, [options.key]: event.target.value })),
+          }),
+          options.unit === undefined ? null : h('span', { className: 'dbg-unit' }, options.unit))))
   }
+  const nativeError = (key: 'nativeDefaultMaxGoalRounds' | 'nativeBlockedAfterConsecutiveRounds') =>
+    invalid === 'invalidNative' && parsed?.field === key ? tr(t, invalid) : undefined
   const roundLimitValue = parsePositiveSafeIntegerText(live!.roundLimit)
   const runtimeTone = runtime === null ? 'error' : runtime === undefined ? undefined : 'active'
   const runtimeLabel = runtime === undefined
@@ -1527,23 +1515,14 @@ function GoalConfigPage({ form, t }: ConfigProps) {
         h('span', { className: 'dbg-modeCardTitle' }, tr(t, enhanced ? 'runtimeBetter' : 'runtimeNative')),
         h('span', { className: 'dbg-chip', 'data-tone': checked ? 'accent' : undefined }, tr(t, enhanced ? 'implEnhancedTag' : 'implNativeTag')),
         h('span', { className: 'dbg-modeCardCheck', 'aria-hidden': true }, checked ? h(IconCheck) : null)),
-      h('span', { className: 'dbg-modeCardFlow', 'aria-hidden': true }, tr(t, enhanced ? 'implEnhancedFlow' : 'implNativeFlow')),
-      h('span', { className: 'dbg-modeCardBullets' },
-        (enhanced
-          ? ['implEnhancedBullet1', 'implEnhancedBullet2', 'implEnhancedBullet3']
-          : ['implNativeBullet1', 'implNativeBullet2', 'implNativeBullet3']).map((key) =>
-          h('span', { className: 'dbg-modeCardBullet', key }, tr(t, key)))))
+      h('span', { className: 'dbg-modeCardDesc' }, tr(t, enhanced ? 'implEnhancedDesc' : 'implNativeDesc')))
   }
-  const roundModeCard = (value: string) => {
-    const copy = value === 'agent'
-      ? { title: 'modeAgent', flow: 'modeAgentFlow', stop: 'modeAgentStop' }
-      : value === 'unlimited'
-        ? { title: 'modeUnlimited', flow: 'modeUnlimitedFlow', stop: 'modeUnlimitedStop' }
-        : { title: 'modeFixed', flow: 'modeFixedFlow', stop: 'modeFixedStop' }
+  const roundModeLabel: Record<string, string> = { agent: 'modeAgent', unlimited: 'modeUnlimited', fixed: 'modeFixed' }
+  const roundModeOption = (value: string) => {
     const checked = live!.roundLimitMode === value
     return h('label', {
       key: value,
-      className: 'dbg-modeCard',
+      className: 'dbg-segItem',
       'data-checked': checked || undefined,
       'data-disabled': disabled || undefined,
     },
@@ -1553,14 +1532,25 @@ function GoalConfigPage({ form, t }: ConfigProps) {
         ref: (node) => { roundModeInputs.current[value] = node },
         onChange: () => chooseRoundMode(value),
       }),
-      h('span', { className: 'dbg-modeCardHead' },
-        h('span', { className: 'dbg-modeCardTitle' }, tr(t, copy.title)),
-        h('span', { className: 'dbg-modeCardCheck', 'aria-hidden': true }, checked ? h(IconCheck) : null)),
-      h('span', { className: 'dbg-modeCardFlow', 'aria-hidden': true }, tr(t, copy.flow)),
-      h('span', { className: 'dbg-modeCardStop' },
-        h('span', { className: 'dbg-modeCardStopLabel' }, tr(t, 'modeStop') + ' · '),
-        tr(t, copy.stop)))
+      h('span', null, tr(t, roundModeLabel[value])))
   }
+  const roundModeHint = live!.roundLimitMode === 'agent'
+    ? 'modeAgentHint'
+    : live!.roundLimitMode === 'unlimited' ? 'modeUnlimitedHint' : 'modeFixedHint'
+  const invalidText = invalid === null ? null : tr(t, invalid)
+  const statusText = busy
+    ? tr(t, 'saving')
+    : invalidText !== null
+      ? invalidText
+      : notice !== null
+        ? notice.text
+        : tr(t, 'pendingChanges', { count: changedCount }) + (requiresReload ? ' · ' + tr(t, 'reloadRequired') : '')
+  const statusTone = busy
+    ? undefined
+    : invalidText !== null
+      ? 'error'
+      : notice === null ? undefined : notice.tone === 'ok' ? 'ok' : notice.tone
+  const footerVisible = dirty || busy || notice !== null
   return h('div', rootProps,
     h('header', { className: 'dbg-pageHead' },
       h('h3', { className: 'dbg-title' }, tr(t, 'settingsTitle')),
@@ -1576,53 +1566,50 @@ function GoalConfigPage({ form, t }: ConfigProps) {
         disabled: runtime === undefined,
         onClick: () => setRuntimeRequest((value) => value + 1),
       }, h(IconRefresh))),
-    h('fieldset', { className: 'dbg-section' },
-      h('legend', { className: 'dbg-sectionTitle' }, tr(t, 'implementation')),
-      h('div', { className: 'dbg-modeCards', role: 'radiogroup', 'aria-label': tr(t, 'implementation'), onKeyDown: onImplementationKeyDown },
-        IMPLEMENTATION_MODES.map(implementationCard)),
-      h('p', { className: 'dbg-hint' }, tr(t, 'implementationHint'))),
-    live!.implementation === 'native'
-      ? h('fieldset', { className: 'dbg-section' },
-        h('legend', { className: 'dbg-sectionTitle' }, tr(t, 'nativeSection')),
-        nativeField('nativeDefaultMaxGoalRounds', 'nativeDefaultLabel', 'nativeDefaultHint'),
-        nativeField('nativeBlockedAfterConsecutiveRounds', 'nativeBlockedLabel', 'nativeBlockedHint'))
-      : h('fieldset', { className: 'dbg-section' },
-        h('legend', { className: 'dbg-sectionTitle' }, tr(t, 'modeLabel')),
-        h('p', { className: 'dbg-hint' }, tr(t, 'roundDefinition')),
-        h('div', { className: 'dbg-optionCards', role: 'radiogroup', 'aria-label': tr(t, 'modeLabel'), onKeyDown: onRoundModeKeyDown },
-          ROUND_LIMIT_MODES.map(roundModeCard)),
-        h(Field, { t, id: 'dsh-better-goal-spin-hint', label: tr(t, 'spinHintLabel'), hint: tr(t, 'spinHintHint'),
-          error: invalid === 'invalidSpinHint' ? tr(t, invalid) : undefined,
-        }, h('input', { className: 'dbg-input', id: 'dsh-better-goal-spin-hint', type: 'number', min: 0, max: MAX_SPIN_HINT_SECONDS, step: 1, inputMode: 'numeric', value: live!.spinHintSeconds, disabled,
-          'aria-invalid': invalid === 'invalidSpinHint' || undefined,
-          'aria-describedby': invalid === 'invalidSpinHint' ? 'dsh-better-goal-spin-hint-error' : undefined,
-          onChange: (event) => edit((current) => ({ ...current, spinHintSeconds: event.target.value })),
-        })),
-        h(Field, { t, id: 'dsh-better-goal-job-wait', label: tr(t, 'jobWaitLabel'), hint: tr(t, 'jobWaitHint'),
-          error: invalid === 'invalidJobWait' ? tr(t, invalid) : undefined,
-        }, h('input', { className: 'dbg-input', id: 'dsh-better-goal-job-wait', type: 'number', min: 0, max: MAX_JOB_WAIT_SECONDS, step: 1, inputMode: 'numeric', value: live!.jobWaitSeconds, disabled,
-          onChange: (event) => edit((current) => ({ ...current, jobWaitSeconds: event.target.value })),
-        })),
-        live!.roundLimitMode === 'fixed' ? h(Field, { t, id: 'dsh-better-goal-round-limit', label: tr(t, 'roundLimitLabel'),
-          error: invalid === 'invalidRoundLimit' ? tr(t, invalid) : undefined,
-        }, h('input', { className: 'dbg-input', id: 'dsh-better-goal-round-limit', type: 'number', min: 1, max: UNLIMITED_ROUNDS, step: 1, inputMode: 'numeric', value: live!.roundLimit, disabled,
-          'aria-invalid': invalid === 'invalidRoundLimit' || undefined,
-          'aria-describedby': invalid === 'invalidRoundLimit' ? 'dsh-better-goal-round-limit-error' : undefined,
-          onChange: (event) => edit((current) => ({ ...current, roundLimit: event.target.value })),
-        }), h('span', { className: 'dbg-roundSpan' }, tr(t, 'roundSpan', { rounds: roundLimitValue === undefined ? '…' : isUnlimitedCap(roundLimitValue) ? '∞' : String(roundLimitValue) }))) : null),
     h('details', { className: 'dbg-help dbg-helpText', onKeyDown: closeDetailsOnEscape },
-      h('summary', null, tr(t, 'help')),
+      h('summary', null, tr(t, 'help'), h('span', { className: 'dbg-helpChevron', 'aria-hidden': true })),
       h('div', { className: 'dbg-helpBody' },
         h('p', null, tr(t, 'roundDefinition')),
         h('p', null, tr(t, 'implementationHint')),
         state.value?.questionTimeoutSeconds === undefined ? null : h('p', null,
           (state.value!.questionTimeoutSeconds === -1 ? tr(t, 'never') : tr(t, 'legacyTimeout', { seconds: state.value!.questionTimeoutSeconds })) + ' · ' + tr(t, 'legacyHint')))),
-    notice !== null ? h('p', { className: 'dbg-status', 'data-tone': notice.tone, role: notice.tone === 'error' ? 'alert' : 'status' }, notice.text) : null,
-    dirty ? h('div', { className: 'dbg-footer' },
-      h('span', { className: 'dbg-status', role: 'status' }, busy ? tr(t, 'saving') : tr(t, 'pendingChanges', { count: changedCount }) + (requiresReload ? ' · ' + tr(t, 'reloadRequired') : '')),
-      h('button', { type: 'button', className: 'dbg-button', 'data-variant': 'outline', disabled: busy, onClick: () => { setDraft(null); setNotice(null) } }, tr(t, 'reset')),
-      h('button', { type: 'button', className: 'dbg-button', 'data-variant': 'primary', disabled: disabled || invalid !== null, 'aria-busy': busy || undefined, onClick: () => void save() },
-        busy ? h('span', { className: 'dbg-spinner', 'aria-hidden': true }) : null, busy ? tr(t, 'saving') : tr(t, 'save'))) : null)
+    h('section', { className: 'dbg-section', 'data-goal-section': 'mode' },
+      h('h4', { className: 'dbg-sectionTitle' }, tr(t, 'implementation')),
+      h('div', { className: 'dbg-modeCards', role: 'radiogroup', 'aria-label': tr(t, 'implementation'), onKeyDown: onImplementationKeyDown },
+        IMPLEMENTATION_MODES.map(implementationCard)),
+      h('p', { className: 'dbg-hint' }, tr(t, 'implementationHint'))),
+    live!.implementation === 'native'
+      ? h('section', { className: 'dbg-section', 'data-goal-section': 'native' },
+        h('h4', { className: 'dbg-sectionTitle' }, tr(t, 'nativeSection')),
+        h('div', { className: 'dbg-rows' },
+          numRow({ key: 'nativeDefaultMaxGoalRounds', id: 'dsh-better-goal-nativeDefaultMaxGoalRounds', label: tr(t, 'nativeDefaultLabel'), hint: tr(t, 'nativeDefaultHint'), error: nativeError('nativeDefaultMaxGoalRounds'), min: 1, max: UNLIMITED_ROUNDS, unit: tr(t, 'unitRounds') }),
+          numRow({ key: 'nativeBlockedAfterConsecutiveRounds', id: 'dsh-better-goal-nativeBlockedAfterConsecutiveRounds', label: tr(t, 'nativeBlockedLabel'), hint: tr(t, 'nativeBlockedHint'), error: nativeError('nativeBlockedAfterConsecutiveRounds'), min: 1, max: UNLIMITED_ROUNDS, unit: tr(t, 'unitRounds') })))
+      : h(React.Fragment, null,
+        h('section', { className: 'dbg-section', 'data-goal-section': 'rounds' },
+          h('h4', { className: 'dbg-sectionTitle' }, tr(t, 'modeLabel')),
+          h('div', { className: 'dbg-seg', role: 'radiogroup', 'aria-label': tr(t, 'modeLabel'), onKeyDown: onRoundModeKeyDown },
+            ROUND_LIMIT_MODES.map(roundModeOption)),
+          h('p', { className: 'dbg-hint' }, tr(t, roundModeHint)),
+          live!.roundLimitMode === 'fixed'
+            ? numRow({
+              key: 'roundLimit',
+              id: 'dsh-better-goal-round-limit',
+              label: tr(t, 'roundLimitLabel'),
+              hint: tr(t, 'roundSpan', { rounds: roundLimitValue === undefined ? '…' : isUnlimitedCap(roundLimitValue) ? '∞' : String(roundLimitValue) }),
+              error: invalid === 'invalidRoundLimit' ? tr(t, invalid) : undefined,
+              min: 1, max: UNLIMITED_ROUNDS, errorOnly: true,
+            })
+            : null),
+        h('section', { className: 'dbg-section', 'data-goal-section': 'rhythm' },
+          h('h4', { className: 'dbg-sectionTitle' }, tr(t, 'rhythmSection')),
+          h('div', { className: 'dbg-rows' },
+            numRow({ key: 'spinHintSeconds', id: 'dsh-better-goal-spin-hint', label: tr(t, 'spinHintLabel'), hint: tr(t, 'spinHintHint'), error: invalid === 'invalidSpinHint' ? tr(t, invalid) : undefined, min: 0, max: MAX_SPIN_HINT_SECONDS, unit: tr(t, 'unitSeconds'), errorOnly: true }),
+            numRow({ key: 'jobWaitSeconds', id: 'dsh-better-goal-job-wait', label: tr(t, 'jobWaitLabel'), hint: tr(t, 'jobWaitHint'), error: invalid === 'invalidJobWait' ? tr(t, invalid) : undefined, min: 0, max: MAX_JOB_WAIT_SECONDS, unit: tr(t, 'unitSeconds'), errorOnly: true })))),
+    footerVisible ? h('div', { className: 'dbg-footer' },
+      h('span', { className: 'dbg-status', 'data-tone': statusTone, role: notice?.tone === 'error' || invalidText !== null ? 'alert' : 'status' }, statusText),
+      dirty ? h('button', { type: 'button', className: 'dbg-button', 'data-variant': 'outline', disabled: busy, onClick: () => { setDraft(null); setNotice(null) } }, tr(t, 'reset')) : null,
+      dirty ? h('button', { type: 'button', className: 'dbg-button', 'data-variant': 'primary', disabled: disabled || invalid !== null, 'aria-busy': busy || undefined, onClick: () => void save() },
+        busy ? h('span', { className: 'dbg-spinner', 'aria-hidden': true }) : null, busy ? tr(t, 'saving') : tr(t, 'save')) : null) : null)
 }
 
 
