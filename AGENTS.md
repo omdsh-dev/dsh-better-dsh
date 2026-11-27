@@ -34,9 +34,10 @@
 
 ## 依赖与版本
 
-- 根 `dependencies` 当前固定已发布的精确版本（ask-user `0.3.7-alpha.1`、compact `0.5.1-alpha.1`、goal `0.4.6-alpha.2`、subagent `0.5.5-alpha.1`、ptc `0.2.3-alpha.1`）。
+- 根 `dependencies` 当前固定已发布的精确版本（ask-user `0.3.8-alpha.1`、compact `0.5.2-alpha.1`、goal `0.4.7-alpha.1`、subagent `0.5.6-alpha.1`、ptc `0.2.3-alpha.1`）。
 - **不要**把根依赖切成 `workspace:*` 或未发布版本：根依赖必须指向可安装的精确 npm 版本。发布新子包后，再统一 bump 版本并更新根依赖；本地 `packages/*` 与 registry 版本号保持一致。
-- 本地 `packages/*` 是源码真相：ask-user `0.3.7-alpha.1`、compact `0.5.1-alpha.1`、goal `0.4.6-alpha.2`、ptc `0.2.3-alpha.1`、subagent `0.5.5-alpha.1` 已完成 DSH 0.2.3-alpha.2 适配并发布（compact 的发布由独立仓库负责，本地副本只跟随源码）；发布验证需使用官方 registry，默认 npmmirror 可能滞后。
+- 子包发版后要把 `release/*` fast-forward 合回各仓 `main` 并推送（发布 workflow 只在 `release: published` 触发，推 main 不会重发）；推前确认 main 是祖先、tag 已在 HEAD 上、无 branch protection。
+- 本地 `packages/*` 是源码真相：ask-user `0.3.8-alpha.1`、compact `0.5.2-alpha.1`、goal `0.4.7-alpha.1`、ptc `0.2.3-alpha.1`、subagent `0.5.6-alpha.1` 已完成 DSH 0.2.3-alpha.2 适配并发布（compact 的发布由独立仓库负责，本地副本只跟随源码）；发布验证需使用官方 registry，默认 npmmirror 可能滞后。
 - 本仓根包与全部子包（含 compact）都已迁移到 TypeScript（源码 `src/*.ts`，产物 `lib/`）。根/子包的 `main`、`types`、`exports` 都指向 `lib/`，`lib/` 不提交；compact 的独立仓库提交预构建 `lib/`（git 安装即用），本仓副本按本仓约定构建产物不提交。
 - 发布前先确认子包版本在 `https://registry.npmjs.org/` 可取得；不要提交 `file:`/`link:`/`git:` 依赖。
 
@@ -55,5 +56,7 @@
 ## 约定
 
 - 保持中文文档与既有命名；新增副本、迁移或发布说明时同步更新 `README.md` 与 `docs/DEVELOPMENT.md`。
+- 设置页文案必须写清真实行为与代价（如「压缩结果以图片传给模型」而非「摘要以图片附加」），选项名用动词句；用户指出描述不清时整份字典重写，并同步中英两份与 `docs/UI-KIT.md` 术语表。
 - 保留无关的未提交改动；需要隔离时用 `.agents/worktrees/` 新建 worktree，不要在主检出上切来切去。
+- UI 改动必须按 `/uiux-design` 规范与该面风格走，每改完一面先在真实 DSH 实例里截图（浅色/深色/390px、脏态）给用户确认，再动下一面；用户对同一处反复纠偏（如保存栏靠左/靠右、sticky 置顶）时，以最后一次为准并同步 `docs/UI-KIT.md`。
 - 第三方内容与 Apache-2.0 许可声明分别保留在 `third-party/` 和各包自己的 `third-party/`；不要删除 NOTICE/LICENSE。
