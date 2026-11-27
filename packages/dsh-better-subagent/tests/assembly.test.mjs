@@ -26,7 +26,7 @@ const patch = () => yaml.load(readFileSync(join(ROOT, 'cordis.patch.yml'), 'utf8
 test('manifest identity: scoped name, version, Apache-2.0, repository, publish config', () => {
   const m = manifest()
   assert.equal(m.name, PACKAGE_NAME)
-  assert.equal(m.version, '0.5.5-alpha.1')
+  assert.equal(m.version, '0.5.6-alpha.1')
   assert.equal(m.license, 'Apache-2.0')
   assert.equal(m.type, 'module')
   assert.equal(m.main, 'lib/index.js')

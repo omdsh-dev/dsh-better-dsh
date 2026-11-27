@@ -55,17 +55,17 @@
 
 ```sh
 # npm
-dsh plugin --profile <profile> add dsh-better-dsh@0.12.0-alpha.1
+dsh plugin --profile <profile> add dsh-better-dsh@0.12.1-alpha.1
 
 # 或从 GitHub tag 安装
-dsh plugin --profile <profile> add github:omdsh-dev/dsh-better-dsh#v0.12.0-alpha.1
+dsh plugin --profile <profile> add github:omdsh-dev/dsh-better-dsh#v0.12.1-alpha.1
 ```
 
 > 安装、升级或换包后必须**重启对应 profile**；只刷新网页不够。
 >
 > 不要同时显式添加 Better DSH 和独立插件 bundle：行实例仍只有一个，但 DSH 0.2.2-rc.2 / rc.3 会把同一 id 的配置写入拒绝为只读；0.2.3-alpha.2 仍需按同一限制使用。只保留一个显式入口。
 
-本轮版本：**Better DSH `0.12.0-alpha.1`**，搭配 goal `0.4.6-alpha.2`、subagent `0.5.5-alpha.1`、compact `0.5.1-alpha.1`、ask-user `0.3.7-alpha.1`、ptc `0.2.3-alpha.1`。
+本轮版本：**Better DSH `0.12.1-alpha.1`**，搭配 goal `0.4.7-alpha.1`、subagent `0.5.6-alpha.1`、compact `0.5.2-alpha.1`、ask-user `0.3.8-alpha.1`、ptc `0.2.3-alpha.1`。
 
 > `0.12.0-alpha.1` 起根 bundle 与五个子包声明 DSH `>=0.2.3-alpha.2 <0.3.0`，验收基线为 `0.2.3-alpha.2`；此前 `0.11.7` 及更早版本面向 `0.2.2-rc.x`。TypeScript 重构从 `0.12.0` 开始，本轮 alpha 完成 DSH 0.2.3 适配。
 
@@ -185,10 +185,10 @@ Better DSH 包详情里的「集成设置」按 Core、Subagents、Compaction、
 # 旧入口
 dsh plugin --profile <profile> remove @menghuan1918/dsh-apollo
 # 新入口
-dsh plugin --profile <profile> add dsh-better-dsh@0.12.0-alpha.1
+dsh plugin --profile <profile> add dsh-better-dsh@0.12.1-alpha.1
 # subagent 独立安装的用户
 dsh plugin --profile <profile> remove @menghuan1918/dsh-better-subagent
-dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.5-alpha.1
+dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.6-alpha.1
 ```
 
 <details>
@@ -211,10 +211,10 @@ dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.5-alpha.1
 五个插件都可以单独安装；独立安装和 Better DSH 组合使用的是**同一组稳定行**。
 
 ```sh
-dsh plugin --profile <profile> add dsh-better-goal@0.4.6-alpha.2
-dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.5-alpha.1
-dsh plugin --profile <profile> add dsh-better-compact@0.5.1-alpha.1
-dsh plugin --profile <profile> add dsh-better-ask-user@0.3.7-alpha.1 dsh-better-ptc@0.2.3-alpha.1
+dsh plugin --profile <profile> add dsh-better-goal@0.4.7-alpha.1
+dsh plugin --profile <profile> add @oh-my-dsh/dsh-better-subagent@0.5.6-alpha.1
+dsh plugin --profile <profile> add dsh-better-compact@0.5.2-alpha.1
+dsh plugin --profile <profile> add dsh-better-ask-user@0.3.8-alpha.1 dsh-better-ptc@0.2.3-alpha.1
 ```
 
 <details>
@@ -248,11 +248,11 @@ dsh plugin --profile <profile> add dsh-better-ask-user@0.3.7-alpha.1 dsh-better-
 **发布顺序**：先发布独立包，再发布 Better DSH（精确依赖必须已存在）：
 
 1. `dsh-better-ptc@0.2.3-alpha.1`
-2. `dsh-better-ask-user@0.3.7-alpha.1`
-3. `dsh-better-compact@0.5.1-alpha.1`
-4. `dsh-better-goal@0.4.6-alpha.2`
-5. `@oh-my-dsh/dsh-better-subagent@0.5.5-alpha.1`
-6. `dsh-better-dsh@0.12.0-alpha.1`
+2. `dsh-better-ask-user@0.3.8-alpha.1`
+3. `dsh-better-compact@0.5.2-alpha.1`
+4. `dsh-better-goal@0.4.7-alpha.1`
+5. `@oh-my-dsh/dsh-better-subagent@0.5.6-alpha.1`
+6. `dsh-better-dsh@0.12.1-alpha.1`
 
 当前子包仍使用各自的独立发布流程（归档子仓里的原 workflow）；monorepo 统一的子包发布 workflow 尚未完成。根包使用 npm trusted publishing（OIDC）；创建对应 GitHub Release 会发布 tag 指向的版本。旧包 `@menghuan1918/dsh-apollo` 与 `@menghuan1918/dsh-better-subagent` 已标记 deprecate，仅作为历史入口保留。
 </details>

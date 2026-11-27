@@ -1,6 +1,6 @@
 {
   "name": "dsh-better-goal",
-  "version": "0.4.6-alpha.2",
+  "version": "0.4.7-alpha.1",
   "description": "Independent DSH goal plugin: one goal tool, persistent continuation, hot settings and native-compatible history.",
   "license": "Apache-2.0",
   "repository": {

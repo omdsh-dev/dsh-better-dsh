@@ -108,7 +108,7 @@ async function boot() {
   const goalLayer = profile.layers.find((layer) => layer.packageName === 'dsh-better-goal')
   if (goalLayer) assert.equal(goalLayer.packageDir, plugin, 'bundle resolves to the staged goal package')
   if (apolloRoot) assert.equal(profile.layers.find((layer) => layer.packageName === apolloName).packageDir, join(modules, apolloName))
-  assert.equal(JSON.parse(await readFile(join(plugin, 'package.json'), 'utf8')).version, '0.4.6-alpha.2')
+  assert.equal(JSON.parse(await readFile(join(plugin, 'package.json'), 'utf8')).version, '0.4.7-alpha.1')
   const booted = await runProfile({ profile: 'it', resolvedProfile: { profile, installAnchor: packageFile }, patchFiles: [], args: [], environment: A.loadLayeredEnv('dsh') })
   assert.equal((await booted.ctx.loader.import('dsh-better-goal')).apply.toString(), (await import('../lib/index.js')).apply.toString(), 'runtime uses the staged goal implementation')
   return booted

@@ -2,9 +2,9 @@
 
 面向维护者、集成者和需要排查装配问题的用户。用户安装与配置请看 [README](../README.md)；本文保留 DSH 插件的实现细节、旧配置迁移、组合安装边界与验证方法。
 
-当前实现版本：`0.12.0-alpha.1`；npm 包名是 `dsh-better-dsh`。TypeScript 源码经 `tsc` 编译为 ESM（`lib/`，含 `.d.ts`）；浏览器半边由 esbuild/tsdown 打成单个 closure factory。旧 `Apollo` 名称只保留在迁移、历史兼容和旧包 deprecate 说明里。
+当前实现版本：`0.12.1-alpha.1`；npm 包名是 `dsh-better-dsh`。TypeScript 源码经 `tsc` 编译为 ESM（`lib/`，含 `.d.ts`）；浏览器半边由 esbuild/tsdown 打成单个 closure factory。旧 `Apollo` 名称只保留在迁移、历史兼容和旧包 deprecate 说明里。
 
-**仓库布局**：`packages/*` 是六个子包的源码真相（pnpm workspaces；根目录 `pnpm install`、`pnpm test:packages`）。迁移前的 `plugins/` 目录和各自 `.git` 原样保留作归档，不再修改。本地子包已同步到各独立仓库并完成 DSH 0.2.3-alpha.2 适配与 alpha 发布；根依赖指向 registry 上已发布的精确版本（compact `0.5.1-alpha.1`、ask-user `0.3.7-alpha.1`、goal `0.4.6-alpha.2`、subagent `0.5.5-alpha.1`、ptc `0.2.3-alpha.1`）。`workspace:*` 与各包发布流合并尚未完成。
+**仓库布局**：`packages/*` 是六个子包的源码真相（pnpm workspaces；根目录 `pnpm install`、`pnpm test:packages`）。迁移前的 `plugins/` 目录和各自 `.git` 原样保留作归档，不再修改。本地子包已同步到各独立仓库并完成 DSH 0.2.3-alpha.2 适配与 alpha 发布；根依赖指向 registry 上已发布的精确版本（compact `0.5.2-alpha.1`、ask-user `0.3.8-alpha.1`、goal `0.4.7-alpha.1`、subagent `0.5.6-alpha.1`、ptc `0.2.3-alpha.1`）。`workspace:*` 与各包发布流合并尚未完成。
 
 `pnpm test:packages` 暂时排除 `dsh-lazy-session-list`：它已完成 TypeScript 构建迁移，但 `session-list.test.mjs` 需要完整的 DSH host 依赖闭包（本仓安装缺少 `dsh-session-title` 等 peer）。本仓至少跑 `node --test packages/dsh-lazy-session-list/tests/live-smoke.test.mjs`；需要完整回归时用匹配 host 单独运行 `pnpm test:lazy-session-list`。
 
@@ -45,10 +45,10 @@
 
 | 依赖 | 版本 | 所有权 |
 |---|---|---|
-| `dsh-better-goal` | `0.4.6-alpha.2` | 目标域（`questionTimeoutSeconds` 已弃用、仅保留读取；`spinHintSeconds` 控制空转提示） |
-| `@oh-my-dsh/dsh-better-subagent` | `0.5.5-alpha.1` | 子代理 CLI/等待/child guard/分档/设置页；注册 `wait_subagent` PTC 豁免；委派提示词由 `delegation.prompt` 单独控制 |
-| `dsh-better-compact` | `0.5.1-alpha.1` | 压缩 companion + engine + 设置页/诊断 |
-| `dsh-better-ask-user` | `0.3.7-alpha.1` | 官方 `ask_user_question` 入参/返回 + 插件超时等待 + 历史预览行；注册 PTC 豁免；旧 goal 等待迁移 |
+| `dsh-better-goal` | `0.4.7-alpha.1` | 目标域（`questionTimeoutSeconds` 已弃用、仅保留读取；`spinHintSeconds` 控制空转提示） |
+| `@oh-my-dsh/dsh-better-subagent` | `0.5.6-alpha.1` | 子代理 CLI/等待/child guard/分档/设置页；注册 `wait_subagent` PTC 豁免；委派提示词由 `delegation.prompt` 单独控制 |
+| `dsh-better-compact` | `0.5.2-alpha.1` | 压缩 companion + engine + 设置页/诊断 |
+| `dsh-better-ask-user` | `0.3.8-alpha.1` | 官方 `ask_user_question` 入参/返回 + 插件超时等待 + 历史预览行；注册 PTC 豁免；旧 goal 等待迁移 |
 | `dsh-better-ptc` | `0.2.3-alpha.1` | 单例 PTC deadline 豁免服务 |
 | `@deepseek-ai/schemastery` | `~3.20.0-alpha.1` | Better DSH 行 Config |
 | `react` | peer | 宿主提供 |
@@ -334,7 +334,7 @@ DSH_PACKAGE_ROOT="/…/node_modules/@deepseek-ai/dsh" npm run prompts
 ### npm 安装
 
 ```sh
-dsh plugin --profile <profile> add dsh-better-dsh@0.12.0-alpha.1
+dsh plugin --profile <profile> add dsh-better-dsh@0.12.1-alpha.1
 ```
 
 包发布后即可用此命令安装，并带入五个精确依赖、应用三份 bundle patch。安装后需要重启对应 profile 的 DSH 进程。本轮版本与精确依赖见上述包清单；发布后需重新验证 registry 干净安装。
@@ -396,9 +396,9 @@ dsh plugin --profile <profile> remove @menghuan1918/dsh-apollo   # 旧包；新�
 
 当前阶段仍使用迁移前各子包的独立发布流程（归档的子仓里保留原 `.github/workflows/release.yml`）；monorepo 统一的子包发布 workflow 尚未完成。根包 `dsh-better-dsh` 用 GitHub Release 触发根 `.github/workflows/release.yml`，通过 npm trusted publishing（OIDC）发布，仓库里不存 npm token。tag 必须是 `v<package.json 的 version>`，CI 会先校验再跑测试和 `npm publish --provenance`。
 
-1. 先发布 `dsh-better-ptc@0.2.3-alpha.1`、`dsh-better-ask-user@0.3.7-alpha.1`、`@oh-my-dsh/dsh-better-subagent@0.5.5-alpha.1`、`dsh-better-goal@0.4.6-alpha.2`、`dsh-better-compact@0.5.1-alpha.1`（各自仓库的 Release）；
+1. 先发布 `dsh-better-ptc@0.2.3-alpha.1`、`dsh-better-ask-user@0.3.8-alpha.1`、`@oh-my-dsh/dsh-better-subagent@0.5.6-alpha.1`、`dsh-better-goal@0.4.7-alpha.1`、`dsh-better-compact@0.5.2-alpha.1`（各自仓库的 Release）；
 2. 在官方 registry（`https://registry.npmjs.org/`）确认五个版本可取得、可安装；
-3. 再把 Better DSH 的精确依赖指向已发布版本，推已验证的发布提交及 tag 并发布 Better DSH Release（本轮为 `v0.12.0-alpha.1`）；
+3. 再把 Better DSH 的精确依赖指向已发布版本，推已验证的发布提交及 tag 并发布 Better DSH Release（本轮为 `v0.12.1-alpha.1`）；
 4. 子包版本可取得前，不要把指向它们的精确依赖推到 Apollo main，否则 `pnpm install` / GitHub 源码安装会 404。
 
 ## 测试与冒烟
@@ -518,7 +518,7 @@ APOLLO_PLUGIN_SOURCE_ROOT=/path/to/Code node scripts/ptc-smoke.mjs
 
 ### 版本范围
 
-根包与五个子包的 `engines.dsh` 统一为 `>=0.2.3-alpha.2 <0.3.0`，验收基线 `0.2.3-alpha.2`；Node `^24.22.3 || >=26.13.1`，Cordis `~4.2.0-alpha.1`、Schemastery `~3.20.0-alpha.1`。升级 DSH 后仍须重新运行漂移与真实运行时测试，不能仅放宽版本声明。历史配置键、包名、row ID、预设 ID 和兼容 URL 别名保留，不等于维护旧宿主 API 分支。当前根 bundle 为 `0.12.0-alpha.1`（TypeScript 重构 + DSH 0.2.3 适配版），五个依赖已指向 registry 上的已发布精确版本；发布顺序仍是先子包、后根包。
+根包与五个子包的 `engines.dsh` 统一为 `>=0.2.3-alpha.2 <0.3.0`，验收基线 `0.2.3-alpha.2`；Node `^24.22.3 || >=26.13.1`，Cordis `~4.2.0-alpha.1`、Schemastery `~3.20.0-alpha.1`。升级 DSH 后仍须重新运行漂移与真实运行时测试，不能仅放宽版本声明。历史配置键、包名、row ID、预设 ID 和兼容 URL 别名保留，不等于维护旧宿主 API 分支。当前根 bundle 为 `0.12.1-alpha.1`（TypeScript 重构 + DSH 0.2.3 适配版），五个依赖已指向 registry 上的已发布精确版本；发布顺序仍是先子包、后根包。
 
 ## 实现入口、打包与发布
 
