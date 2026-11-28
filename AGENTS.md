@@ -34,10 +34,10 @@
 
 ## 依赖与版本
 
-- 根 `dependencies` 当前固定已发布的精确版本（ask-user `0.3.9-alpha.1`、compact `0.5.3-alpha.1`、goal `0.4.8-alpha.1`、subagent `0.5.7-alpha.1`、ptc `0.2.4-alpha.1`）。
+- 根 `dependencies` 当前固定已发布的精确版本（ask-user `0.3.9-alpha.2`、compact `0.5.3-alpha.1`、goal `0.4.8-alpha.1`、subagent `0.5.7-alpha.1`、ptc `0.2.4-alpha.1`）。
 - **不要**把根依赖切成 `workspace:*` 或未发布版本：根依赖必须指向可安装的精确 npm 版本。发布新子包后，再统一 bump 版本并更新根依赖；本地 `packages/*` 与 registry 版本号保持一致。
 - 子包发版后要把 `release/*` fast-forward 合回各仓 `main` 并推送（发布 workflow 只在 `release: published` 触发，推 main 不会重发）；推前确认 main 是祖先、tag 已在 HEAD 上、无 branch protection。
-- 本地 `packages/*` 是源码真相：ask-user `0.3.9-alpha.1`、compact `0.5.3-alpha.1`、goal `0.4.8-alpha.1`、ptc `0.2.4-alpha.1`、subagent `0.5.7-alpha.1` 已完成 DSH 0.2.3-alpha.3 适配并发布（compact 的发布由独立仓库负责，本地副本只跟随源码）；发布验证需使用官方 registry，默认 npmmirror 可能滞后。
+- 本地 `packages/*` 是源码真相：ask-user `0.3.9-alpha.2`、compact `0.5.3-alpha.1`、goal `0.4.8-alpha.1`、ptc `0.2.4-alpha.1`、subagent `0.5.7-alpha.1` 已完成 DSH 0.2.3-alpha.3 适配并发布（compact 的发布由独立仓库负责，本地副本只跟随源码）；发布验证需使用官方 registry，默认 npmmirror 可能滞后。
 - 本仓根包与全部子包（含 compact）都已迁移到 TypeScript（源码 `src/*.ts`，产物 `lib/`）。根/子包的 `main`、`types`、`exports` 都指向 `lib/`，`lib/` 不提交；compact 的独立仓库提交预构建 `lib/`（git 安装即用），本仓副本按本仓约定构建产物不提交。
 - 发布前先确认子包版本在 `https://registry.npmjs.org/` 可取得；不要提交 `file:`/`link:`/`git:` 依赖。
 
@@ -50,7 +50,7 @@
 ## 测试已知限制
 
 - `dsh-lazy-session-list` 已完成 TypeScript 构建迁移，但仍不在 `test:packages` 范围：其 `session-list.test.mjs` 需要完整的 DSH host 依赖闭包（本仓安装缺少 `dsh-session-title` 等 peer）。需要时用匹配的 DSH host 单独跑 `pnpm test:lazy-session-list`；本仓至少跑 `node --test packages/dsh-lazy-session-list/tests/live-smoke.test.mjs`。
-- 需要真实 DSH 安装的漂移/迁移测试：设置 `DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh` 后跑 `pnpm test`。
+- 需要真实 DSH 安装的漂移/迁移测试：设置 `DSH_PACKAGE_ROOT=/path/to/node_modules/@deepseek-ai/dsh` 后跑 `pnpm test`。ask-user 的 `tests/ptc-shadow.test.mjs` 在真实 PTC 根下校验影子赢得绑定，并把 `src/official-ask.ts` 与宿主官方 ask 行逐字段对账；改宿主官方 schema 时必须同步。
 - 根包与除 compact 外的子包，浏览器/客户端测试使用 esbuild + `react-test-renderer`；不要用 jsdom 替代真实渲染边界。compact 的客户端测试沿用其发布源码中的 `@testing-library/react` + jsdom 边界（与独立仓库一致）。
 
 ## 约定

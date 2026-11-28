@@ -15,7 +15,7 @@ importers:
         specifier: 0.5.7-alpha.1
         version: link:packages/dsh-better-subagent
       dsh-better-ask-user:
-        specifier: 0.3.9-alpha.1
+        specifier: 0.3.9-alpha.2
         version: link:packages/dsh-better-ask-user
       dsh-better-compact:
         specifier: 0.5.3-alpha.1

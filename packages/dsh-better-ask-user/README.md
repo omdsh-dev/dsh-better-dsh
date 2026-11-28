@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/dsh-better-ask-user"><img src="https://img.shields.io/npm/v/dsh-better-ask-user.svg" alt="npm 版本"></a>
   <a href="LICENSE"><img alt="Apache-2.0" src="https://img.shields.io/github/license/omdsh-dev/dsh-better-ask-user?color=blue"></a>
-  <a href="package.json"><img alt="DSH 0.2.2-rc.2" src="https://img.shields.io/badge/DSH-0.2.2--rc.2-4B32C3"></a>
+  <a href="package.json"><img alt="DSH 0.2.3-alpha.3" src="https://img.shields.io/badge/DSH-0.2.3--alpha.3-4B32C3"></a>
   <a href="https://github.com/omdsh-dev/dsh-better-dsh"><img alt="Part of Better DSH" src="https://img.shields.io/badge/part%20of-dsh--better--dsh-2F80B7"></a>
 </p>
 
@@ -42,10 +42,10 @@
 
 ```sh
 # 只安装这个插件
-dsh plugin --profile <profile> add dsh-better-ask-user@0.3.5 dsh-better-ptc@0.2.1
+dsh plugin --profile <profile> add dsh-better-ask-user@0.3.9-alpha.2 dsh-better-ptc@0.2.4-alpha.1
 
 # 或安装 Better DSH（会自动带上所有独立插件）
-dsh plugin --profile <profile> add dsh-better-dsh@0.12.0
+dsh plugin --profile <profile> add dsh-better-dsh@0.12.2-alpha.2
 ```
 
 > 安装 / 升级 / 换包后必须重启对应 profile；Desktop 必须完全退出后重新打开，只刷新网页不够。
@@ -63,7 +63,7 @@ dsh plugin --profile <profile> add dsh-better-dsh@0.12.0
 | 稳定行 id | `dsh-better-ask-user` |
 | 入口 / 工具 | `ask_user_question` · 问题卡片 / 等待时间线 · 提问设置页 |
 | 设置 | 等待时长、输入续期、普通 / Goal 超时行为 |
-| npm 包 | `dsh-better-ask-user@0.3.5` |
+| npm 包 | `dsh-better-ask-user@0.3.9-alpha.2` |
 | 仓库 | https://github.com/omdsh-dev/dsh-better-ask-user |
 
 ## 设置
@@ -72,6 +72,7 @@ dsh plugin --profile <profile> add dsh-better-dsh@0.12.0
 
 - plan-review / approval 始终要求人工决策，不自动批准。
 - 普通提问可配置超时默认选择；旧 goal 的提问配置会一次性迁移。
+- 工程(PTC)模式下等待与超时设置同样生效：PTC 根只暴露 `run_code`，插件用内置的官方 schema 在 Agent 作用域注册影子。
 
 ## 与 Better DSH 的关系
 
@@ -83,12 +84,11 @@ dsh plugin --profile <profile> add dsh-better-dsh@0.12.0
 ## 开发
 
 ```sh
-npm run typecheck  # 宿主与浏览器的严格 TypeScript 检查
-npm run build      # 生成 lib/ ESM、声明与浏览器 closure
-npm test           # 自动先构建，再运行单元 / 组件测试
+npm install
+npm run build      # tsc 生成宿主 lib/，esbuild 生成浏览器 closure
+npm run typecheck  # 宿主 + 浏览器两份 tsconfig
+npm test           # pretest 会先构建
 ```
-
-实现与测试说明见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 
 ## 许可
 

@@ -2,8 +2,10 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { ToolRegistryUnavailableError } from '@deepseek-ai/dsh-tools'
+import type { ToolDefinition, ToolsService } from '@deepseek-ai/dsh-tools'
 import { Config, readConfig as snapshotConfig } from './config.js'
 import { createBetterAskTool } from './ask-tool.js'
+import { officialAskBase } from './official-ask.js'
 import { mountPtcExemption } from './ptc.js'
 import { mountLegacyMigration, mountSettings } from './settings.js'
 
@@ -25,17 +27,32 @@ export function apply(ctx: Context, config: unknown = {}) {
 
   const states = new Map<Agent, AgentState>()
 
+  /**
+   * Read the official definition the composition offers.
+   *
+   * A native root resolves the scope's registrations, so the ask row is the
+   * base. A PTC root only answers its program entry: the ask row is bound in
+   * programs but invisible to `get()`, so the vendored contract stands in.
+   * Registering the shadow in the Agent scope then shadows that binding.
+   */
+  function resolveBase(tools: ToolsService, agent: Agent): ToolDefinition | undefined {
+    const read = (name: string): ToolDefinition | undefined => {
+      try {
+        return tools.get(name, agent)
+      } catch (error) {
+        // No selected root (or one still loading) offers nothing to shadow.
+        if (error instanceof ToolRegistryUnavailableError) return undefined
+        throw error
+      }
+    }
+    const base = read('ask_user_question')
+    if (base !== undefined) return base
+    return read('run_code') === undefined ? undefined : officialAskBase()
+  }
+
   function register(state: AgentState) {
     const tools = state.actor.get('tools')!
-    let base
-    try {
-      base = tools.get('ask_user_question', state.agent)
-    } catch (error) {
-      // alpha.3 reads through the selected tool root. A composition without a
-      // root (or before one loads) offers no host tool to shadow.
-      if (error instanceof ToolRegistryUnavailableError) return
-      throw error
-    }
+    const base = resolveBase(tools, state.agent)
     if (base === undefined) return
     state.askDispose = tools.register(createBetterAskTool(ctx, base, readConfig))
   }

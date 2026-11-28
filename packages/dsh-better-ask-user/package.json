@@ -1,6 +1,6 @@
 {
   "name": "dsh-better-ask-user",
-  "version": "0.3.9-alpha.1",
+  "version": "0.3.9-alpha.2",
   "description": "Independent ask_user_question plugin: configurable wait, input-extended countdown, markdown/mobile card, native or default timeout behavior, and PTC deadline exemption.",
   "license": "Apache-2.0",
   "repository": {

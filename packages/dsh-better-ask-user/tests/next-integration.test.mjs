@@ -3,12 +3,13 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
-import { resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import * as betterAsk from '../lib/index.js'
 
 const hostRoot = process.env.DSH_PACKAGE_ROOT
 const hostRequire = createRequire(hostRoot ? resolve(hostRoot, 'package.json') : import.meta.url)
 const load = name => import(pathToFileURL(hostRequire.resolve(name)).href)
+const hostFile = name => import(pathToFileURL(join(dirname(resolve(hostRoot)), name)).href)
 
 async function runtime(t) {
   const { Context } = await load('@deepseek-ai/cordis')
@@ -18,8 +19,7 @@ async function runtime(t) {
     const mod = await load('@deepseek-ai/' + name)
     await ctx.plugin(mod.default)
   }
-  const native = await load('@deepseek-ai/dsh-tool-executor-native')
-  await ctx.plugin(native)
+  await ctx.plugin(await load('@deepseek-ai/dsh-tool-registry-native'))
   const official = await load('@deepseek-ai/dsh-tool-ask-user')
   await ctx.plugin(official)
   const config = { questionTimeoutSeconds: 5, timeoutBehavior: 'native', goalTimeoutBehavior: 'native' }
@@ -27,44 +27,44 @@ async function runtime(t) {
   await ctx.plugin({ inject: betterAsk.inject, apply: inner => betterAsk.apply(inner, config) })
   const { createScope } = await load('@deepseek-ai/dsh-scope')
   const { Session } = await load('@deepseek-ai/dsh-session')
-  const agent = { id: 'ask-next', session: new Session('ask-next') }
+  const agent = { id: 'ask-next', session: new Session('ask-next'), inject: () => {}, steer: () => {} }
   const scope = createScope(ctx, agent)
   agent.ctx = scope.ctx
+  const created = Promise.withResolvers()
+  ctx.on('agent/created', () => { created.resolve() })
   const unregister = ctx.agents.register(agent)
-  await unregister
   t.after(() => scope.dispose())
   t.after(() => unregister())
-  return { ctx, agent, config }
+  await created.promise
+  const { ToolStep } = await hostFile('dsh-tools/lib/pipeline.js')
+  return { ctx, agent, config, ToolStep }
 }
 
 const args = { questions: [{ id: 'pick', question: 'Choose', options: [{ label: 'A' }, { label: 'B' }] }] }
 const call = { type: 'tool-call', id: 'next-call', name: 'ask_user_question', arguments: JSON.stringify(args) }
 
 test('next resolve → assemble → execute preserves admitted ask shadow and live config', { skip: !hostRoot }, async t => {
-  const { ctx, agent, config } = await runtime(t)
+  const { ctx, agent, config, ToolStep } = await runtime(t)
   const signal = new AbortController().signal
   let request
   ctx.on('user-questions/request', async value => {
     request = value
     return { answers: [{ id: 'pick', selected: ['B'] }] }
   })
-  const toolSet = await ctx.tools.resolve({ agent, signal })
-  t.after(() => toolSet.dispose())
-  const definition = ctx.tools.get('ask_user_question', agent, toolSet)
-  const assembly = await ctx.systemPrompt.assemble({ scope: agent, toolSet })
+  const toolStep = ToolStep.capture(ctx.tools, agent)
+  const definition = ctx.tools.get('ask_user_question', agent)
+  assert.equal(definition.name, 'ask_user_question')
+  const assembly = await ctx.systemPrompt.assemble({ scope: agent, toolStep })
   assert.equal(assembly.tools.filter(tool => tool.name === 'ask_user_question').length, 1)
-  assert.equal(ctx.tools.executable('ask_user_question', agent, toolSet), definition)
   config.questionTimeoutSeconds = 7
-  const result = await ctx.tools.execute({ calls: [call], agent, toolSet, signal })
+  const result = await ctx.tools.execute({ calls: [call], agent, toolStep, signal })
   assert.equal(result.results[0].result.isError, false)
   assert.deepEqual(result.results[0].result.value, { answers: [{ id: 'pick', selected: ['B'] }] })
   assert.equal(request.better.waitMs, 7000)
-  const empty = { view: () => new Map(), dispose() {} }
-  assert.equal((await ctx.systemPrompt.assemble({ scope: agent, toolSet: empty })).tools.length, 0)
 })
 
 test('next Gateway wire preserves request.better and returned autoSelected', { skip: !hostRoot, timeout: 10000 }, async t => {
-  const { ctx, agent, config } = await runtime(t)
+  const { ctx, agent, config, ToolStep } = await runtime(t)
   for (const name of ['dsh-typert-registry', 'dsh-api-remote-access', 'dsh-api-gateway']) {
     await ctx.plugin((await load('@deepseek-ai/' + name)).default)
   }
@@ -77,10 +77,9 @@ test('next Gateway wire preserves request.better and returned autoSelected', { s
   const ready = (await iterator.next()).value
   assert.equal(ready.type, 'ready')
   config.timeoutBehavior = 'default'
-  const toolSet = await ctx.tools.resolve({ agent, signal: lifetime.signal })
-  t.after(() => toolSet.dispose())
-  await ctx.systemPrompt.assemble({ scope: agent, toolSet })
-  const resultPromise = ctx.tools.execute({ calls: [call], agent, toolSet, signal: lifetime.signal })
+  const toolStep = ToolStep.capture(ctx.tools, agent)
+  await ctx.systemPrompt.assemble({ scope: agent, toolStep })
+  const resultPromise = ctx.tools.execute({ calls: [call], agent, toolStep, signal: lifetime.signal })
   const frame = JSON.parse(JSON.stringify((await iterator.next()).value))
   assert.equal(frame.type, 'waterfall')
   assert.equal(frame.event, 'user-questions/request')
@@ -103,7 +102,7 @@ test('next Gateway wire preserves request.better and returned autoSelected', { s
 
 for (const decision of ['approval', 'feedback', 'cancel']) {
   test('next exit_plan_mode waits for explicit ' + decision + ' despite ordinary auto-selection settings', { skip: !hostRoot }, async t => {
-    const { ctx, agent, config } = await runtime(t)
+    const { ctx, agent, config, ToolStep } = await runtime(t)
     const { build } = await import('esbuild')
     const compiled = await build({
       entryPoints: [new URL('../src/client/contract/slots.ts', import.meta.url).pathname],
@@ -113,7 +112,7 @@ for (const decision of ['approval', 'feedback', 'cancel']) {
     new Function('module', 'exports', compiled.outputFiles[0].text)(module, module.exports)
     const { PendingQuestion, createWaterfallRequest } = module.exports
     await ctx.plugin((await load('@deepseek-ai/dsh-plan-mode')).default, { section: 'Plan policy' })
-    agent.session.append('plan/mode', { active: true })
+    assert.equal(ctx.planMode.set(agent, true), 'committed')
     config.questionTimeoutSeconds = 1
     config.timeoutBehavior = 'default'
     const presented = Promise.withResolvers()
@@ -129,12 +128,11 @@ for (const decision of ['approval', 'feedback', 'cancel']) {
       return waterfall.result
     })
     const signal = new AbortController().signal
-    const toolSet = await ctx.tools.resolve({ agent, signal })
-    t.after(() => toolSet.dispose())
-    assert.ok((await ctx.systemPrompt.assemble({ scope: agent, toolSet })).tools.some(tool => tool.name === 'exit_plan_mode'))
+    const toolStep = ToolStep.capture(ctx.tools, agent)
+    assert.ok((await ctx.systemPrompt.assemble({ scope: agent, toolStep })).tools.some(tool => tool.name === 'exit_plan_mode'))
     const work = ctx.tools.execute({
       calls: [{ type: 'tool-call', id: 'exit-plan', name: 'exit_plan_mode', arguments: JSON.stringify({ plan: '# Safe plan' }) }],
-      agent, signal, toolSet,
+      agent, signal, toolStep,
     })
     let settled = false
     void work.then(() => { settled = true })
@@ -166,15 +164,14 @@ for (const decision of ['approval', 'feedback', 'cancel']) {
 }
 
 test('next logged pending ask is continued by the real question projection and accepts a late reply', { skip: !hostRoot, timeout: 10000 }, async t => {
-  const { ctx, agent, config } = await runtime(t)
+  const { ctx, agent, config, ToolStep } = await runtime(t)
   config.questionTimeoutSeconds = 1
   config.timeoutBehavior = 'native'
   const signal = new AbortController().signal
-  const toolSet = await ctx.tools.resolve({ agent, signal })
-  t.after(() => toolSet.dispose())
-  const assembly = await ctx.systemPrompt.assemble({ scope: agent, toolSet })
+  const toolStep = ToolStep.capture(ctx.tools, agent)
+  const assembly = await ctx.systemPrompt.assemble({ scope: agent, toolStep })
   agent.session.append('request/header', { turn: 0, step: 0, reason: 'initial', header: { config: {}, tools: assembly.tools } })
-  const result = (await ctx.tools.execute({ calls: [call], agent, toolSet, signal, log: { turn: 0, step: 0 } })).results[0].result
+  const result = (await ctx.tools.execute({ calls: [call], agent, toolStep, signal, log: { turn: 0, step: 0 } })).results[0].result
   assert.equal(result.isError, false)
   assert.equal(result.value.pending, true)
   // snapshot performs the actual registered projection's replay of logged schemas/calls/results.
