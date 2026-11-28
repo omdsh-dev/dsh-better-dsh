@@ -53,7 +53,11 @@ test('real profile: eng and eng-ptc retain their identity, composition and promp
     const cwd = join(info.home, 'workspace')
     await mkdir(cwd)
     ctx = await bootProfile(info)
+    // eng/eng-ptc carry the standard tool-cordis row; its host service comes from
+    // the web-app bundle, which the headless test template omits.
+    ctx.provide('cordisInspect', { list: () => [], query: async () => ({}) })
     registerLocalModel(ctx)
+    const { ToolStep } = await import(hostPackage('dsh-tools/lib/pipeline.js'))
     const roster = await ctx.agentPresets.list()
     for (const [id, name] of presets) {
       const preset = roster.find((candidate) => candidate.id === id)
@@ -90,6 +94,9 @@ test('real profile: eng and eng-ptc retain their identity, composition and promp
     ctx = undefined
     // Do not prepare/copy the profile again: this boot must consume stored data.
     ctx = await bootProfile(info)
+    // eng/eng-ptc carry the standard tool-cordis row; its host service comes from
+    // the web-app bundle, which the headless test template omits.
+    ctx.provide('cordisInspect', { list: () => [], query: async () => ({}) })
     registerLocalModel(ctx)
     assert.notEqual(ctx, originalHost)
     assert.equal(ctx.agentPresets.defaultId, 'eng-ptc')
@@ -115,9 +122,10 @@ test('real profile: eng and eng-ptc retain their identity, composition and promp
       assert.equal(ctx.agentPresets.composedPreset(agent.ctx), id)
 
       const signal = new AbortController().signal
-      const toolSet = await ctx.tools.resolve({ agent, modelSelection, signal })
-      try {
-        const assembly = await ctx.systemPrompt.assemble({ agent, scope: agent, modelSelection, toolSet, signal })
+      // alpha.3 captures the model step instead of resolving a disposable tool set.
+      const toolStep = ToolStep.capture(ctx.tools, agent)
+      {
+        const assembly = await ctx.systemPrompt.assemble({ agent, scope: agent, modelSelection, toolStep, signal })
         const prompt = renderPrompt({ ...assembly, contexts: [] })
         for (const name of ['eng:mode-instructions', 'better-subagent:delegation']) {
           const sections = assembly.sections.filter((section) => section.name === name)
@@ -126,8 +134,13 @@ test('real profile: eng and eng-ptc retain their identity, composition and promp
           assert.ok(prompt.includes(sections[0].text), id + ': rendered ' + name + ' section')
         }
         assert.match(assembly.sections.find((section) => section.name === 'better-subagent:delegation').text, /wait_subagent/)
-        assert.ok(toolSet.view(agent).has('wait_subagent'), id + ': wait tool is available')
-      } finally { toolSet.dispose() }
+        if (id === 'eng-ptc') {
+          // The PTC root declares only run_code; its bindings render into the SDK section.
+          assert.match(prompt, /wait_subagent/, id + ': wait tool is declared to programs')
+        } else {
+          assert.ok(toolStep.declarations.some((definition) => definition.name === 'wait_subagent'), id + ': wait tool is available')
+        }
+      }
       t.diagnostic('resumed ' + sessionId + ' as ' + id + '; stored header/history/title retained; preset mounted and prompt assembled')
     }
   } finally {

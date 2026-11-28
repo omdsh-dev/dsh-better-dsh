@@ -18,8 +18,8 @@ const ownRows = [
   ['eng-mode-instructions', 'dsh-better-dsh/presets/eng/plugins/mode-instructions/lib/index.js'],
 ]
 const thresholds = { thresholdChars: [16384, 8192], headChars: [8192, 4096], tailChars: [2048, 1024] }
-// The upstream `ptc` preset has not picked up the standard-mode Cordis row yet,
-// while eng-ptc is derived from eng and therefore carries it.
+// eng-ptc is derived from eng, so it keeps the standard-mode Cordis row that
+// the upstream ptc preset omits.
 const ptcAdditions = [['tool-cordis', '@deepseek-ai/dsh-tool-cordis']]
 // Deliberate removals from the upstream standard preset. The real-preset test
 // asserts each still exists upstream before filtering it out, so a renamed or
@@ -206,7 +206,7 @@ test('eng-ptc 恰为 eng + PTC 呈现 + 禁用 workflow', () => {
     if (row.id === 'workflow-ptc' || row.id === 'tool-workflow') row.disabled = true
   }
   expected.splice(expected.findIndex((row) => row.id === 'present'), 0, {
-    id: 'tool-executor-ptc', name: '@deepseek-ai/dsh-tool-executor-ptc',
+    id: 'tool-registry-ptc', name: '@deepseek-ai/dsh-tool-registry-ptc',
   })
   const actual = structuredClone(rowsOf(PTC))
   // The PTC plan-mode section carries one deliberate nested-call instruction.
@@ -237,8 +237,8 @@ test('engines.dsh 覆盖已验证的 0.2.x 候选范围', (t) => {
   const layout = dshLayout(t)
   if (!layout) return
   const range = manifest().engines.dsh
-  assert.equal(range, '>=0.2.3-alpha.2 <0.3.0')
+  assert.equal(range, '>=0.2.3-alpha.3 <0.3.0')
   assert.equal(layout.semver.satisfies(layout.version, range, { includePrerelease: true }), true)
-  for (const version of ['0.2.3-alpha.2', '0.2.3-alpha.3', '0.2.3']) assert.equal(layout.semver.satisfies(version, range, { includePrerelease: true }), true, version)
-  for (const version of ['0.2.2-rc.5', '0.2.2', '0.2.3-alpha.1', '0.3.0']) assert.equal(layout.semver.satisfies(version, range, { includePrerelease: true }), false, version)
+  for (const version of ['0.2.3-alpha.3', '0.2.3-alpha.4', '0.2.3']) assert.equal(layout.semver.satisfies(version, range, { includePrerelease: true }), true, version)
+  for (const version of ['0.2.2-rc.5', '0.2.2', '0.2.3-alpha.2', '0.3.0']) assert.equal(layout.semver.satisfies(version, range, { includePrerelease: true }), false, version)
 })

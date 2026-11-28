@@ -202,9 +202,8 @@ export function installCliRouting(ctx: Context, config: unknown, sessions: CliSe
     const args = (exec.arguments ?? {}) as CliArguments
     if (!enabledIn(config, exec.agent)) return next()
     if (!['subagent', 'list_subagent_models'].includes(exec.name)) return next()
-    // Around-dispatch runs before the native lookup: do not create a CLI child
-    // (or publish its catalog) when this step did not admit the original tool.
-    if (!ctx.tools.executable(exec.name, exec.agent, exec.toolSet)) return next()
+    // alpha.3 resolves the registered definition before this wrapper runs, so an
+    // unadmitted call never reaches here; creating a CLI child is admitted.
     if (exec.name === 'subagent' && cliName(args.provider)) {
       const signal = AbortSignal.any([exec.signal, lifetime.signal])
       const creation = (async () => {

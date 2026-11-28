@@ -3,7 +3,7 @@
 # A copy of the eng plugins block (presets/eng.patch.yml — read that file for
 # the per-row rationale) with exactly the deltas the upstream `ptc` preset
 # applies to `standard`:
-#   - `tool-executor-ptc`: every tool is reached through the
+#   - `tool-registry-ptc`: every tool is reached through the
 #     run_code TypeScript SDK (needs the host `ptc-runtime` row);
 #   - `workflow-ptc` and `tool-workflow` disabled: PTC fans out by calling
 #     subagent several times inside one run_code program instead;
@@ -51,8 +51,6 @@
 
           - id: tool-fs
             name: '@deepseek-ai/dsh-tool-fs'
-            config:
-              applyPatch: false
 
           - id: tool-fs-search
             name: '@deepseek-ai/dsh-tool-fs-search'
@@ -169,14 +167,14 @@
           - id: tool-cordis
             name: '@deepseek-ai/dsh-tool-cordis'
 
-          - id: tool-executor-ptc
-            name: '@deepseek-ai/dsh-tool-executor-ptc'
+          - id: tool-registry-ptc
+            name: '@deepseek-ai/dsh-tool-registry-ptc'
 
           - id: present
             name: '@deepseek-ai/dsh-tool-present'
 
-          - id: tool-office
-            name: '@deepseek-ai/dsh-tool-office'
+          - id: tool-document
+            name: '@deepseek-ai/dsh-tool-document'
 
           - id: tool-plugin-manager
             name: '@deepseek-ai/dsh-plugin-manager/tools'

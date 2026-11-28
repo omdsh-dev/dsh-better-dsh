@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots/client'
 import type { QuestionCardSnapshot } from './contract/slots.ts'
 import css from './QuestionWaitBar.module.css'
 

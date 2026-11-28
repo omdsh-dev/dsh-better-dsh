@@ -26,7 +26,7 @@ const patch = () => yaml.load(readFileSync(join(ROOT, 'cordis.patch.yml'), 'utf8
 test('manifest identity: scoped name, version, Apache-2.0, repository, publish config', () => {
   const m = manifest()
   assert.equal(m.name, PACKAGE_NAME)
-  assert.equal(m.version, '0.5.6-alpha.1')
+  assert.equal(m.version, '0.5.7-alpha.1')
   assert.equal(m.license, 'Apache-2.0')
   assert.equal(m.type, 'module')
   assert.equal(m.main, 'lib/index.js')
@@ -45,7 +45,7 @@ test('manifest identity: scoped name, version, Apache-2.0, repository, publish c
     access: 'public',
   })
   assert.equal(m.engines.node, '^24.22.3 || >=26.13.1')
-  assert.equal(m.engines.dsh, '>=0.2.3-alpha.2 <0.3.0')
+  assert.equal(m.engines.dsh, '>=0.2.3-alpha.3 <0.3.0')
 })
 
 test('manifest: TypeScript build, schemastery dependency, peer ranges, dev test deps', () => {
@@ -55,12 +55,12 @@ test('manifest: TypeScript build, schemastery dependency, peer ranges, dev test 
   assert.equal(m.scripts.pretest, 'npm run build')
   assert.equal(m.scripts.prepare, 'npm run build')
   assert.equal(m.scripts.test, 'node --test')
-  assert.equal(m.dependencies['@deepseek-ai/schemastery'], '~3.20.0-alpha.1')
-  assert.equal(m.dependencies['dsh-better-ptc'], '0.2.3-alpha.1')
+  assert.equal(m.dependencies['@deepseek-ai/schemastery'], '~3.20.0-alpha.2')
+  assert.equal(m.dependencies['dsh-better-ptc'], '0.2.4-alpha.1')
   for (const [name, range] of Object.entries(m.peerDependencies)) {
     if (name === 'react') assert.equal(range, '^18.2.0')
-    else if (name === '@deepseek-ai/cordis') assert.equal(range, '~4.2.0-alpha.1')
-    else assert.equal(range, '>=0.2.3-alpha.2 <0.3.0', name)
+    else if (name === '@deepseek-ai/cordis') assert.equal(range, '~4.2.0-alpha.2')
+    else assert.equal(range, '>=0.2.3-alpha.3 <0.3.0', name)
   }
   assert.equal(m.peerDependencies.react, '^18.2.0')
   assert.equal(m.devDependencies.react, '18.3.1')

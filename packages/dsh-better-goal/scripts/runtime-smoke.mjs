@@ -20,7 +20,7 @@ const apolloName = apolloRoot ? JSON.parse(await readFile(join(apolloRoot, 'pack
 const home = await mkdtemp(join(tmpdir(), 'dsh-better-goal-smoke-'))
 process.env.DSH_HOME = home
 process.env.DSH_TELEMETRY_DISABLED = '1'
-assert.equal(JSON.parse(await readFile(join(dsh, 'package.json'), 'utf8')).version, '0.2.3-alpha.2', 'smoke requires the exact supported host')
+assert.equal(JSON.parse(await readFile(join(dsh, 'package.json'), 'utf8')).version, '0.2.3-alpha.3', 'smoke requires the exact supported host')
 const hostRequire = createRequire(join(dsh, 'package.json'))
 // npm installs the host's runtime peers under dsh/node_modules; pnpm may hoist
 // them beside dsh. Resolve the real directory instead of assuming one layout.
@@ -67,7 +67,7 @@ if (mode !== 'standalone') {
     const dest = join(modules, name)
     await mkdir(dest, { recursive: true })
     const sibling = JSON.parse(await readFile(join(target, 'package.json'), 'utf8'))
-    assert.equal(sibling.engines.dsh, '>=0.2.3-alpha.2 <0.3.0', `${name} must target the supported host range`)
+    assert.equal(sibling.engines.dsh, '>=0.2.3-alpha.3 <0.3.0', `${name} must target the supported host range`)
     for (const file of ['package.json', ...sibling.files]) {
       await cp(join(target, file), join(dest, file), { recursive: true })
     }
@@ -76,7 +76,7 @@ if (mode !== 'standalone') {
 await writeFile(packageFile, JSON.stringify(manifest, null, 2))
 const preset = mode === 'standalone' ? 'standard' : 'eng'
 const standalonePatches = mode === 'standalone' ? A.loadOverlayPatches('better-goal-smoke', join(hostPeerRoot, 'dsh-web-app/presets/standard.patch.yml')) : []
-// 0.2.3-alpha.2's standard preset adds tool-cordis, which needs cordisInspect; this harness has no such service.
+// 0.2.3-alpha.3's standard preset adds tool-cordis, which needs cordisInspect; this harness has no such service.
 for (const entry of standalonePatches) for (const row of entry.insert ?? []) {
   if (row.id === 'preset-standard') row.config.plugins = row.config.plugins.filter((plugin) => plugin.id !== 'tool-cordis')
 }

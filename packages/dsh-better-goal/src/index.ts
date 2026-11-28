@@ -5,6 +5,7 @@ import type { GoalConfigStatus } from './host.js'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import type { GoalHistoryState } from './history.js'
 import type NativeGoalService from '@deepseek-ai/dsh-goal'
+import { ToolRegistryUnavailableError } from '@deepseek-ai/dsh-tools'
 
 type NativeStack = {
   service: typeof NativeGoalService
@@ -124,11 +125,16 @@ function mountBetterRuntime(ctx: Context, readConfig: () => GoalConfig) {
       const tools = state.actor.get('tools')!
       // Preset generations can change before the first turn. Recheck inherited
       // tools instead of retaining an ask tool from a previous generation.
-      const visibleLegacy = LEGACY_GOAL_TOOLS.filter((name) => tools.get(name, state.agent))
+      // A composition without a selected root offers no visible tools.
+      let visibleLegacy: string[] = []
+      try {
+        visibleLegacy = LEGACY_GOAL_TOOLS.filter((name) => tools.get(name, state.agent) !== undefined)
+      } catch (error) {
+        if (!(error instanceof ToolRegistryUnavailableError)) throw error
+      }
       if (visibleLegacy.length) {
         state.restrictDispose?.()
-        const legacy = LEGACY_GOAL_TOOLS.filter((name) => tools.get(name, state.agent))
-        state.restrictDispose = tools.restrict({ deny: legacy })
+        state.restrictDispose = tools.restrict({ deny: visibleLegacy })
       }
       const settings = readConfig()
       if (state.mode !== settings.roundLimitMode) {

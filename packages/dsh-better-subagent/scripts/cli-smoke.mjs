@@ -124,7 +124,7 @@ async function boot() {
   assert.deepEqual(resolvedProfile.skippedBundles, [])
   assert.equal(resolvedProfile.layers.find((layer) => layer.packageName === packageName)?.packageDir, plugin, 'load the isolated copied plugin, never an ancestor checkout')
   assert.equal(JSON.parse(await readFile(join(plugin, 'package.json'), 'utf8')).version, '0.5.6-alpha.1')
-  assert.equal(JSON.parse(await readFile(join(dsh, 'package.json'), 'utf8')).version, '0.2.3-alpha.2')
+  assert.equal(JSON.parse(await readFile(join(dsh, 'package.json'), 'utf8')).version, '0.2.3-alpha.3')
   const booted = await runProfile({ profile: 'it', resolvedProfile, patchFiles: [], args: [], environment: A.loadLayeredEnv('dsh') })
   ctx = booted.ctx
   ctx.llm.registerAdapter(['it-noop'], parentAdapter)

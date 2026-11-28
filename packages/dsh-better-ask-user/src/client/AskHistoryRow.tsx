@@ -1,7 +1,7 @@
 /** History row for ask_user_question: compact summary plus a live or review action. */
 import { useState } from 'react'
 import { IconChevronRightOutlineRegular, IconQuestionOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { HostObservable, InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import type { HostObservable, InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots/client'
 import type { ToolCallViewProps, UserQuestionRecord } from '@deepseek-ai/dsh-client-ui-tool/client'
 import type { AskUserQuestionItem } from '@deepseek-ai/dsh-user-questions/types'
 import css from './AskHistoryRow.module.css'

@@ -8,6 +8,7 @@ import { SessionStore } from '@deepseek-ai/dsh-session'
 import { SessionProjectionRegistry } from '@deepseek-ai/dsh-session-projection'
 import { SystemPrompt } from '@deepseek-ai/dsh-system-prompt'
 import { ToolRuntime } from '@deepseek-ai/dsh-tools'
+import { NativeToolRegistry } from '@deepseek-ai/dsh-tools/pipeline'
 import { CommandRuntime } from '@deepseek-ai/dsh-commands'
 import { apply, inject } from '../lib/index.js'
 import { GoalService } from '../lib/service.js'
@@ -37,6 +38,9 @@ async function harness(t, config = {}, loader) {
   await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  // alpha.3 routes every ctx.tools lookup through a selected root; the shipped
+  // deployments select the native registry, so the harness mirrors that.
+  ctx.tools.setRoot(new NativeToolRegistry())
   await ctx.plugin(CommandRuntime)
   // Retain the same config object the Loader's volatile references update.
   const live = { ...DEFAULTS, ...config }
@@ -297,7 +301,7 @@ nativeTest('isolated real profile switches both backends and preserves the same 
   await writeFile(manifestPath, JSON.stringify(manifest))
   const patchPath = join(profile, 'cordis.patch.yml')
   const overlay = A.loadOverlayPatches('native-test', join(hostPeerRoot, 'dsh-web-app/presets/standard.patch.yml'))
-  // 0.2.3-alpha.2's standard preset adds tool-cordis, which needs cordisInspect; the headless harness has no such service.
+  // 0.2.3-alpha.3's standard preset adds tool-cordis, which needs cordisInspect; the headless harness has no such service.
   for (const entry of overlay) for (const row of entry.insert ?? []) {
     if (row.id === 'preset-standard') row.config.plugins = row.config.plugins.filter((plugin) => plugin.id !== 'tool-cordis')
   }

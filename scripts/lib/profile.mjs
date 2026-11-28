@@ -10,7 +10,7 @@
  */
 
 import { createRequire } from 'node:module'
-import { access, cp, mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises'
+import { access, cp, glob, mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -58,11 +58,11 @@ export async function packageSources() {
     if (manifest.name !== name) throw new Error(`${dir} is not ${name}`)
   }
   const apolloManifest = apollo
-  if (apolloManifest.dependencies[SUBAGENT_NAME] !== '0.5.4'
-    || apolloManifest.dependencies[COMPACT_NAME] !== '0.5.0'
-    || apolloManifest.dependencies[GOAL_NAME] !== '0.4.5'
-    || apolloManifest.dependencies[ASK_NAME] !== '0.3.6'
-    || apolloManifest.dependencies[PTC_NAME] !== '0.2.2') {
+  if (apolloManifest.dependencies[SUBAGENT_NAME] !== '0.5.7-alpha.1'
+    || apolloManifest.dependencies[COMPACT_NAME] !== '0.5.3-alpha.1'
+    || apolloManifest.dependencies[GOAL_NAME] !== '0.4.8-alpha.1'
+    || apolloManifest.dependencies[ASK_NAME] !== '0.3.9-alpha.1'
+    || apolloManifest.dependencies[PTC_NAME] !== '0.2.4-alpha.1') {
     throw new Error('Better DSH dependencies must pin the verification versions')
   }
   return {
@@ -83,6 +83,16 @@ async function copyShipped(source, target) {
     ? manifest.files
     : ['.']
   for (const entry of entries) {
+    // A published layout lists globs (the root bundle ships lib/**/*.js); copy
+    // each match rather than treating the pattern as a literal path.
+    if (/[*?]/.test(entry)) {
+      for await (const match of glob(entry, { cwd: source })) {
+        const to = join(target, match)
+        await mkdir(dirname(to), { recursive: true })
+        await cp(join(source, match), to)
+      }
+      continue
+    }
     const from = join(source, entry)
     const to = join(target, entry)
     try {
@@ -100,11 +110,12 @@ async function copyShipped(source, target) {
   await cp(join(source, 'package.json'), join(target, 'package.json'))
   // Every published runtime entry must exist in the copied layout. A missing
   // build artifact must fail here, not surface later as an unresolvable row.
-  const runtimeFiles = new Set([manifest.main])
+  const runtimeFiles = new Set(manifest.main ? [manifest.main] : [])
   for (const [subpath, entry] of Object.entries(manifest.exports ?? {})) {
     if (subpath === './package.json') continue
-    if (typeof entry === 'string') runtimeFiles.add(entry)
-    else if (typeof entry?.default === 'string') runtimeFiles.add(entry.default)
+    const target = typeof entry === 'string' ? entry : entry?.default
+    // A pattern export (./presets/*) has no single runtime file to check.
+    if (typeof target === 'string' && !/[*?]/.test(target)) runtimeFiles.add(target)
   }
   for (const runtimeFile of runtimeFiles) {
     if (typeof runtimeFile !== 'string') continue
@@ -227,7 +238,9 @@ export async function authenticate(ctx) {
 /** Count active Loader entries per top-level row id. */
 export function rowCounts(ctx) {
   const counts = new Map()
-  for (const entry of ctx.root.loader.entries()) {
+  const loader = ctx.get('loader')
+  if (loader === undefined) throw new Error('profile context has no loader service')
+  for (const entry of loader.entries()) {
     const id = entry.options?.id
     if (typeof id !== 'string') continue
     counts.set(id, (counts.get(id) ?? 0) + 1)

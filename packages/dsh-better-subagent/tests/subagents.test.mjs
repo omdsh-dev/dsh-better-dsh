@@ -191,22 +191,21 @@ test('ordinary：非子代理工具调用一律 next() 委托，不短路', asyn
   }
 })
 
-test('admission：未接纳的 subagent / model catalog 不进入 CLI bridge', async () => {
+test('admission：alpha.3 管线先解析工具再进 wrapper，wrapper 不再查询注册表', async () => {
   const ctx = makeCtx()
   const sessions = makeSessions()
   const lookups = []
+  // alpha.2 had to ask ToolsService whether the step admitted the call; alpha.3
+  // resolves the definition before wrappers run, so those lookups must be gone.
+  ctx.tools.get = (...args) => { lookups.push(args); return undefined }
   ctx.tools.executable = (...args) => { lookups.push(args); return undefined }
   installCliRouting(ctx, makeConfig(), sessions)
   const [handler, next] = executeHandler(ctx)
-  const agent = makeAgent()
-  const toolSet = {}
-  for (const name of ['subagent', 'list_subagent_models']) {
-    await handler({ ...makeExec(agent), name, toolSet, arguments: { provider: 'codex', description: 'denied', prompt: 'denied' } }, next)
-    assert.deepEqual(lookups.at(-1), [name, agent, toolSet])
-  }
-  assert.equal(next.calls, 2)
+  const out = await handler({ ...makeExec(makeAgent()), name: 'subagent', arguments: { provider: 'spawn', description: 'ok', prompt: 'ok' } }, next)
+  assert.deepEqual(lookups, [])
+  assert.equal(next.calls, 1)
+  assert.equal(out.isError, false)
   assert.deepEqual(sessions.calls, [])
-  assert.deepEqual(ctx.resolved, [])
 })
 
 test('ordinary：subagent 不带 CLI provider 时 next() 委托（原有行为保持）', async () => {

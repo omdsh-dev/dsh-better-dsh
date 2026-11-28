@@ -1,5 +1,5 @@
 /**
- * Real Node PTC -> executor -> native exit_plan_mode -> userQuestions coverage.
+ * Real Node PTC -> tool registry -> native exit_plan_mode -> userQuestions coverage.
  * Only the human answerer is controlled; no tool or runtime binding is replaced.
  * Run with DSH_PACKAGE_ROOT and (for local unreleased plugins)
  * APOLLO_PLUGIN_SOURCE_ROOT set, like the other real-profile integration tests.
@@ -53,6 +53,9 @@ for (const assembly of ['standalone', 'apollo']) {
     const controllers = new Set()
     try {
       ctx = await bootProfile(info)
+      // eng/eng-ptc carry the standard tool-cordis row; its host service comes from
+      // the web-app bundle, which the headless test template omits.
+      ctx.provide('cordisInspect', { list: () => [], query: async () => ({}) })
       await mkdir(join(info.home, 'workspace'), { recursive: true })
       const model = { provider: PROVIDER, id: MODEL, name: MODEL, inputModalities: ['text'], context: { contextWindow: 200000 }, defaultMaxTokens: 64 }
       ctx.llm.registerAdapter([PROVIDER], {
@@ -62,7 +65,8 @@ for (const assembly of ['standalone', 'apollo']) {
         listModels: async () => [model],
         resolveModel: async () => model,
       })
-      const executor = await import(hostPackage('dsh-tool-executor-ptc/lib/index.js'))
+      const ptcRegistry = await import(hostPackage('dsh-tool-registry-ptc/lib/index.js'))
+      const { ToolStep } = await import(hostPackage('dsh-tools/lib/pipeline.js'))
       const { UserQuestionError } = await import(hostPackage('dsh-user-questions/lib/index.js'))
       const { agent } = await ctx.agents.create({
         sessionId: randomUUID(),
@@ -70,7 +74,7 @@ for (const assembly of ['standalone', 'apollo']) {
         agentOptions: { provider: PROVIDER, model: MODEL },
         setup: async actor => {
           if (assembly === 'apollo') await ctx.agentPresets.mount(actor, 'eng-ptc')
-          else await actor.plugin(executor)
+          else await actor.plugin(ptcRegistry)
         },
       })
       const planMode = assembly === 'apollo' ? ctx.agentPresets.serviceFor(agent, 'planMode') : agent.ctx.get('planMode')
@@ -81,7 +85,7 @@ for (const assembly of ['standalone', 'apollo']) {
       assert.equal(rowCounts(ctx).has('apollo-skills'), assembly === 'apollo')
       // Guard against install-anchor resolution silently loading ancestor packages.
       for (const id of assembly === 'apollo' ? ['dsh-better-ptc', 'apollo-skills'] : ['dsh-better-ptc']) {
-        const entry = [...ctx.root.loader.entries()].find(entry => entry.options?.id === id)
+        const entry = [...ctx.get('loader').entries()].find(entry => entry.options?.id === id)
         const dir = info.profilePackage(entry.options.name)
         const manifest = JSON.parse(await readFile(join(dir, 'package.json'), 'utf8'))
         const copiedModule = await import(pathToFileURL(join(dir, manifest.main)).href)
@@ -114,13 +118,11 @@ for (const assembly of ['standalone', 'apollo']) {
         })
         const task = (async () => {
           const signal = controller.signal
-          const toolSet = await ctx.tools.resolve({ agent, modelSelection: { provider: PROVIDER, model: MODEL }, signal })
-          try {
-            return await ctx.tools.execute({
-              calls: [{ type: 'tool-call', id: randomUUID(), name: 'run_code', arguments: JSON.stringify({ code, description: 'Review a real isolated runtime plan', timeoutMs: BUDGET }) }],
-              agent, signal, toolSet,
-            })
-          } finally { toolSet.dispose() }
+          const toolStep = ToolStep.capture(ctx.tools, agent)
+          return await ctx.tools.execute({
+            calls: [{ type: 'tool-call', id: randomUUID(), name: 'run_code', arguments: JSON.stringify({ code, description: 'Review a real isolated runtime plan', timeoutMs: BUDGET }) }],
+            agent, signal, toolStep,
+          })
         })()
         active.add(task)
         task.then(() => { settled = true; active.delete(task) }, () => { settled = true; active.delete(task) })
@@ -155,9 +157,9 @@ for (const assembly of ['standalone', 'apollo']) {
       }
 
       await t.test('approval remains pending past the short budget and explicitly approves only the next step', async () => {
-        const { result, batch } = await runReview('return ' + REVIEW, 'approve')
+        const { result, batch } = await runReview('inspect(' + REVIEW + ')', 'approve')
         assert.equal(result.isError, false, JSON.stringify(result))
-        assert.deepEqual(result.value.result, { approved: true })
+        assert.match(JSON.stringify(result), /Plan approved — plan mode exited/, 'the inspected binding output carries the approval')
         assert.equal(batch.concluded, false)
         assert.deepEqual(planMode.get(agent), { active: true, pending: false })
         await agent.ctx.waterfall('agent/pre-step', { agent, messages: [], step: 1, modelSelection: { provider: PROVIDER, model: MODEL }, signal: new AbortController().signal }, async () => ({ kind: 'accept', messages: [] }))
@@ -165,18 +167,17 @@ for (const assembly of ['standalone', 'apollo']) {
       })
 
       await t.test('keep planning returns explicit feedback, never approval', async () => {
-        const { result, batch } = await runReview('try { return ' + REVIEW + ' } catch (error) { return { tool: error.toolName, message: error.message } }', 'keep')
+        const { result, batch } = await runReview('try { inspect(' + REVIEW + ') } catch (error) { inspect(error.message) }', 'keep')
         assert.equal(result.isError, false, JSON.stringify(result))
-        assert.equal(result.value.result.tool, 'exit_plan_mode')
-        assert.match(result.value.result.message, /keep planning.*Add a rollback check/s)
+        assert.match(JSON.stringify(result), /keep planning.*Add a rollback check/s)
         assert.equal(batch.concluded, false)
         assert.deepEqual(planMode.get(agent), { active: true })
       })
 
       await t.test('dismissal returns unapproved and concludes the turn without leaving plan mode', async () => {
-        const { result, batch } = await runReview('return ' + REVIEW, 'dismiss')
+        const { result, batch } = await runReview('inspect(' + REVIEW + ')', 'dismiss')
         assert.equal(result.isError, false, JSON.stringify(result))
-        assert.deepEqual(result.value.result, { approved: false })
+        assert.match(JSON.stringify(result), /dismissed the plan review/)
         assert.equal(batch.concluded, true)
         assert.deepEqual(planMode.get(agent), { active: true })
       })
@@ -184,7 +185,7 @@ for (const assembly of ['standalone', 'apollo']) {
       for (const outcome of ['approve', 'keep', 'dismiss']) {
         await t.test(outcome + ' resumes only the unused budget, not a fresh deadline', async () => {
           // Both active slices fit a fresh budget separately, but together exceed it.
-          const code = 'const before = Date.now() + 300; while (Date.now() < before) {} try { ' + REVIEW + ' } catch (error) { console.log(error.message) } const after = Date.now() + 500; while (Date.now() < after) {} return "incorrectly reset budget"'
+          const code = 'const before = Date.now() + 300; while (Date.now() < before) {} try { ' + REVIEW + ' } catch (error) { inspect(error.message) } const after = Date.now() + 500; while (Date.now() < after) {} inspect("incorrectly reset budget")'
           const { result } = await runReview(code, outcome)
           assert.equal(result.isError, true, JSON.stringify(result))
           assert.match(JSON.stringify(result), /code run failed \(timeout\).*execution deadline reached \(700ms\)/s)
@@ -195,7 +196,7 @@ for (const assembly of ['standalone', 'apollo']) {
       }
 
       await t.test('caller cancellation still aborts a pending exempt review and drains its answerer', async () => {
-        const { result, aborted } = await runReview('return ' + REVIEW, 'abort')
+        const { result, aborted } = await runReview('inspect(' + REVIEW + ')', 'abort')
         assert.equal(aborted, true)
         assert.equal(result.isError, true, JSON.stringify(result))
         assert.match(JSON.stringify(result), /abort|cancel/i)

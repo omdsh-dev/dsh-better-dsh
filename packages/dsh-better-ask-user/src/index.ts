@@ -1,6 +1,7 @@
 /** dsh-better-ask-user host row: ask_user_question shadow, settings, PTC exemption. */
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import { ToolRegistryUnavailableError } from '@deepseek-ai/dsh-tools'
 import { Config, readConfig as snapshotConfig } from './config.js'
 import { createBetterAskTool } from './ask-tool.js'
 import { mountPtcExemption } from './ptc.js'
@@ -26,7 +27,15 @@ export function apply(ctx: Context, config: unknown = {}) {
 
   function register(state: AgentState) {
     const tools = state.actor.get('tools')!
-    const base = tools.get('ask_user_question', state.agent)
+    let base
+    try {
+      base = tools.get('ask_user_question', state.agent)
+    } catch (error) {
+      // alpha.3 reads through the selected tool root. A composition without a
+      // root (or before one loads) offers no host tool to shadow.
+      if (error instanceof ToolRegistryUnavailableError) return
+      throw error
+    }
     if (base === undefined) return
     state.askDispose = tools.register(createBetterAskTool(ctx, base, readConfig))
   }

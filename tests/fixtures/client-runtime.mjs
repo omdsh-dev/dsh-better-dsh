@@ -6,7 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import vm from 'node:vm'
 
-export const VERSION = '0.2.3-alpha.2'
+export const VERSION = '0.2.3-alpha.3'
 export const root = fileURLToPath(new URL('../../', import.meta.url))
 export const hostRoot = process.env.DSH_PACKAGE_ROOT
 export const enabled = !!hostRoot
@@ -44,9 +44,7 @@ export async function createRuntime() {
   const ReactDOM = supportRequire('react-dom')
   const ReactDOMClient = supportRequire('react-dom/client')
   const Cordis = await importHost('@deepseek-ai/cordis')
-  const slotsSeed = await importSupport('@deepseek-ai/dsh-client-ui-slots')
   const storeSeed = await importSupport('@deepseek-ai/dsh-client-store')
-  const primitivesSeed = await importSupport('@deepseek-ai/dsh-client-ui-primitives')
   for (const name of ['@deepseek-ai/dsh-client-ui-slots', '@deepseek-ai/dsh-client-store', '@deepseek-ai/dsh-client-ui-primitives']) {
     assert.equal(json(supportRequire.resolve(name + '/package.json')).version, VERSION)
   }
@@ -55,7 +53,12 @@ export async function createRuntime() {
   const execute = file => vm.runInThisContext(readFileSync(file, 'utf8'), { filename: file })
   const modulesId = '@deepseek-ai/dsh-client-modules'
   execute(join(hostDir(modulesId), 'lib/client.js'))
-  const bootstrap = target.pendingQueue.pop()
+  // Shared client libraries register through the loader like every client bundle;
+  // alpha.3 keeps their package roots as host-only empty plugins.
+  execute(join(hostDir('@deepseek-ai/dsh-client-ui-slots'), 'lib/client.js'))
+  execute(join(hostDir('@deepseek-ai/dsh-client-ui-primitives'), 'lib/client.js'))
+  const bootstrapIndex = target.pendingQueue.findIndex(registration => registration.id === modulesId)
+  const [bootstrap] = target.pendingQueue.splice(bootstrapIndex, 1)
   const moduleExports = bootstrap.factory(() => { throw new Error('bootstrap requires no seeds') })
   const sources = new Map()
   const rows = new Map()
@@ -87,13 +90,15 @@ export async function createRuntime() {
     batches: entries.map(entry => ({ phase: 'application', url: entry.url, rev: VERSION, entries: [entry.id] })) })
   const modules = new moduleExports.ClientModuleSystem({ manifest, registrationTarget: target,
     bootstrapModule: { id: modulesId, exports: moduleExports },
-    staticModules: { react: React, 'react/jsx-runtime': supportRequire('react/jsx-runtime'), 'react-dom': ReactDOM,
+    staticModules: Object.entries({ react: React, 'react/jsx-runtime': supportRequire('react/jsx-runtime'), 'react-dom': ReactDOM,
       'react-dom/client': ReactDOMClient, zod: await importHost('zod'),
       '@tanstack/react-virtual': await importSupport('@tanstack/react-virtual'), '@deepseek-ai/cordis': Cordis,
-      '@deepseek-ai/dsh-client-ui-slots': slotsSeed, '@deepseek-ai/dsh-client-store': storeSeed,
-      '@deepseek-ai/dsh-client-ui-primitives': primitivesSeed },
+      '@deepseek-ai/dsh-client-store': storeSeed }).map(([id, value]) => ({ id, factory: () => value })),
     loadBundle: async url => { assert.ok(sources.has(url), 'Unexpected bundle ' + url); execute(sources.get(url)) } })
   const ctx = new Cordis.Context()
+  // alpha.3 renderer plugins inject the 'modules' service, which the client
+  // module system plugin publishes from ctx.loader.internal at boot.
+  ctx.provide('loader', { internal: modules, await: async () => {}, entries: () => [], import: async () => { throw new Error('no host import in the client test runtime') } })
   const fibers = []
   async function mount(plugin) {
     const fiber = ctx.plugin(plugin)
@@ -102,6 +107,7 @@ export async function createRuntime() {
     return fiber
   }
   async function mountModule(id) { return mount(await modules.import(id)) }
+  await mount(moduleExports)
   const { RemoteMock } = await importSupport('@deepseek-ai/dsh-remote-mock')
   const rpc = RemoteMock.create()
   const connection = await importHost('@deepseek-ai/dsh-client-connection/client')
